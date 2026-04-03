@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IdleSpace — Star Map</title>
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #050508;
+  color: #c8d0e0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Top Bar ── */
+#top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 16px;
+  background: #08090f;
+  border-bottom: 1px solid #111828;
+  flex-shrink: 0;
+  z-index: 10;
+}
+#top-bar h1 { font-size: 13px; font-weight: 600; color: #8090b0; }
+#top-bar h1 span { color: #4a7ac0; }
+#resources {
+  display: flex;
+  gap: 14px;
+}
+.resource {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.resource-icon { font-size: 12px; }
+.resource-value { font-size: 12px; font-weight: 600; color: #fff; }
+.resource-rate { font-size: 9px; color: #6a7a9b; }
+.resource-label { display: none; }
+#speed-controls {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+#speed-controls button {
+  background: #1a2040;
+  border: 1px solid #2a3460;
+  color: #8090b0;
+  padding: 3px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 10px;
+  transition: all 0.15s;
+}
+#speed-controls button:hover { background: #252f55; color: #c0d0f0; }
+#speed-controls button.active {
+  background: #2a4080;
+  border-color: #4060c0;
+  color: #fff;
+}
+
+/* ── Canvas Container ── */
+#map-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+}
+#map-container.dragging { cursor: grabbing; }
+#starmap {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Tooltip ── */
+#tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(8,9,15,0.92);
+  border: 1px solid #1e2744;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #c8d0e0;
+  white-space: nowrap;
+  z-index: 20;
+  display: none;
+}
+
+/* ── Star Card Popup Overlay ── */
+#card-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 280px;
+  background: #06080c;
+  border-left: 1px solid #111828;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 16px;
+  z-index: 15;
+  overflow-y: auto;
+}
+#card-overlay.visible {
+  display: flex;
+}
+#card-overlay-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #4a5a7b;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+#card-overlay-close:hover { color: #c8d0e0; background: #0c0e18; }
+
+/* ── Card Preview (ported from card-builder) ── */
+.card-preview {
+  width: 220px;
+  height: 320px;
+  border-radius: 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.card-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  padding: 3px;
+  background: var(--rarity-color);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.card-preview .card-bg {
+  position: absolute;
+  inset: 3px;
+  border-radius: 7px;
+  background: #141a30;
+  z-index: 0;
+}
+.card-preview > * { position: relative; z-index: 1; }
+.card-preview .card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 7px 8px 4px 8px;
+}
+.card-preview .card-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  flex: 1;
+  min-height: 16px;
+  line-height: 1.2;
+}
+.card-preview .card-image {
+  width: 205px;
+  height: 175px;
+  border-radius: 4px;
+  background: #1a2040;
+  margin: 0 auto 4px auto;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2a3460;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.card-preview .card-image img {
+  width: 205px;
+  height: 175px;
+  object-fit: cover;
+}
+.card-preview .card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  padding: 2px 8px;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+}
+.card-preview .card-stats.expanded {
+  flex: 1;
+  gap: 4px 12px;
+}
+.card-preview .card-stat {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+}
+.card-preview .card-stats.expanded .card-stat { font-size: 13px; }
+.card-preview .card-stat-icon { font-size: 12px; }
+.card-preview .card-stats.expanded .card-stat-icon { font-size: 15px; }
+.card-preview .card-stat-value { font-weight: 600; color: #fff; }
+.card-preview .card-special {
+  font-size: 11px;
+  color: #a0b0d0;
+  text-align: center;
+  margin: 2px 7px 0 7px;
+  padding: 3px 4px;
+  background: rgba(40,60,120,0.2);
+  border-radius: 3px;
+  line-height: 1.2;
+}
+.card-preview .card-flavor {
+  font-size: 10px;
+  color: #4a5a7b;
+  font-style: italic;
+  text-align: center;
+  padding: 2px 8px 7px 8px;
+  line-height: 1.3;
+  margin-top: auto;
+}
+.card-preview .card-watermark {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 60px;
+  opacity: 0.08;
+  z-index: 1;
+  pointer-events: none;
+  line-height: 1;
+}
+
+/* Rarity colors */
+.card-preview.common    { --rarity-color: #6a7a9b; }
+.card-preview.uncommon  { --rarity-color: #4a9b5a; }
+.card-preview.rare      { --rarity-color: #4a7ac0; }
+.card-preview.epic      { --rarity-color: #8a4ac0; }
+.card-preview.legendary { --rarity-color: #c0a020; }
+
+/* ── Mystery Card (detected/unexplored) ── */
+.card-preview.mystery .card-bg {
+  background: #0c0e18;
+}
+.card-mystery-face {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.card-mystery-face .mystery-icon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+.card-mystery-face .mystery-text {
+  font-size: 14px;
+  color: #384868;
+  font-weight: 600;
+}
+
+/* ── Action Buttons ── */
+#card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  width: 220px;
+}
+.card-action-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #2a4080, #3a5ab0);
+  border: 1px solid #4060c0;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.card-action-btn:hover { background: linear-gradient(135deg, #3050a0, #4a6ac0); }
+.card-action-btn.secondary {
+  background: linear-gradient(135deg, #1a2540, #243060);
+  border-color: #2a3a60;
+}
+.card-action-btn.secondary:hover { background: linear-gradient(135deg, #243060, #2e4080); }
+
+/* ── Star Info Label (below card) ── */
+#star-info {
+  margin-top: 12px;
+  width: 220px;
+  font-size: 11px;
+  color: #4a5a7b;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div id="top-bar">
+  <h1>Idle<span>Space</span></h1>
+  <div id="resources">
+    <div class="resource">
+      <span class="resource-icon">⚡</span>
+      <span class="resource-value" id="res-energy">0</span>
+      <span class="resource-rate" id="rate-energy">+0/s</span>
+      <span class="resource-label">Energy</span>
+    </div>
+    <div class="resource">
+      <span class="resource-icon">⛏️</span>
+      <span class="resource-value" id="res-minerals">0</span>
+      <span class="resource-rate" id="rate-minerals">+0/s</span>
+      <span class="resource-label">Minerals</span>
+    </div>
+    <div class="resource">
+      <span class="resource-icon">🔬</span>
+      <span class="resource-value" id="res-research">0</span>
+      <span class="resource-rate" id="rate-research">+0/s</span>
+      <span class="resource-label">Research</span>
+    </div>
+    <div class="resource">
+      <span class="resource-icon">🌾</span>
+      <span class="resource-value" id="res-food">0</span>
+      <span class="resource-rate" id="rate-food">+0/s</span>
+      <span class="resource-label">Food</span>
+    </div>
+  </div>
+  <div id="speed-controls">
+    <button data-speed="0">⏸</button>
+    <button data-speed="0.25">¼×</button>
+    <button data-speed="0.5">½×</button>
+    <button data-speed="1" class="active">1×</button>
+    <button data-speed="2">2×</button>
+    <button data-speed="4">4×</button>
+  </div>
+</div>
+
+<!-- Map Container -->
+<div id="map-container">
+  <canvas id="starmap"></canvas>
+  <div id="tooltip"></div>
+  <div id="card-overlay">
+    <button id="card-overlay-close">✕</button>
+    <div id="card-preview-slot"></div>
+    <div id="card-actions"></div>
+    <div id="star-info"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  STAR CARD TEMPLATES (from data/cards.json)
+// ═══════════════════════════════════════════
+const STAR_TEMPLATES = [
+  { id:"str_001", name:"Red Dwarf", rarity:"common", stats:{luminosity:2,stability:4,planets_max:2}, special:"", flavor:"Small, steady, eternal." },
+  { id:"str_002", name:"Yellow Main Sequence", rarity:"common", stats:{luminosity:4,stability:3,planets_max:4}, special:"", flavor:"The kind of star that breeds life." },
+  { id:"str_010", name:"Brown Dwarf", rarity:"common", stats:{luminosity:1,stability:5,planets_max:1}, special:"", flavor:"Not quite a star, not quite nothing." },
+  { id:"str_003", name:"Orange Giant", rarity:"uncommon", stats:{luminosity:5,stability:3,planets_max:5}, special:"", flavor:"Swollen with age, rich with possibility." },
+  { id:"str_006", name:"White Dwarf", rarity:"uncommon", stats:{luminosity:3,stability:5,planets_max:2,research:2}, special:"", flavor:"The ember of a once-great fire." },
+  { id:"str_004", name:"Blue Supergiant", rarity:"rare", stats:{luminosity:9,stability:2,planets_max:3,energy:4}, special:"Extreme energy output but unstable.", flavor:"Burning bright, burning fast." },
+  { id:"str_005", name:"Binary System", rarity:"rare", stats:{luminosity:7,stability:2,planets_max:4,research:3}, special:"Unique orbital mechanics to study.", flavor:"Two hearts, one system." },
+  { id:"str_011", name:"Pulsar", rarity:"rare", stats:{luminosity:5,stability:3,energy:5,research:4}, special:"Provides navigation beacon to nearby systems.", flavor:"A lighthouse spinning in the dark." },
+  { id:"str_007", name:"Neutron Star", rarity:"epic", stats:{luminosity:6,stability:4,research:8,energy:5}, special:"Pulsar emissions boost research.", flavor:"A teaspoon weighs a billion tons." },
+  { id:"str_008", name:"Magnetar", rarity:"epic", stats:{luminosity:8,stability:1,energy:10,research:5}, special:"Dangerous but incredibly energy-rich.", flavor:"Space itself screams near its poles." },
+  { id:"str_012", name:"Trinary System", rarity:"epic", stats:{luminosity:10,stability:1,planets_max:3,energy:6,research:4}, special:"Complex orbits yield unique research.", flavor:"Three suns dance an eternal waltz." },
+  { id:"str_009", name:"Primordial Quasar Remnant", rarity:"legendary", stats:{luminosity:15,stability:3,planets_max:6,energy:10,research:8}, special:"All colonies in system gain +25% output.", flavor:"A relic of creation, still burning with the first light." },
+];
+
+const RARITY_WEIGHTS = { common:50, uncommon:28, rare:14, epic:6, legendary:2 };
+const RARITY_COLORS = { common:"#6a7a9b", uncommon:"#4a9b5a", rare:"#4a7ac0", epic:"#8a4ac0", legendary:"#c0a020" };
+
+// Visual properties per star name
+const STAR_VISUALS = {
+  "Red Dwarf":                 { color:"#cc4444", glowColor:"rgba(204,68,68,0.4)", baseSize:3 },
+  "Yellow Main Sequence":      { color:"#e8d44a", glowColor:"rgba(232,212,74,0.4)", baseSize:4.5 },
+  "Brown Dwarf":               { color:"#8b6914", glowColor:"rgba(139,105,20,0.25)", baseSize:2.5 },
+  "Orange Giant":              { color:"#e08830", glowColor:"rgba(224,136,48,0.45)", baseSize:6 },
+  "White Dwarf":               { color:"#d0d8f0", glowColor:"rgba(208,216,240,0.35)", baseSize:2.5 },
+  "Blue Supergiant":           { color:"#5090ff", glowColor:"rgba(80,144,255,0.5)", baseSize:7 },
+  "Binary System":             { color:"#70b8e8", glowColor:"rgba(112,184,232,0.4)", baseSize:5 },
+  "Pulsar":                    { color:"#80e0e0", glowColor:"rgba(128,224,224,0.5)", baseSize:3.5 },
+  "Neutron Star":              { color:"#c0a0ff", glowColor:"rgba(192,160,255,0.5)", baseSize:3 },
+  "Magnetar":                  { color:"#ff60ff", glowColor:"rgba(255,96,255,0.55)", baseSize:3.5 },
+  "Trinary System":            { color:"#f0c060", glowColor:"rgba(240,192,96,0.45)", baseSize:5.5 },
+  "Primordial Quasar Remnant": { color:"#ffdd44", glowColor:"rgba(255,221,68,0.6)", baseSize:9 },
+};
+
+const STAT_ICONS = {
+  luminosity:"☀️", stability:"🛡️", planets_max:"🪐",
+  energy:"⚡", minerals:"⛏️", research:"🔬", food:"🌾",
+};
+
+// Detected star visuals
+const DETECTED_VISUAL = { color:"#384868", glowColor:"rgba(56,72,104,0.2)", baseSize:3 };
+
+// ═══════════════════════════════════════════
+//  RARITY ROLLER
+// ═══════════════════════════════════════════
+function rollRarity() {
+  const total = Object.values(RARITY_WEIGHTS).reduce((s,w) => s+w, 0);
+  let roll = Math.random() * total;
+  for (const [rarity, weight] of Object.entries(RARITY_WEIGHTS)) {
+    roll -= weight;
+    if (roll <= 0) return rarity;
+  }
+  return "common";
+}
+
+function rollStarCard() {
+  const rarity = rollRarity();
+  const pool = STAR_TEMPLATES.filter(t => t.rarity === rarity);
+  const template = pool[Math.floor(Math.random() * pool.length)];
+  // Deep copy stats
+  return { ...template, stats: { ...template.stats } };
+}
+
+// ═══════════════════════════════════════════
+//  STAR NETWORK
+// ═══════════════════════════════════════════
+let nextStarId = 1;
+const stars = new Map(); // id -> star node
+
+function createStar(x, y, visibility, card) {
+  const id = `star_${nextStarId++}`;
+  const star = { id, x, y, visibility, lanes: [], card };
+  stars.set(id, star);
+  return star;
+}
+
+function addLane(starA, starB) {
+  if (!starA.lanes.includes(starB.id)) starA.lanes.push(starB.id);
+  if (!starB.lanes.includes(starA.id)) starB.lanes.push(starA.id);
+}
+
+function distanceBetween(a, b) {
+  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+}
+
+function isPositionValid(x, y, minDist) {
+  for (const s of stars.values()) {
+    if (distanceBetween({ x, y }, s) < minDist) return false;
+  }
+  return true;
+}
+
+// Generate new stars around a parent star (called when exploring)
+function generateFrontierStars(parent) {
+  const count = 1 + Math.floor(Math.random() * 3); // 1-3 new stars
+  const newStars = [];
+  for (let i = 0; i < count; i++) {
+    let placed = false;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 150 + Math.random() * 150; // 150-300 world units
+      const x = parent.x + Math.cos(angle) * dist;
+      const y = parent.y + Math.sin(angle) * dist;
+      if (isPositionValid(x, y, 80)) {
+        const card = rollStarCard();
+        const star = createStar(x, y, "detected", card);
+        addLane(parent, star);
+        // Maybe connect to a nearby existing star too
+        for (const other of stars.values()) {
+          if (other.id === star.id || other.id === parent.id) continue;
+          if (distanceBetween(star, other) < 200 && Math.random() < 0.3) {
+            addLane(star, other);
+            break;
+          }
+        }
+        newStars.push(star);
+        placed = true;
+        break;
+      }
+    }
+  }
+  return newStars;
+}
+
+// Create initial seed cluster
+function generateSeedCluster() {
+  // Home star — always Yellow Main Sequence
+  const homeCard = { ...STAR_TEMPLATES[1], stats: { ...STAR_TEMPLATES[1].stats } };
+  const home = createStar(0, 0, "explored", homeCard);
+
+  // Generate 4-6 neighbors
+  const neighborCount = 4 + Math.floor(Math.random() * 3);
+  const neighbors = [];
+  for (let i = 0; i < neighborCount; i++) {
+    let placed = false;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const angle = (i / neighborCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
+      const dist = 160 + Math.random() * 120;
+      const x = Math.cos(angle) * dist;
+      const y = Math.sin(angle) * dist;
+      if (isPositionValid(x, y, 80)) {
+        const card = rollStarCard();
+        const star = createStar(x, y, "detected", card);
+        addLane(home, star);
+        neighbors.push(star);
+        placed = true;
+        break;
+      }
+    }
+  }
+  // Add a few cross-lanes between neighbors for interesting topology
+  for (let i = 0; i < neighbors.length; i++) {
+    for (let j = i + 1; j < neighbors.length; j++) {
+      if (distanceBetween(neighbors[i], neighbors[j]) < 250 && Math.random() < 0.35) {
+        addLane(neighbors[i], neighbors[j]);
+      }
+    }
+  }
+
+  return home;
+}
+
+// ═══════════════════════════════════════════
+//  CAMERA
+// ═══════════════════════════════════════════
+const camera = {
+  x: 0, y: 0,       // world offset (center of view)
+  zoom: 1.0,
+  minZoom: 0.3,
+  maxZoom: 3.0,
+};
+
+function worldToScreen(wx, wy) {
+  const canvas = document.getElementById("starmap");
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  return {
+    x: (wx - camera.x) * camera.zoom + cx,
+    y: (wy - camera.y) * camera.zoom + cy,
+  };
+}
+
+function screenToWorld(sx, sy) {
+  const canvas = document.getElementById("starmap");
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  return {
+    x: (sx - cx) / camera.zoom + camera.x,
+    y: (sy - cy) / camera.zoom + camera.y,
+  };
+}
+
+// ═══════════════════════════════════════════
+//  BACKGROUND STAR FIELD
+// ═══════════════════════════════════════════
+const BG_STARS = [];
+function initBgStars(count = 400) {
+  for (let i = 0; i < count; i++) {
+    BG_STARS.push({
+      x: Math.random() * 4000 - 2000,
+      y: Math.random() * 4000 - 2000,
+      size: Math.random() * 1.2 + 0.3,
+      brightness: Math.random() * 0.4 + 0.1,
+    });
+  }
+}
+initBgStars();
+
+// ═══════════════════════════════════════════
+//  CANVAS RENDERING
+// ═══════════════════════════════════════════
+let animTime = 0;
+let selectedStarId = null;
+let hoveredStarId = null;
+
+function resizeCanvas() {
+  const canvas = document.getElementById("starmap");
+  const container = document.getElementById("map-container");
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+}
+
+function drawBgStars(ctx) {
+  const canvas = ctx.canvas;
+  const parallax = 0.15; // moves slower than main layer
+  for (const bg of BG_STARS) {
+    const sx = (bg.x - camera.x * parallax) * camera.zoom + canvas.width / 2;
+    const sy = (bg.y - camera.y * parallax) * camera.zoom + canvas.height / 2;
+    // Wrap around
+    const wx = ((sx % canvas.width) + canvas.width) % canvas.width;
+    const wy = ((sy % canvas.height) + canvas.height) % canvas.height;
+    ctx.fillStyle = `rgba(180,200,240,${bg.brightness})`;
+    ctx.fillRect(wx, wy, bg.size, bg.size);
+  }
+}
+
+function drawLanes(ctx) {
+  const drawn = new Set();
+  for (const star of stars.values()) {
+    if (star.visibility === "unknown") continue;
+    for (const neighborId of star.lanes) {
+      const key = [star.id, neighborId].sort().join("-");
+      if (drawn.has(key)) continue;
+      drawn.add(key);
+      const neighbor = stars.get(neighborId);
+      if (!neighbor || neighbor.visibility === "unknown") continue;
+
+      const a = worldToScreen(star.x, star.y);
+      const b = worldToScreen(neighbor.x, neighbor.y);
+
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+
+      if (star.visibility === "explored" && neighbor.visibility === "explored") {
+        ctx.strokeStyle = "rgba(42,58,96,0.7)";
+        ctx.lineWidth = 1.5 * camera.zoom;
+        ctx.setLineDash([]);
+      } else {
+        ctx.strokeStyle = "rgba(26,37,48,0.5)";
+        ctx.lineWidth = 1 * camera.zoom;
+        ctx.setLineDash([6 * camera.zoom, 4 * camera.zoom]);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+}
+
+function drawStar(ctx, star, time) {
+  const isExplored = star.visibility === "explored";
+  const isDetected = star.visibility === "detected";
+  if (star.visibility === "unknown") return;
+
+  const visual = isExplored ? (STAR_VISUALS[star.card.name] || DETECTED_VISUAL) : DETECTED_VISUAL;
+  const lum = isExplored ? (star.card.stats.luminosity || 3) : 2;
+  const baseRadius = visual.baseSize * (1 + lum * 0.08);
+
+  // Pulse animation
+  const pulse = 1 + Math.sin(time * 3 + star.x * 0.01 + star.y * 0.01) * 0.08;
+  const radius = baseRadius * pulse * camera.zoom;
+
+  const pos = worldToScreen(star.x, star.y);
+
+  // Rarity aura for epic/legendary explored stars
+  if (isExplored && (star.card.rarity === "epic" || star.card.rarity === "legendary")) {
+    const auraColor = RARITY_COLORS[star.card.rarity];
+    const auraRadius = radius * 3;
+    const aura = ctx.createRadialGradient(pos.x, pos.y, radius, pos.x, pos.y, auraRadius);
+    aura.addColorStop(0, auraColor + "40");
+    aura.addColorStop(1, auraColor + "00");
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, auraRadius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Glow
+  const glowRadius = radius * 2.5;
+  const glow = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, glowRadius);
+  glow.addColorStop(0, visual.glowColor);
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, glowRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Star body
+  ctx.fillStyle = visual.color;
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bright core
+  if (isExplored) {
+    const coreGrad = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius);
+    coreGrad.addColorStop(0, "rgba(255,255,255,0.6)");
+    coreGrad.addColorStop(0.3, "rgba(255,255,255,0.15)");
+    coreGrad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Binary system: draw second smaller star offset
+  if (isExplored && star.card.name === "Binary System") {
+    const offset = radius * 1.2;
+    const angle2 = time * 0.5 + star.x;
+    const bx = pos.x + Math.cos(angle2) * offset;
+    const by = pos.y + Math.sin(angle2) * offset;
+    ctx.fillStyle = "#90d0f0";
+    ctx.beginPath();
+    ctx.arc(bx, by, radius * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Trinary system: draw two extra stars
+  if (isExplored && star.card.name === "Trinary System") {
+    for (let i = 0; i < 2; i++) {
+      const offset = radius * 1.3;
+      const angle2 = time * 0.4 + star.x + i * Math.PI * 0.67;
+      const bx = pos.x + Math.cos(angle2) * offset;
+      const by = pos.y + Math.sin(angle2) * offset;
+      ctx.fillStyle = i === 0 ? "#f0c060" : "#e09050";
+      ctx.beginPath();
+      ctx.arc(bx, by, radius * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Pulsar beams
+  if (isExplored && star.card.name === "Pulsar") {
+    const beamAngle = time * 2;
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+    ctx.rotate(beamAngle);
+    const beamLen = radius * 5;
+    const beamGrad = ctx.createLinearGradient(0, 0, beamLen, 0);
+    beamGrad.addColorStop(0, "rgba(128,224,224,0.4)");
+    beamGrad.addColorStop(1, "rgba(128,224,224,0)");
+    ctx.fillStyle = beamGrad;
+    ctx.fillRect(0, -radius * 0.3, beamLen, radius * 0.6);
+    ctx.rotate(Math.PI);
+    ctx.fillRect(0, -radius * 0.3, beamLen, radius * 0.6);
+    ctx.restore();
+  }
+
+  // Hover highlight
+  if (hoveredStarId === star.id) {
+    ctx.strokeStyle = "rgba(200,220,255,0.3)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, radius + 4 * camera.zoom, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Selection ring
+  if (selectedStarId === star.id) {
+    const ringRadius = radius + 6 * camera.zoom;
+    const dashOffset = time * 30;
+    ctx.strokeStyle = "#4a7ac0";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4 * camera.zoom, 3 * camera.zoom]);
+    ctx.lineDashOffset = -dashOffset;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, ringRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
+  }
+
+  // Name label (explored only)
+  if (isExplored && camera.zoom > 0.5) {
+    ctx.fillStyle = "rgba(200,210,230,0.7)";
+    ctx.font = `${Math.max(9, 11 * camera.zoom)}px 'Segoe UI', system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(star.card.name, pos.x, pos.y + radius + 14 * camera.zoom);
+  }
+}
+
+function render() {
+  const canvas = document.getElementById("starmap");
+  const ctx = canvas.getContext("2d");
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Background
+  ctx.fillStyle = "#050508";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawBgStars(ctx);
+  drawLanes(ctx);
+
+  // Draw stars (detected first, then explored so they're on top)
+  const detectedStars = [];
+  const exploredStars = [];
+  for (const star of stars.values()) {
+    if (star.visibility === "detected") detectedStars.push(star);
+    else if (star.visibility === "explored") exploredStars.push(star);
+  }
+  for (const star of detectedStars) drawStar(ctx, star, animTime);
+  for (const star of exploredStars) drawStar(ctx, star, animTime);
+}
+
+// ═══════════════════════════════════════════
+//  STAR CARD POPUP
+// ═══════════════════════════════════════════
+function renderCardPreview(card, isDetected) {
+  const slot = document.getElementById("card-preview-slot");
+  const actions = document.getElementById("card-actions");
+  const info = document.getElementById("star-info");
+
+  if (isDetected) {
+    slot.innerHTML = `
+      <div class="card-preview common" style="--rarity-color:#384868">
+        <div class="card-bg"></div>
+        <div class="card-mystery-face">
+          <div class="mystery-icon">✦</div>
+          <div class="mystery-text">Unknown Star</div>
+        </div>
+      </div>`;
+    actions.innerHTML = `<button class="card-action-btn" onclick="exploreSelectedStar()">Explore</button>`;
+    info.textContent = "Send a probe to discover this star.";
+    return;
+  }
+
+  // Explored — render full card
+  const statsHtml = Object.entries(card.stats)
+    .map(([key, val]) => {
+      const icon = STAT_ICONS[key] || "◆";
+      return `<div class="card-stat"><span class="card-stat-icon">${icon}</span><span class="card-stat-value">${val}</span></div>`;
+    }).join("");
+
+  const hasSpecial = card.special && card.special.length > 0;
+  const expandedClass = !hasSpecial ? " expanded" : "";
+
+  slot.innerHTML = `
+    <div class="card-preview ${card.rarity}">
+      <div class="card-bg"></div>
+      <div class="card-header">
+        <div class="card-name">${card.name}</div>
+      </div>
+      <div class="card-image">
+        ${card.image ? `<img src="${card.image}">` : "☀️"}
+      </div>
+      <div class="card-stats${expandedClass}">${statsHtml}</div>
+      ${hasSpecial ? `<div class="card-special">${card.special}</div>` : ""}
+      <div class="card-flavor">${card.flavor}</div>
+      <div class="card-watermark">☀️</div>
+    </div>`;
+
+  actions.innerHTML = `
+    <button class="card-action-btn secondary" disabled>View System</button>`;
+  info.textContent = `${card.rarity.charAt(0).toUpperCase() + card.rarity.slice(1)} Star`;
+}
+
+function showCardOverlay(star) {
+  selectedStarId = star.id;
+  const overlay = document.getElementById("card-overlay");
+  overlay.classList.add("visible");
+  renderCardPreview(star.card, star.visibility === "detected");
+}
+
+function hideCardOverlay() {
+  selectedStarId = null;
+  const overlay = document.getElementById("card-overlay");
+  overlay.classList.remove("visible");
+}
+
+function exploreSelectedStar() {
+  const star = stars.get(selectedStarId);
+  if (!star || star.visibility !== "detected") return;
+
+  // Reveal the star
+  star.visibility = "explored";
+
+  // Set neighbors to detected
+  for (const neighborId of star.lanes) {
+    const neighbor = stars.get(neighborId);
+    if (neighbor && neighbor.visibility === "unknown") {
+      neighbor.visibility = "detected";
+    }
+  }
+
+  // Generate new frontier
+  generateFrontierStars(star);
+
+  // Update the popup to show the revealed card
+  renderCardPreview(star.card, false);
+}
+
+// ═══════════════════════════════════════════
+//  INTERACTION
+// ═══════════════════════════════════════════
+let isDragging = false;
+let dragStart = { x: 0, y: 0 };
+let dragCameraStart = { x: 0, y: 0 };
+let dragMoved = false;
+
+function getStarAtScreen(sx, sy) {
+  const world = screenToWorld(sx, sy);
+  let closest = null;
+  let closestDist = Infinity;
+  for (const star of stars.values()) {
+    if (star.visibility === "unknown") continue;
+    const d = distanceBetween(world, star);
+    const hitRadius = star.visibility === "explored"
+      ? (STAR_VISUALS[star.card.name]?.baseSize || 4) * 2
+      : DETECTED_VISUAL.baseSize * 2;
+    if (d < hitRadius && d < closestDist) {
+      closest = star;
+      closestDist = d;
+    }
+  }
+  return closest;
+}
+
+const container = document.getElementById("map-container");
+const canvasEl = document.getElementById("starmap");
+const tooltip = document.getElementById("tooltip");
+
+container.addEventListener("mousedown", (e) => {
+  if (e.target.closest("#card-overlay")) return;
+  isDragging = true;
+  dragMoved = false;
+  dragStart = { x: e.clientX, y: e.clientY };
+  dragCameraStart = { x: camera.x, y: camera.y };
+  container.classList.add("dragging");
+});
+
+window.addEventListener("mousemove", (e) => {
+  if (isDragging) {
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+    camera.x = dragCameraStart.x - dx / camera.zoom;
+    camera.y = dragCameraStart.y - dy / camera.zoom;
+    return;
+  }
+
+  // Hover detection
+  const rect = canvasEl.getBoundingClientRect();
+  const sx = e.clientX - rect.left;
+  const sy = e.clientY - rect.top;
+  const star = getStarAtScreen(sx, sy);
+
+  if (star) {
+    hoveredStarId = star.id;
+    const label = star.visibility === "explored" ? star.card.name : "Unknown Star";
+    tooltip.textContent = label;
+    tooltip.style.left = (e.clientX - rect.left + 12) + "px";
+    tooltip.style.top = (e.clientY - rect.top - 8) + "px";
+    tooltip.style.display = "block";
+    canvasEl.style.cursor = "pointer";
+  } else {
+    hoveredStarId = null;
+    tooltip.style.display = "none";
+    canvasEl.style.cursor = isDragging ? "grabbing" : "grab";
+  }
+});
+
+window.addEventListener("mouseup", (e) => {
+  if (isDragging) {
+    isDragging = false;
+    container.classList.remove("dragging");
+
+    if (!dragMoved) {
+      // Click — check for star
+      const rect = canvasEl.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const star = getStarAtScreen(sx, sy);
+      if (star) {
+        showCardOverlay(star);
+      } else {
+        hideCardOverlay();
+      }
+    }
+  }
+});
+
+container.addEventListener("wheel", (e) => {
+  if (e.target.closest("#card-overlay")) return;
+  e.preventDefault();
+  const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+  const newZoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomFactor));
+
+  // Zoom toward mouse position
+  const rect = canvasEl.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const worldBefore = screenToWorld(mx, my);
+
+  camera.zoom = newZoom;
+
+  const worldAfter = screenToWorld(mx, my);
+  camera.x -= (worldAfter.x - worldBefore.x);
+  camera.y -= (worldAfter.y - worldBefore.y);
+}, { passive: false });
+
+document.getElementById("card-overlay-close").addEventListener("click", hideCardOverlay);
+
+// Speed controls
+document.querySelectorAll("#speed-controls button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#speed-controls button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+
+// ═══════════════════════════════════════════
+//  GAME LOOP
+// ═══════════════════════════════════════════
+function gameLoop(timestamp) {
+  animTime = timestamp / 1000;
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+const homeStar = generateSeedCluster();
+camera.x = homeStar.x;
+camera.y = homeStar.y;
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

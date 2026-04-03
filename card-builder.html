@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IdleSpace — Card Builder</title>
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #050508;
+  color: #c8d0e0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+#header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: #08090f;
+  border-bottom: 1px solid #111828;
+  flex-shrink: 0;
+}
+#header h1 { font-size: 16px; font-weight: 600; color: #8090b0; }
+#header h1 span { color: #4a7ac0; }
+#header-actions { display: flex; gap: 8px; align-items: center; }
+#new-card-btn, .header-btn {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #2a4080, #3a5ab0);
+  border: 1px solid #4060c0;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#new-card-btn:hover, .header-btn:hover { background: linear-gradient(135deg, #3050a0, #4a6ac0); }
+.header-btn-subtle {
+  background: linear-gradient(135deg, #1a2540, #243060);
+  border-color: #2a3a60;
+}
+.header-btn-subtle:hover { background: linear-gradient(135deg, #243060, #2e4080) !important; }
+
+/* ── 3-Panel Layout ── */
+#panels {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Left Panel: Catalog ── */
+#catalog {
+  width: 240px;
+  flex-shrink: 0;
+  background: #06080c;
+  border-right: 1px solid #111828;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#catalog-filters {
+  padding: 12px;
+  border-bottom: 1px solid #111828;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#catalog-filters label { font-size: 10px; color: #384868; text-transform: uppercase; letter-spacing: 1px; }
+#catalog-filters select {
+  width: 100%;
+  padding: 6px 8px;
+  background: #0c0e18;
+  border: 1px solid #151c30;
+  color: #c8d0e0;
+  border-radius: 4px;
+  font-size: 12px;
+}
+#catalog-count {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #384868;
+  border-bottom: 1px solid #0c0e18;
+}
+#catalog-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.catalog-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.1s;
+  font-size: 13px;
+}
+.catalog-item:hover { background: #0a0d16; }
+.catalog-item.active { background: #0d1020; }
+.catalog-item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.catalog-item-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.catalog-item-cat { font-size: 10px; color: #384868; text-transform: uppercase; }
+
+/* ── Center Panel: Preview ── */
+#preview-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #050508;
+  min-width: 280px;
+  position: relative;
+  overflow: auto;
+}
+#zoom-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 6px 12px;
+  background: #0c0e18;
+  border: 1px solid #151c30;
+  color: #506888;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  z-index: 5;
+  transition: all 0.15s;
+}
+#zoom-btn:hover { border-color: #4060c0; color: #c0d0f0; }
+.card-preview.zoomed {
+  transform: scale(3);
+  transform-origin: center center;
+}
+
+/* ── Card Preview (larger version) ── */
+.card-preview {
+  width: 220px;
+  height: 320px;
+  border-radius: 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+.card-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  padding: 3px;
+  background: var(--rarity-color);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.card-preview .card-bg {
+  position: absolute;
+  inset: 3px;
+  border-radius: 7px;
+  background: #141a30;
+  z-index: 0;
+}
+.card-preview > * { position: relative; z-index: 1; }
+
+/* Header row: name + cost badge */
+.card-preview .card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 7px 8px 4px 8px;
+}
+.card-preview .card-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  flex: 1;
+  min-height: 16px;
+  line-height: 1.2;
+}
+.card-preview .card-cost-badge {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 4px;
+  border: 1px solid #2a3460;
+  border-radius: 3px;
+  background: rgba(15,20,40,0.85);
+  min-width: 30px;
+  align-items: flex-end;
+  z-index: 3;
+}
+.card-preview .card-cost-badge:empty { display: none; }
+.card-preview .cost-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+}
+.cost-badge-icon { font-size: 9px; }
+.cost-badge-val { color: #e09060; font-weight: 600; font-size: 10px; }
+
+/* Image — 1024x872 input, displayed at 205x175 */
+.card-preview .card-image {
+  width: 205px;
+  height: 175px;
+  border-radius: 4px;
+  background: #1a2040;
+  margin: 0 auto 4px auto;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2a3460;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.card-preview .card-image img {
+  width: 205px;
+  height: 175px;
+}
+
+/* Stats row — compact, icon-only. Grows when no special text */
+.card-preview .card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  padding: 2px 8px;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+}
+.card-preview .card-stats.expanded {
+  flex: 1;
+  gap: 4px 12px;
+}
+.card-preview .card-stat {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+}
+.card-preview .card-stats.expanded .card-stat { font-size: 13px; }
+.card-preview .card-stat-icon { font-size: 12px; }
+.card-preview .card-stats.expanded .card-stat-icon { font-size: 15px; }
+.card-preview .card-stat-value { font-weight: 600; color: #fff; }
+.card-preview .card-stat-value.zero { color: #2a3460; }
+
+/* Special ability */
+.card-preview .card-special {
+  font-size: 11px;
+  color: #a0b0d0;
+  text-align: center;
+  margin: 2px 7px 0 7px;
+  padding: 3px 4px;
+  background: rgba(40,60,120,0.2);
+  border-radius: 3px;
+  line-height: 1.2;
+}
+
+/* Flavor text */
+.card-preview .card-flavor {
+  font-size: 10px;
+  color: #4a5a7b;
+  font-style: italic;
+  text-align: center;
+  padding: 2px 8px 7px 8px;
+  line-height: 1.3;
+  margin-top: auto;
+}
+
+/* Category watermark — centered in bottom 1/3 area behind stats/text */
+.card-preview .card-watermark {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 60px;
+  opacity: 0.08;
+  z-index: 1;
+  pointer-events: none;
+  line-height: 1;
+}
+
+/* Rarity colors */
+.card-preview.common    { --rarity-color: #6a7a9b; }
+.card-preview.uncommon  { --rarity-color: #4a9b5a; }
+.card-preview.rare      { --rarity-color: #4a7ac0; }
+.card-preview.epic      { --rarity-color: #8a4ac0; }
+.card-preview.legendary { --rarity-color: #c0a020; }
+
+/* ── Right Panel: Editor ── */
+#editor {
+  width: 320px;
+  flex-shrink: 0;
+  background: #06080c;
+  border-left: 1px solid #111828;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.editor-label {
+  font-size: 10px;
+  color: #384868;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.editor-input {
+  width: 100%;
+  padding: 8px 10px;
+  background: #0c0e18;
+  border: 1px solid #151c30;
+  color: #c8d0e0;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.editor-input:focus { outline: none; border-color: #4060c0; }
+textarea.editor-input { resize: vertical; min-height: 48px; }
+select.editor-input { cursor: pointer; }
+
+/* Stats / Cost rows */
+.stat-rows { display: flex; flex-direction: column; gap: 4px; }
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stat-row .stat-key {
+  flex: 1;
+  padding: 5px 8px;
+  background: #0c0e18;
+  border: 1px solid #151c30;
+  color: #8090b0;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.stat-row .stat-key.default { background: #151a30; color: #506888; border-color: #111828; }
+.stat-row .stat-val {
+  width: 70px;
+  padding: 5px 8px;
+  background: #0c0e18;
+  border: 1px solid #151c30;
+  color: #c8d0e0;
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: right;
+}
+.stat-row .stat-val:focus { outline: none; border-color: #4060c0; }
+.stat-row .remove-btn {
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: 1px solid #2a2030;
+  color: #6a4050;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+}
+.stat-row .remove-btn:hover { background: #2a1020; color: #c04060; border-color: #4a2040; }
+.add-row-btn {
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px dashed #151c30;
+  color: #384868;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.1s;
+  align-self: flex-start;
+}
+.add-row-btn:hover { border-color: #4060c0; color: #6a8ac0; }
+
+/* Image upload */
+#image-upload-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#image-thumb {
+  width: 60px;
+  height: 60px;
+  border-radius: 4px;
+  background: #0c0e18;
+  border: 1px solid #151c30;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #151c30;
+  font-size: 10px;
+}
+#image-thumb img { width: 100%; height: 100%; object-fit: cover; }
+#image-upload-btn {
+  padding: 6px 14px;
+  background: #0c0e18;
+  border: 1px solid #151c30;
+  color: #8090b0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.1s;
+}
+#image-upload-btn:hover { border-color: #4060c0; color: #c0d0f0; }
+#image-clear-btn {
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid #2a2030;
+  color: #6a4050;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  display: none;
+}
+#image-clear-btn:hover { background: #2a1020; color: #c04060; }
+
+/* Tags */
+#tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: #0c0e18;
+  border: 1px solid #151c30;
+  border-radius: 12px;
+  font-size: 11px;
+  color: #8090b0;
+}
+.tag .tag-remove {
+  background: none;
+  border: none;
+  color: #384868;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 0 0 2px;
+  line-height: 1;
+}
+.tag .tag-remove:hover { color: #c04060; }
+#search-autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #0c0e18;
+  border: 1px solid #151c30;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 10;
+  display: none;
+}
+#search-autocomplete .search-option {
+  padding: 5px 8px;
+  font-size: 12px;
+  color: #8090b0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#search-autocomplete .search-option:hover,
+#search-autocomplete .search-option.selected {
+  background: #101525;
+  color: #c0d0f0;
+}
+#search-autocomplete .search-option .search-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+#search-autocomplete .search-option .search-cat {
+  font-size: 9px;
+  color: #384868;
+  margin-left: auto;
+  text-transform: uppercase;
+}
+#tag-input-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  position: relative;
+}
+#tag-input {
+  flex: 1;
+  padding: 5px 8px;
+  background: #0c0e18;
+  border: 1px solid #151c30;
+  color: #c8d0e0;
+  border-radius: 4px;
+  font-size: 12px;
+}
+#tag-input:focus { outline: none; border-color: #4060c0; }
+#tag-autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 40px;
+  background: #0c0e18;
+  border: 1px solid #151c30;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 120px;
+  overflow-y: auto;
+  z-index: 10;
+  display: none;
+}
+#tag-autocomplete .tag-option {
+  padding: 5px 8px;
+  font-size: 12px;
+  color: #8090b0;
+  cursor: pointer;
+}
+#tag-autocomplete .tag-option:hover,
+#tag-autocomplete .tag-option.selected {
+  background: #101525;
+  color: #c0d0f0;
+}
+#add-tag-btn {
+  padding: 5px 10px;
+  background: #0c0e18;
+  border: 1px solid #151c30;
+  color: #8090b0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+#add-tag-btn:hover { border-color: #4060c0; color: #c0d0f0; }
+
+/* Catalog tag pills */
+.catalog-item-tags {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.catalog-tag {
+  font-size: 9px;
+  padding: 1px 5px;
+  background: #0c0e18;
+  border-radius: 8px;
+  color: #384868;
+}
+
+/* Action buttons */
+#editor-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #111828;
+}
+#save-btn {
+  flex: 1;
+  padding: 10px;
+  background: linear-gradient(135deg, #2a6040, #3a8060);
+  border: 1px solid #40a060;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#save-btn:hover { background: linear-gradient(135deg, #3a7050, #4a9070); }
+#delete-btn {
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid #4a2030;
+  color: #a04050;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#delete-btn:hover { background: #2a1020; color: #d06070; }
+#delete-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Toast notification */
+#toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  padding: 10px 24px;
+  background: #2a6040;
+  border: 1px solid #40a060;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: transform 0.3s ease;
+  z-index: 100;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #151c30; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #1c2840; }
+
+/* Hidden file input */
+#image-file-input { display: none; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <h1><span>IdleSpace</span> Card Builder</h1>
+  <div id="header-actions">
+    <button id="import-btn" class="header-btn header-btn-subtle">Import JSON</button>
+    <button id="export-btn" class="header-btn header-btn-subtle">Export JSON</button>
+    <button id="new-card-btn">+ New Card</button>
+  </div>
+  <input type="file" id="import-file" accept=".json" style="display:none">
+</div>
+
+<!-- 3 Panels -->
+<div id="panels">
+
+  <!-- Left: Catalog -->
+  <div id="catalog">
+    <div id="catalog-filters">
+      <div style="position:relative">
+        <label>Search</label>
+        <input type="text" id="card-search" class="editor-input" placeholder="Search by name..." style="padding:6px 8px; font-size:12px;">
+        <div id="search-autocomplete"></div>
+      </div>
+      <div>
+        <label>Category</label>
+        <select id="filter-category">
+          <option value="all">All Categories</option>
+          <option value="building">Building</option>
+          <option value="captain">Captain</option>
+          <option value="leader">Leader</option>
+          <option value="ship">Ship</option>
+          <option value="admiral">Admiral</option>
+          <option value="star">Star</option>
+          <option value="planet">Planet</option>
+        </select>
+      </div>
+      <div>
+        <label>Rarity</label>
+        <select id="filter-rarity">
+          <option value="all">All Rarities</option>
+          <option value="common">Common</option>
+          <option value="uncommon">Uncommon</option>
+          <option value="rare">Rare</option>
+          <option value="epic">Epic</option>
+          <option value="legendary">Legendary</option>
+        </select>
+      </div>
+      <div>
+        <label>Tag</label>
+        <select id="filter-tag">
+          <option value="all">All Tags</option>
+        </select>
+      </div>
+    </div>
+    <div id="catalog-count">0 cards</div>
+    <div id="catalog-list"></div>
+  </div>
+
+  <!-- Center: Preview -->
+  <div id="preview-panel">
+    <button id="zoom-btn">3× Zoom</button>
+    <div class="card-preview common" id="card-preview">
+      <div class="card-bg"></div>
+      <div class="card-cost-badge" id="preview-cost"></div>
+      <div class="card-header">
+        <div class="card-name" id="preview-name">New Card</div>
+      </div>
+      <div class="card-image" id="preview-image">No image</div>
+      <div class="card-stats" id="preview-stats"></div>
+      <div class="card-special" id="preview-special" style="display:none"></div>
+      <div class="card-flavor" id="preview-flavor"></div>
+      <div class="card-watermark" id="preview-watermark"></div>
+    </div>
+  </div>
+
+  <!-- Right: Editor -->
+  <div id="editor">
+    <div class="editor-section">
+      <label class="editor-label">Name</label>
+      <input type="text" class="editor-input" id="edit-name" placeholder="Card name...">
+    </div>
+
+    <div class="editor-section">
+      <label class="editor-label">Category</label>
+      <select class="editor-input" id="edit-category">
+        <option value="building">Building</option>
+        <option value="captain">Captain</option>
+        <option value="leader">Leader</option>
+        <option value="ship">Ship</option>
+        <option value="admiral">Admiral</option>
+        <option value="star">Star</option>
+        <option value="planet">Planet</option>
+      </select>
+    </div>
+
+    <div class="editor-section">
+      <label class="editor-label">Rarity</label>
+      <select class="editor-input" id="edit-rarity">
+        <option value="common">Common</option>
+        <option value="uncommon">Uncommon</option>
+        <option value="rare">Rare</option>
+        <option value="epic">Epic</option>
+        <option value="legendary">Legendary</option>
+      </select>
+    </div>
+
+    <div class="editor-section">
+      <label class="editor-label">Image</label>
+      <div id="image-upload-area">
+        <div id="image-thumb">None</div>
+        <button id="image-upload-btn">Upload</button>
+        <button id="image-clear-btn">Clear</button>
+      </div>
+      <input type="file" id="image-file-input" accept="image/*">
+    </div>
+
+    <div class="editor-section">
+      <label class="editor-label">Stats</label>
+      <div class="stat-rows" id="stat-rows"></div>
+      <button class="add-row-btn" id="add-stat-btn">+ Add Stat</button>
+    </div>
+
+    <div class="editor-section">
+      <label class="editor-label">Cost</label>
+      <div class="stat-rows" id="cost-rows"></div>
+      <button class="add-row-btn" id="add-cost-btn">+ Add Cost</button>
+    </div>
+
+    <div class="editor-section">
+      <label class="editor-label">Special Ability</label>
+      <textarea class="editor-input" id="edit-special" placeholder="Special ability text (for future use)..." rows="2"></textarea>
+    </div>
+
+    <div class="editor-section">
+      <label class="editor-label">Flavor Text</label>
+      <textarea class="editor-input" id="edit-flavor" placeholder="Italic flavor text..." rows="2"></textarea>
+    </div>
+
+    <div class="editor-section">
+      <label class="editor-label">Tags</label>
+      <div id="tag-list"></div>
+      <div id="tag-input-row">
+        <input type="text" id="tag-input" placeholder="Add tags (comma separated)...">
+        <button id="add-tag-btn">+</button>
+        <div id="tag-autocomplete"></div>
+      </div>
+    </div>
+
+    <div class="editor-section">
+      <label class="editor-label">Notes</label>
+      <textarea class="editor-input" id="edit-notes" placeholder="Personal notes, reminders, ideas..." rows="3"></textarea>
+    </div>
+
+    <div id="editor-actions">
+      <button id="save-btn">Save Card</button>
+      <button id="delete-btn" disabled>Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════
+const RARITY_COLORS = {
+  common:    "#506888",
+  uncommon:  "#4a9b5a",
+  rare:      "#4a7ac0",
+  epic:      "#8a4ac0",
+  legendary: "#c0a020",
+};
+
+const CATEGORY_DEFAULT_STATS = {
+  building: [],
+  ship:     [],
+  captain:  [],
+  leader:   [],
+  admiral:  [],
+  star:     [],
+  planet:   [],
+};
+
+const STORAGE_KEY = "idlespace_cards";
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let catalog = loadCatalog();
+let editingCardId = null; // null = new card
+
+// ═══════════════════════════════════════════
+//  STORAGE
+// ═══════════════════════════════════════════
+function loadCatalog() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch { return []; }
+}
+
+function saveCatalog() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(catalog));
+}
+
+// ═══════════════════════════════════════════
+//  EDITOR STATE HELPERS
+// ═══════════════════════════════════════════
+function getEditorData() {
+  const stats = {};
+  document.querySelectorAll("#stat-rows .stat-row").forEach(row => {
+    const key = row.querySelector(".stat-key").value.trim().toLowerCase().replace(/\s+/g, "_");
+    const val = parseFloat(row.querySelector(".stat-val").value) || 0;
+    if (key) stats[key] = val;
+  });
+
+  const cost = {};
+  document.querySelectorAll("#cost-rows .stat-row").forEach(row => {
+    const key = row.querySelector(".stat-key").value.trim().toLowerCase().replace(/\s+/g, "_");
+    const val = parseFloat(row.querySelector(".stat-val").value) || 0;
+    if (key) cost[key] = val;
+  });
+
+  return {
+    name: document.getElementById("edit-name").value.trim(),
+    category: document.getElementById("edit-category").value,
+    rarity: document.getElementById("edit-rarity").value,
+    image: currentImage,
+    stats,
+    cost,
+    special: document.getElementById("edit-special").value.trim(),
+    flavor: document.getElementById("edit-flavor").value.trim(),
+    notes: document.getElementById("edit-notes").value.trim(),
+    tags: [...currentTags],
+  };
+}
+
+function loadCardIntoEditor(card) {
+  editingCardId = card.id;
+  document.getElementById("edit-name").value = card.name;
+  document.getElementById("edit-category").value = card.category;
+  document.getElementById("edit-rarity").value = card.rarity;
+  document.getElementById("edit-special").value = card.special || "";
+  document.getElementById("edit-flavor").value = card.flavor || "";
+  document.getElementById("edit-notes").value = card.notes || "";
+
+  currentImage = card.image || null;
+  updateImageUI();
+
+  currentTags = [...(card.tags || [])];
+  renderTags();
+
+  // Build stat rows
+  const defaultStats = CATEGORY_DEFAULT_STATS[card.category] || [];
+  const allStatKeys = [...new Set([...defaultStats, ...Object.keys(card.stats || {})])];
+  buildStatRows("stat-rows", allStatKeys, card.stats || {}, defaultStats);
+
+  // Build cost rows
+  buildCostRows(card.cost || {});
+
+  document.getElementById("delete-btn").disabled = false;
+  updatePreview();
+  highlightCatalogItem(card.id);
+}
+
+function resetEditor() {
+  editingCardId = null;
+  document.getElementById("edit-name").value = "";
+  document.getElementById("edit-category").value = "building";
+  document.getElementById("edit-rarity").value = "common";
+  document.getElementById("edit-special").value = "";
+  document.getElementById("edit-flavor").value = "";
+  document.getElementById("edit-notes").value = "";
+
+  currentImage = null;
+  updateImageUI();
+
+  currentTags = [];
+  renderTags();
+
+  const defaultStats = CATEGORY_DEFAULT_STATS["building"];
+  buildStatRows("stat-rows", defaultStats, {}, defaultStats);
+  buildCostRows({});
+
+  document.getElementById("delete-btn").disabled = true;
+  updatePreview();
+  highlightCatalogItem(null);
+}
+
+// ═══════════════════════════════════════════
+//  STAT / COST ROW BUILDERS
+// ═══════════════════════════════════════════
+function buildStatRows(containerId, keys, values, defaultKeys) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = "";
+  for (const key of keys) {
+    addStatRow(container, key, values[key] || 0, defaultKeys.includes(key));
+  }
+}
+
+function buildCostRows(costObj) {
+  const container = document.getElementById("cost-rows");
+  container.innerHTML = "";
+  for (const [key, val] of Object.entries(costObj)) {
+    addStatRow(container, key, val, false);
+  }
+}
+
+function addStatRow(container, key, value, isDefault) {
+  const row = document.createElement("div");
+  row.className = "stat-row";
+
+  const keyInput = document.createElement("input");
+  keyInput.className = `stat-key${isDefault ? " default" : ""}`;
+  keyInput.type = "text";
+  keyInput.value = key;
+  keyInput.placeholder = "resource...";
+  if (isDefault) keyInput.readOnly = true;
+  keyInput.addEventListener("input", updatePreview);
+
+  const valInput = document.createElement("input");
+  valInput.className = "stat-val";
+  valInput.type = "number";
+  valInput.value = value;
+  valInput.placeholder = "0";
+  valInput.addEventListener("input", updatePreview);
+
+  const removeBtn = document.createElement("button");
+  removeBtn.className = "remove-btn";
+  removeBtn.textContent = "×";
+  removeBtn.addEventListener("click", () => { row.remove(); updatePreview(); });
+
+  row.append(keyInput, valInput, removeBtn);
+  container.appendChild(row);
+}
+
+// ═══════════════════════════════════════════
+//  IMAGE HANDLING
+// ═══════════════════════════════════════════
+let currentImage = null;
+let currentTags = [];
+
+function updateImageUI() {
+  const thumb = document.getElementById("image-thumb");
+  const clearBtn = document.getElementById("image-clear-btn");
+  if (currentImage) {
+    thumb.innerHTML = `<img src="${currentImage}" alt="card image">`;
+    clearBtn.style.display = "block";
+  } else {
+    thumb.innerHTML = "None";
+    clearBtn.style.display = "none";
+  }
+}
+
+document.getElementById("image-upload-btn").addEventListener("click", () => {
+  document.getElementById("image-file-input").click();
+});
+
+document.getElementById("image-file-input").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    currentImage = ev.target.result;
+    updateImageUI();
+    updatePreview();
+  };
+  reader.readAsDataURL(file);
+  e.target.value = ""; // allow re-upload of same file
+});
+
+document.getElementById("image-clear-btn").addEventListener("click", () => {
+  currentImage = null;
+  updateImageUI();
+  updatePreview();
+});
+
+// ═══════════════════════════════════════════
+//  TAGS
+// ═══════════════════════════════════════════
+function renderTags() {
+  const list = document.getElementById("tag-list");
+  list.innerHTML = "";
+  for (const tag of currentTags) {
+    const el = document.createElement("span");
+    el.className = "tag";
+    el.innerHTML = `${tag}<button class="tag-remove">×</button>`;
+    el.querySelector(".tag-remove").addEventListener("click", () => {
+      currentTags = currentTags.filter(t => t !== tag);
+      renderTags();
+    });
+    list.appendChild(el);
+  }
+}
+
+function getAllKnownTags() {
+  return [...new Set(catalog.flatMap(c => c.tags || []))].sort();
+}
+
+function addTags() {
+  const input = document.getElementById("tag-input");
+  const raw = input.value;
+  const tags = raw.split(",").map(t => t.trim().toLowerCase().replace(/\s+/g, "-")).filter(Boolean);
+  for (const tag of tags) {
+    if (!currentTags.includes(tag)) {
+      currentTags.push(tag);
+    }
+  }
+  input.value = "";
+  hideAutocomplete();
+  renderTags();
+}
+
+// Autocomplete
+let acSelectedIdx = -1;
+
+function showAutocomplete() {
+  const input = document.getElementById("tag-input");
+  const ac = document.getElementById("tag-autocomplete");
+  // Get the current fragment (after last comma)
+  const parts = input.value.split(",");
+  const fragment = parts[parts.length - 1].trim().toLowerCase();
+
+  if (!fragment) { hideAutocomplete(); return; }
+
+  const known = getAllKnownTags().filter(t =>
+    t.includes(fragment) && !currentTags.includes(t)
+  );
+
+  if (known.length === 0) { hideAutocomplete(); return; }
+
+  acSelectedIdx = -1;
+  ac.innerHTML = known.map((t, i) =>
+    `<div class="tag-option" data-idx="${i}" data-tag="${t}">${t}</div>`
+  ).join("");
+  ac.style.display = "block";
+
+  ac.querySelectorAll(".tag-option").forEach(opt => {
+    opt.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      pickAutocomplete(opt.dataset.tag);
+    });
+  });
+}
+
+function hideAutocomplete() {
+  const ac = document.getElementById("tag-autocomplete");
+  ac.style.display = "none";
+  ac.innerHTML = "";
+  acSelectedIdx = -1;
+}
+
+function pickAutocomplete(tag) {
+  const input = document.getElementById("tag-input");
+  const parts = input.value.split(",");
+  parts[parts.length - 1] = " " + tag;
+  input.value = parts.join(",").replace(/^[\s,]+/, "") + ", ";
+  hideAutocomplete();
+  input.focus();
+}
+
+function navigateAutocomplete(dir) {
+  const options = document.querySelectorAll("#tag-autocomplete .tag-option");
+  if (options.length === 0) return false;
+  options.forEach(o => o.classList.remove("selected"));
+  acSelectedIdx += dir;
+  if (acSelectedIdx < 0) acSelectedIdx = options.length - 1;
+  if (acSelectedIdx >= options.length) acSelectedIdx = 0;
+  options[acSelectedIdx].classList.add("selected");
+  options[acSelectedIdx].scrollIntoView({ block: "nearest" });
+  return true;
+}
+
+document.getElementById("add-tag-btn").addEventListener("click", addTags);
+document.getElementById("tag-input").addEventListener("input", showAutocomplete);
+document.getElementById("tag-input").addEventListener("blur", () => {
+  setTimeout(hideAutocomplete, 150);
+});
+document.getElementById("tag-input").addEventListener("keydown", (e) => {
+  const ac = document.getElementById("tag-autocomplete");
+  if (e.key === "ArrowDown" && ac.style.display === "block") {
+    e.preventDefault(); navigateAutocomplete(1);
+  } else if (e.key === "ArrowUp" && ac.style.display === "block") {
+    e.preventDefault(); navigateAutocomplete(-1);
+  } else if (e.key === "Tab" && ac.style.display === "block") {
+    e.preventDefault();
+    const sel = document.querySelector("#tag-autocomplete .tag-option.selected");
+    if (sel) pickAutocomplete(sel.dataset.tag);
+    else if (document.querySelector("#tag-autocomplete .tag-option")) {
+      pickAutocomplete(document.querySelector("#tag-autocomplete .tag-option").dataset.tag);
+    }
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    const sel = document.querySelector("#tag-autocomplete .tag-option.selected");
+    if (sel) { pickAutocomplete(sel.dataset.tag); }
+    else { addTags(); }
+  }
+});
+
+// ═══════════════════════════════════════════
+//  LIVE PREVIEW
+// ═══════════════════════════════════════════
+// Category watermark icons
+const CATEGORY_ICONS = {
+  building: "🏗️",
+  ship: "🚀",
+  captain: "👨‍✈️",
+  leader: "👑",
+  admiral: "⭐",
+  star: "☀️",
+  planet: "🪐",
+};
+
+// Icon lookup for known stat/cost keys
+const STAT_ICONS = {
+  energy: "⚡", minerals: "⛏️", research: "🔬", food: "🌾",
+  attack: "⚔️", defense: "🛡️", speed: "💨", hull: "🔩",
+  combat: "⚔️", navigation: "🧭", diplomacy: "🤝", engineering: "🔧",
+  morale: "💪", efficiency: "⚙️", research_bonus: "🔬", growth: "📈",
+  fleet_size: "🚀", tactics: "🎯", logistics: "📦", charisma: "✨",
+  luminosity: "☀️", stability: "⚖️", planets_max: "🪐",
+  ecology: "🌿", gravity: "🌀", atmosphere: "💨", size: "📐",
+};
+
+function getStatIcon(key) {
+  return STAT_ICONS[key] || "◆";
+}
+
+function updatePreview() {
+  const data = getEditorData();
+  const preview = document.getElementById("card-preview");
+
+  // Rarity class
+  const isZoomed = preview.classList.contains("zoomed");
+  preview.className = `card-preview ${data.rarity}${isZoomed ? " zoomed" : ""}`;
+
+  // Name
+  document.getElementById("preview-name").textContent = data.name || "New Card";
+
+  // Image
+  const imgEl = document.getElementById("preview-image");
+  if (data.image) {
+    imgEl.innerHTML = `<img src="${data.image}" alt="card">`;
+  } else {
+    imgEl.innerHTML = "No image";
+  }
+
+  // Cost badge (top-right)
+  const costEl = document.getElementById("preview-cost");
+  const costEntries = Object.entries(data.cost);
+  if (costEntries.length > 0) {
+    costEl.innerHTML = costEntries.map(([key, val]) =>
+      `<div class="cost-badge-row"><span class="cost-badge-icon">${getStatIcon(key)}</span><span class="cost-badge-val">${val}</span></div>`
+    ).join("");
+  } else {
+    costEl.innerHTML = "";
+  }
+
+  // Special (check first so we know whether to expand stats)
+  const specialEl = document.getElementById("preview-special");
+  const hasSpecial = !!data.special;
+  if (hasSpecial) {
+    specialEl.style.display = "block";
+    specialEl.textContent = data.special;
+  } else {
+    specialEl.style.display = "none";
+  }
+
+  // Stats — icon + value only, compact row. Expanded when no special text.
+  const statsEl = document.getElementById("preview-stats");
+  statsEl.innerHTML = "";
+  statsEl.className = `card-stats${hasSpecial ? "" : " expanded"}`;
+  for (const [key, val] of Object.entries(data.stats)) {
+    const div = document.createElement("div");
+    div.className = "card-stat";
+    div.innerHTML = `<span class="card-stat-icon">${getStatIcon(key)}</span><span class="card-stat-value ${val === 0 ? "zero" : ""}">${val}</span>`;
+    statsEl.appendChild(div);
+  }
+
+  // Flavor
+  document.getElementById("preview-flavor").textContent = data.flavor;
+
+  // Category watermark
+  document.getElementById("preview-watermark").textContent = CATEGORY_ICONS[data.category] || "";
+}
+
+// ═══════════════════════════════════════════
+//  CATALOG RENDERING
+// ═══════════════════════════════════════════
+function rebuildTagFilter() {
+  const tagSelect = document.getElementById("filter-tag");
+  const currentVal = tagSelect.value;
+  const allTags = [...new Set(catalog.flatMap(c => c.tags || []))].sort();
+  tagSelect.innerHTML = '<option value="all">All Tags</option>'
+    + allTags.map(t => `<option value="${t}"${t === currentVal ? " selected" : ""}>${t}</option>`).join("");
+}
+
+function renderCatalog() {
+  rebuildTagFilter();
+  const catFilter = document.getElementById("filter-category").value;
+  const rarFilter = document.getElementById("filter-rarity").value;
+  const tagFilter = document.getElementById("filter-tag").value;
+
+  let filtered = catalog;
+  if (catFilter !== "all") filtered = filtered.filter(c => c.category === catFilter);
+  if (rarFilter !== "all") filtered = filtered.filter(c => c.rarity === rarFilter);
+  if (tagFilter !== "all") filtered = filtered.filter(c => (c.tags || []).includes(tagFilter));
+
+  // Sort by category then name
+  filtered.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+
+  document.getElementById("catalog-count").textContent = `${filtered.length} card${filtered.length !== 1 ? "s" : ""}`;
+
+  const listEl = document.getElementById("catalog-list");
+  listEl.innerHTML = "";
+  for (const card of filtered) {
+    const item = document.createElement("div");
+    item.className = `catalog-item${card.id === editingCardId ? " active" : ""}`;
+    const tagsHtml = (card.tags || []).map(t => `<span class="catalog-tag">${t}</span>`).join("");
+    item.innerHTML = `
+      <span class="catalog-item-dot" style="background:${RARITY_COLORS[card.rarity]}"></span>
+      <span class="catalog-item-name">${card.name || "Unnamed"}${tagsHtml ? `<div class="catalog-item-tags">${tagsHtml}</div>` : ""}</span>
+      <span class="catalog-item-cat">${card.category}</span>
+    `;
+    item.addEventListener("click", () => loadCardIntoEditor(card));
+    listEl.appendChild(item);
+  }
+}
+
+function highlightCatalogItem(id) {
+  document.querySelectorAll(".catalog-item").forEach(el => el.classList.remove("active"));
+  if (!id) return;
+  // Re-render to update active state
+  renderCatalog();
+}
+
+// ═══════════════════════════════════════════
+//  SAVE / DELETE
+// ═══════════════════════════════════════════
+function saveCard() {
+  const data = getEditorData();
+  if (!data.name) { showToast("Card needs a name!"); return; }
+
+  const now = new Date().toISOString();
+  if (editingCardId) {
+    // Update existing
+    const idx = catalog.findIndex(c => c.id === editingCardId);
+    if (idx !== -1) {
+      catalog[idx] = { ...catalog[idx], ...data, updatedAt: now };
+    }
+  } else {
+    // Create new
+    const card = {
+      id: crypto.randomUUID(),
+      ...data,
+      createdAt: now,
+      updatedAt: now,
+    };
+    catalog.push(card);
+    editingCardId = card.id;
+    document.getElementById("delete-btn").disabled = false;
+  }
+
+  saveCatalog();
+  renderCatalog();
+  showToast("Card saved!");
+}
+
+function deleteCard() {
+  if (!editingCardId) return;
+  if (!confirm("Delete this card? This cannot be undone.")) return;
+
+  catalog = catalog.filter(c => c.id !== editingCardId);
+  saveCatalog();
+  resetEditor();
+  renderCatalog();
+  showToast("Card deleted.");
+}
+
+// ═══════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2000);
+}
+
+// ═══════════════════════════════════════════
+//  EVENT WIRING
+// ═══════════════════════════════════════════
+
+// Editor inputs → live preview
+document.getElementById("edit-name").addEventListener("input", updatePreview);
+document.getElementById("edit-rarity").addEventListener("change", updatePreview);
+document.getElementById("edit-special").addEventListener("input", updatePreview);
+document.getElementById("edit-flavor").addEventListener("input", updatePreview);
+
+// Category change → rebuild default stats
+document.getElementById("edit-category").addEventListener("change", () => {
+  const cat = document.getElementById("edit-category").value;
+  const defaultStats = CATEGORY_DEFAULT_STATS[cat] || [];
+
+  // Preserve custom (non-default) stat rows from current category
+  const currentCustom = {};
+  const oldCat = editingCardId
+    ? (catalog.find(c => c.id === editingCardId)?.category || "building")
+    : "building";
+  const oldDefaults = CATEGORY_DEFAULT_STATS[oldCat] || [];
+  document.querySelectorAll("#stat-rows .stat-row").forEach(row => {
+    const key = row.querySelector(".stat-key").value.trim().toLowerCase().replace(/\s+/g, "_");
+    const val = parseFloat(row.querySelector(".stat-val").value) || 0;
+    if (key && !oldDefaults.includes(key)) {
+      currentCustom[key] = val;
+    }
+  });
+
+  const allKeys = [...defaultStats, ...Object.keys(currentCustom)];
+  const values = { ...currentCustom };
+  buildStatRows("stat-rows", allKeys, values, defaultStats);
+  updatePreview();
+});
+
+// Add stat / cost buttons
+document.getElementById("add-stat-btn").addEventListener("click", () => {
+  addStatRow(document.getElementById("stat-rows"), "", 0, false);
+});
+document.getElementById("add-cost-btn").addEventListener("click", () => {
+  addStatRow(document.getElementById("cost-rows"), "", 0, false);
+});
+
+// Zoom toggle
+document.getElementById("zoom-btn").addEventListener("click", () => {
+  const preview = document.getElementById("card-preview");
+  const btn = document.getElementById("zoom-btn");
+  preview.classList.toggle("zoomed");
+  btn.textContent = preview.classList.contains("zoomed") ? "1× Normal" : "3× Zoom";
+});
+
+// Save / Delete / New
+document.getElementById("save-btn").addEventListener("click", saveCard);
+document.getElementById("delete-btn").addEventListener("click", deleteCard);
+document.getElementById("new-card-btn").addEventListener("click", resetEditor);
+
+// Card search with autocomplete
+let searchSelectedIdx = -1;
+
+function showSearchAutocomplete() {
+  const input = document.getElementById("card-search");
+  const ac = document.getElementById("search-autocomplete");
+  const query = input.value.trim().toLowerCase();
+
+  if (!query) { hideSearchAutocomplete(); renderCatalog(); return; }
+
+  const matches = catalog.filter(c =>
+    c.name.toLowerCase().includes(query)
+  ).slice(0, 15);
+
+  if (matches.length === 0) { hideSearchAutocomplete(); renderCatalog(); return; }
+
+  searchSelectedIdx = -1;
+  ac.innerHTML = matches.map((c, i) =>
+    `<div class="search-option" data-idx="${i}" data-id="${c.id}">` +
+    `<span class="search-dot" style="background:${RARITY_COLORS[c.rarity]}"></span>` +
+    `${c.name}<span class="search-cat">${c.category}</span></div>`
+  ).join("");
+  ac.style.display = "block";
+
+  ac.querySelectorAll(".search-option").forEach(opt => {
+    opt.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      pickSearchResult(opt.dataset.id);
+    });
+  });
+}
+
+function hideSearchAutocomplete() {
+  const ac = document.getElementById("search-autocomplete");
+  ac.style.display = "none";
+  ac.innerHTML = "";
+  searchSelectedIdx = -1;
+}
+
+function pickSearchResult(cardId) {
+  const card = catalog.find(c => c.id === cardId);
+  if (card) {
+    document.getElementById("card-search").value = "";
+    hideSearchAutocomplete();
+    loadCardIntoEditor(card);
+  }
+}
+
+document.getElementById("card-search").addEventListener("input", showSearchAutocomplete);
+document.getElementById("card-search").addEventListener("blur", () => {
+  setTimeout(hideSearchAutocomplete, 150);
+});
+document.getElementById("card-search").addEventListener("keydown", (e) => {
+  const ac = document.getElementById("search-autocomplete");
+  const options = ac.querySelectorAll(".search-option");
+  if (e.key === "ArrowDown" && ac.style.display === "block") {
+    e.preventDefault();
+    options.forEach(o => o.classList.remove("selected"));
+    searchSelectedIdx = (searchSelectedIdx + 1) % options.length;
+    options[searchSelectedIdx].classList.add("selected");
+    options[searchSelectedIdx].scrollIntoView({ block: "nearest" });
+  } else if (e.key === "ArrowUp" && ac.style.display === "block") {
+    e.preventDefault();
+    options.forEach(o => o.classList.remove("selected"));
+    searchSelectedIdx = searchSelectedIdx <= 0 ? options.length - 1 : searchSelectedIdx - 1;
+    options[searchSelectedIdx].classList.add("selected");
+    options[searchSelectedIdx].scrollIntoView({ block: "nearest" });
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    const sel = ac.querySelector(".search-option.selected");
+    if (sel) { pickSearchResult(sel.dataset.id); }
+    else if (options.length > 0) { pickSearchResult(options[0].dataset.id); }
+  } else if (e.key === "Escape") {
+    hideSearchAutocomplete();
+  }
+});
+
+// Catalog filters
+document.getElementById("filter-category").addEventListener("change", renderCatalog);
+document.getElementById("filter-rarity").addEventListener("change", renderCatalog);
+document.getElementById("filter-tag").addEventListener("change", renderCatalog);
+
+// ═══════════════════════════════════════════
+//  IMPORT / EXPORT
+// ═══════════════════════════════════════════
+document.getElementById("export-btn").addEventListener("click", () => {
+  const json = JSON.stringify(catalog, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "idlespace-cards.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+const importFileInput = document.getElementById("import-file");
+document.getElementById("import-btn").addEventListener("click", () => importFileInput.click());
+importFileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const incoming = JSON.parse(reader.result);
+      if (!Array.isArray(incoming)) { alert("Invalid format: expected a JSON array of cards."); return; }
+      const now = new Date().toISOString();
+      const existingIds = new Set(catalog.map(c => c.id));
+      let added = 0, updated = 0;
+      for (const card of incoming) {
+        // Ensure required fields
+        if (!card.name) continue;
+        if (!card.id) card.id = crypto.randomUUID();
+        if (!card.createdAt) card.createdAt = now;
+        card.updatedAt = now;
+        if (!card.tags) card.tags = [];
+        if (!card.stats) card.stats = {};
+        if (!card.cost) card.cost = {};
+        if (!card.category) card.category = "building";
+        if (!card.rarity) card.rarity = "common";
+        if (!card.special) card.special = "";
+        if (!card.flavor) card.flavor = "";
+        if (!card.image) card.image = "";
+
+        const existing = catalog.findIndex(c => c.id === card.id);
+        if (existing >= 0) {
+          catalog[existing] = card;
+          updated++;
+        } else {
+          catalog.push(card);
+          added++;
+        }
+      }
+      saveCatalog();
+      renderCatalog();
+      resetEditor();
+      alert(`Import complete: ${added} added, ${updated} updated.`);
+    } catch (err) {
+      alert("Failed to parse JSON: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+  importFileInput.value = "";
+});
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+resetEditor();
+renderCatalog();
+</script>
+</body>
+</html>

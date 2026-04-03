@@ -1,0 +1,2365 @@
+[
+  {
+    "id": "bld_001",
+    "name": "Solar Array",
+    "category": "building",
+    "rarity": "common",
+    "stats": {
+      "energy": 3
+    },
+    "cost": {
+      "minerals": 2
+    },
+    "special": "",
+    "flavor": "Harnessing the light of distant suns.",
+    "tags": [
+      "energy",
+      "production",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_002",
+    "name": "Mining Outpost",
+    "category": "building",
+    "rarity": "common",
+    "stats": {
+      "minerals": 3
+    },
+    "cost": {
+      "energy": 2
+    },
+    "special": "",
+    "flavor": "Deep core extractors never rest.",
+    "tags": [
+      "minerals",
+      "production",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_003",
+    "name": "Research Lab",
+    "category": "building",
+    "rarity": "common",
+    "stats": {
+      "research": 3
+    },
+    "cost": {
+      "energy": 2,
+      "minerals": 1
+    },
+    "special": "",
+    "flavor": "Knowledge is the ultimate resource.",
+    "tags": [
+      "research",
+      "production",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_004",
+    "name": "Hydroponics Bay",
+    "category": "building",
+    "rarity": "common",
+    "stats": {
+      "food": 3
+    },
+    "cost": {
+      "energy": 1,
+      "minerals": 1
+    },
+    "special": "",
+    "flavor": "Life finds a way, even in the void.",
+    "tags": [
+      "food",
+      "production",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_005",
+    "name": "Fusion Reactor",
+    "category": "building",
+    "rarity": "uncommon",
+    "stats": {
+      "energy": 5
+    },
+    "cost": {
+      "minerals": 4,
+      "research": 1
+    },
+    "special": "",
+    "flavor": "Atoms split, power flows.",
+    "tags": [
+      "energy",
+      "production",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_006",
+    "name": "Ore Refinery",
+    "category": "building",
+    "rarity": "uncommon",
+    "stats": {
+      "minerals": 5,
+      "energy": 1
+    },
+    "cost": {
+      "energy": 3
+    },
+    "special": "",
+    "flavor": "Raw stone becomes refined wealth.",
+    "tags": [
+      "minerals",
+      "production",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_007",
+    "name": "Data Archive",
+    "category": "building",
+    "rarity": "uncommon",
+    "stats": {
+      "research": 5
+    },
+    "cost": {
+      "energy": 3,
+      "minerals": 2
+    },
+    "special": "",
+    "flavor": "Every discovery preserved for eternity.",
+    "tags": [
+      "research",
+      "production",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_008",
+    "name": "Bio Dome",
+    "category": "building",
+    "rarity": "uncommon",
+    "stats": {
+      "food": 5,
+      "morale": 1
+    },
+    "cost": {
+      "energy": 2,
+      "minerals": 2
+    },
+    "special": "",
+    "flavor": "A garden among the stars.",
+    "tags": [
+      "food",
+      "production",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_009",
+    "name": "Quantum Computer",
+    "category": "building",
+    "rarity": "rare",
+    "stats": {
+      "research": 7,
+      "energy": 2
+    },
+    "cost": {
+      "energy": 5,
+      "minerals": 4
+    },
+    "special": "Boosts all research output by 10%.",
+    "flavor": "Processing power beyond mortal comprehension.",
+    "tags": [
+      "research",
+      "production",
+      "boost",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_010",
+    "name": "Stellar Foundry",
+    "category": "building",
+    "rarity": "rare",
+    "stats": {
+      "minerals": 7,
+      "energy": 2
+    },
+    "cost": {
+      "energy": 6,
+      "food": 2
+    },
+    "special": "",
+    "flavor": "Forged in the heat of captured stars.",
+    "tags": [
+      "minerals",
+      "production",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_011",
+    "name": "Antimatter Plant",
+    "category": "building",
+    "rarity": "epic",
+    "stats": {
+      "energy": 12
+    },
+    "cost": {
+      "minerals": 8,
+      "research": 4
+    },
+    "special": "Powers adjacent buildings for free.",
+    "flavor": "The annihilation of matter feeds the empire.",
+    "tags": [
+      "energy",
+      "production",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_012",
+    "name": "Megastructure Scaffold",
+    "category": "building",
+    "rarity": "epic",
+    "stats": {
+      "minerals": 10,
+      "energy": 4
+    },
+    "cost": {
+      "energy": 10,
+      "research": 5
+    },
+    "special": "Unlocks tier-3 buildings.",
+    "flavor": "The skeleton of something immense takes shape.",
+    "tags": [
+      "minerals",
+      "production",
+      "unlock",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_013",
+    "name": "Orbital Farm Ring",
+    "category": "building",
+    "rarity": "rare",
+    "stats": {
+      "food": 7,
+      "growth": 2
+    },
+    "cost": {
+      "energy": 4,
+      "minerals": 3
+    },
+    "special": "",
+    "flavor": "Endless fields circling the world below.",
+    "tags": [
+      "food",
+      "production",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_014",
+    "name": "Dyson Collector",
+    "category": "building",
+    "rarity": "legendary",
+    "stats": {
+      "energy": 18,
+      "research": 5
+    },
+    "cost": {
+      "minerals": 15,
+      "research": 8
+    },
+    "special": "Energy output scales with star luminosity.",
+    "flavor": "To harness a star is to hold infinity.",
+    "tags": [
+      "energy",
+      "production",
+      "megastructure",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_015",
+    "name": "Nanite Assembler",
+    "category": "building",
+    "rarity": "epic",
+    "stats": {
+      "minerals": 10,
+      "efficiency": 3
+    },
+    "cost": {
+      "energy": 7,
+      "research": 5
+    },
+    "special": "Reduces all building costs by 15%.",
+    "flavor": "Molecule by molecule, a world remade.",
+    "tags": [
+      "minerals",
+      "production",
+      "efficiency",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_016",
+    "name": "Colony Hub",
+    "category": "building",
+    "rarity": "common",
+    "stats": {
+      "food": 2,
+      "morale": 2
+    },
+    "cost": {
+      "minerals": 3
+    },
+    "special": "",
+    "flavor": "Where settlers first call home.",
+    "tags": [
+      "food",
+      "morale",
+      "starter",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_017",
+    "name": "Shield Generator",
+    "category": "building",
+    "rarity": "uncommon",
+    "stats": {
+      "defense": 4
+    },
+    "cost": {
+      "energy": 4,
+      "minerals": 2
+    },
+    "special": "",
+    "flavor": "An invisible dome of safety.",
+    "tags": [
+      "defense",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ],
+    "notes": "A colossal Dyson sphere collector array partially encircling a blazing white-blue star, vast curved metallic panels stretching across the void, catching and channeling stellar energy through glowing conduit lines. The structure dwarfs nearby rocky planets visible in the background. Brilliant golden-white starlight reflects off polished alloy surfaces, energy streams flowing along the collector arms in vivid cyan channels. Grand, awe-inspiring scale, the pinnacle of stellar engineering. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, centered composition."
+  },
+  {
+    "id": "bld_018",
+    "name": "Terraform Engine",
+    "category": "building",
+    "rarity": "legendary",
+    "stats": {
+      "food": 15,
+      "growth": 5,
+      "ecology": 3
+    },
+    "cost": {
+      "energy": 12,
+      "minerals": 10,
+      "research": 6
+    },
+    "special": "Gradually improves planet habitability.",
+    "flavor": "Rewriting the laws of a world.",
+    "tags": [
+      "food",
+      "production",
+      "terraform",
+      "megastructure",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ],
+    "notes": "A massive planetary terraforming engine embedded into the surface of a barren red-brown world, enormous mechanical spires rising from the crust and projecting beams of green bio-energy into the atmosphere. Lush vegetation is spreading outward from the engine's base in a visible ring of transformation, contrasting against the dead rocky terrain beyond. Swirling clouds form overhead where the beams converge. Warm amber light from the machinery contrasts with the emerging green biosphere. Epic scale, a world being reborn. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, wide composition."
+  },
+  {
+    "id": "shp_001",
+    "name": "Scout Corvette",
+    "category": "ship",
+    "rarity": "common",
+    "stats": {
+      "speed": 4,
+      "hull": 2
+    },
+    "cost": {
+      "minerals": 3
+    },
+    "special": "",
+    "flavor": "First to see, last to be seen.",
+    "tags": [
+      "scout",
+      "fast",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_002",
+    "name": "Cargo Hauler",
+    "category": "ship",
+    "rarity": "common",
+    "stats": {
+      "hull": 3,
+      "logistics": 3
+    },
+    "cost": {
+      "minerals": 3,
+      "energy": 1
+    },
+    "special": "",
+    "flavor": "The backbone of interstellar commerce.",
+    "tags": [
+      "trade",
+      "logistics",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_003",
+    "name": "Patrol Frigate",
+    "category": "ship",
+    "rarity": "common",
+    "stats": {
+      "attack": 3,
+      "defense": 2,
+      "speed": 2
+    },
+    "cost": {
+      "minerals": 4,
+      "energy": 2
+    },
+    "special": "",
+    "flavor": "Keeping the lanes safe.",
+    "tags": [
+      "combat",
+      "patrol",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ],
+    "notes": "A compact military patrol frigate spacecraft cruising through deep space, angular utilitarian hull plating in matte gunmetal gray with faded orange identification stripes. Twin forward-mounted pulse cannons flank the bow, a small sensor array dome sits on the dorsal spine, and twin rear engines emit a warm orange thruster glow. The hull is battle-worn with minor scorch marks and patched armor panels. Behind the ship, a quiet starfield stretches into the distance with a faint purple-blue nebula providing soft ambient light. Cinematic sci-fi lighting with soft rim light tracing the hull edges, warm engine glow contrasting cool deep-space blues. Digital concept art, detailed sci-fi illustration, sharp focus, painterly rendering, centered composition."
+  },
+  {
+    "id": "shp_004",
+    "name": "Mining Barge",
+    "category": "ship",
+    "rarity": "common",
+    "stats": {
+      "hull": 4,
+      "minerals": 2
+    },
+    "cost": {
+      "minerals": 4
+    },
+    "special": "",
+    "flavor": "Slow and steady fills the holds.",
+    "tags": [
+      "mining",
+      "logistics",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_005",
+    "name": "Destroyer",
+    "category": "ship",
+    "rarity": "uncommon",
+    "stats": {
+      "attack": 5,
+      "defense": 3,
+      "speed": 3
+    },
+    "cost": {
+      "minerals": 6,
+      "energy": 3
+    },
+    "special": "",
+    "flavor": "Purpose-built for one thing: war.",
+    "tags": [
+      "combat",
+      "military",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_006",
+    "name": "Research Vessel",
+    "category": "ship",
+    "rarity": "uncommon",
+    "stats": {
+      "research": 4,
+      "speed": 3,
+      "hull": 2
+    },
+    "cost": {
+      "minerals": 4,
+      "energy": 3
+    },
+    "special": "Gains bonus research from anomalies.",
+    "flavor": "Charting the unknown, one system at a time.",
+    "tags": [
+      "research",
+      "exploration",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_007",
+    "name": "Stealth Interceptor",
+    "category": "ship",
+    "rarity": "rare",
+    "stats": {
+      "attack": 6,
+      "speed": 6
+    },
+    "cost": {
+      "minerals": 7,
+      "energy": 4,
+      "research": 2
+    },
+    "special": "First strike: attacks before enemy response.",
+    "flavor": "A whisper in the dark between stars.",
+    "tags": [
+      "combat",
+      "stealth",
+      "fast",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_008",
+    "name": "Heavy Cruiser",
+    "category": "ship",
+    "rarity": "rare",
+    "stats": {
+      "attack": 5,
+      "defense": 5,
+      "hull": 5
+    },
+    "cost": {
+      "minerals": 8,
+      "energy": 5
+    },
+    "special": "",
+    "flavor": "The iron fist of the fleet.",
+    "tags": [
+      "combat",
+      "military",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_009",
+    "name": "Colony Ship",
+    "category": "ship",
+    "rarity": "uncommon",
+    "stats": {
+      "hull": 5,
+      "logistics": 4
+    },
+    "cost": {
+      "minerals": 8,
+      "food": 4,
+      "energy": 3
+    },
+    "special": "Can establish a new colony on arrival.",
+    "flavor": "Hope, packed into every cargo bay.",
+    "tags": [
+      "colonization",
+      "logistics",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_010",
+    "name": "Battlecruiser",
+    "category": "ship",
+    "rarity": "epic",
+    "stats": {
+      "attack": 10,
+      "defense": 7,
+      "hull": 8,
+      "speed": 3
+    },
+    "cost": {
+      "minerals": 12,
+      "energy": 8,
+      "research": 3
+    },
+    "special": "",
+    "flavor": "A fortress that sails the void.",
+    "tags": [
+      "combat",
+      "capital",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_011",
+    "name": "Carrier",
+    "category": "ship",
+    "rarity": "epic",
+    "stats": {
+      "fleet_size": 5,
+      "defense": 6,
+      "hull": 10
+    },
+    "cost": {
+      "minerals": 14,
+      "energy": 6
+    },
+    "special": "Deploys fighter squadrons in combat.",
+    "flavor": "Its children swarm like angry stars.",
+    "tags": [
+      "combat",
+      "capital",
+      "carrier",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_012",
+    "name": "Dreadnought",
+    "category": "ship",
+    "rarity": "legendary",
+    "stats": {
+      "attack": 18,
+      "defense": 12,
+      "hull": 15,
+      "speed": 2
+    },
+    "cost": {
+      "minerals": 20,
+      "energy": 12,
+      "research": 5
+    },
+    "special": "Suppresses enemy morale on arrival.",
+    "flavor": "When it appears, wars end.",
+    "tags": [
+      "combat",
+      "capital",
+      "flagship",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ],
+    "notes": "A massive wedge-shaped dreadnought battleship dominating the frame, dark angular armor plating bristling with heavy turret batteries along the dorsal ridge, glowing red weapon ports lining the flanks. The ship's immense scale is emphasized by tiny escort fighters flying alongside. A burning enemy vessel drifts in the background, debris field scattered across the starfield. Deep crimson and steel-gray color palette, harsh forward-facing spotlights cutting through thin wisps of nebula gas. Overwhelming military power, instrument of total dominance. Digital concept art, detailed sci-fi illustration, cinematic dramatic lighting, sharp focus, painterly rendering, centered composition."
+  },
+  {
+    "id": "shp_013",
+    "name": "Exploration Cruiser",
+    "category": "ship",
+    "rarity": "rare",
+    "stats": {
+      "speed": 5,
+      "research": 4,
+      "hull": 4,
+      "navigation": 3
+    },
+    "cost": {
+      "minerals": 6,
+      "energy": 5,
+      "research": 2
+    },
+    "special": "Reveals hidden star map features.",
+    "flavor": "Beyond the edge of every chart.",
+    "tags": [
+      "exploration",
+      "research",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_014",
+    "name": "Warp Clipper",
+    "category": "ship",
+    "rarity": "uncommon",
+    "stats": {
+      "speed": 6,
+      "hull": 2
+    },
+    "cost": {
+      "energy": 5,
+      "minerals": 3
+    },
+    "special": "",
+    "flavor": "Bending spacetime for the morning commute.",
+    "tags": [
+      "fast",
+      "logistics",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_015",
+    "name": "Titan",
+    "category": "ship",
+    "rarity": "legendary",
+    "stats": {
+      "attack": 15,
+      "defense": 15,
+      "hull": 20,
+      "fleet_size": 3
+    },
+    "cost": {
+      "minerals": 25,
+      "energy": 15,
+      "research": 8
+    },
+    "special": "Flagship aura: +2 attack to all allied ships.",
+    "flavor": "A mobile world, bristling with purpose.",
+    "tags": [
+      "combat",
+      "capital",
+      "flagship",
+      "megastructure",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ],
+    "notes": "An impossibly massive titan-class capital ship, more space station than vessel, a cylindrical fortress bristling with weapons platforms and docking bays along its entire length. Smaller cruisers and frigates are docked along its flanks like remora fish, giving a sense of staggering scale. The ship's hull is layered with heavy armor segments and glowing blue shield emitter arrays. A dense star cluster provides a brilliant backdrop of golden and white stars. Cool blue and warm gold lighting, overwhelming presence of mobile sovereignty. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, wide composition."
+  },
+  {
+    "id": "cpt_001",
+    "name": "Rookie Pilot",
+    "category": "captain",
+    "rarity": "common",
+    "stats": {
+      "navigation": 2,
+      "speed": 1
+    },
+    "cost": {
+      "food": 2
+    },
+    "special": "",
+    "flavor": "Everyone starts somewhere.",
+    "tags": [
+      "pilot",
+      "starter",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "cpt_002",
+    "name": "Veteran Navigator",
+    "category": "captain",
+    "rarity": "common",
+    "stats": {
+      "navigation": 3,
+      "tactics": 1
+    },
+    "cost": {
+      "food": 3
+    },
+    "special": "",
+    "flavor": "A thousand jumps and counting.",
+    "tags": [
+      "navigation",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "cpt_003",
+    "name": "Trade Captain",
+    "category": "captain",
+    "rarity": "common",
+    "stats": {
+      "logistics": 3,
+      "diplomacy": 1
+    },
+    "cost": {
+      "food": 2,
+      "energy": 1
+    },
+    "special": "",
+    "flavor": "Profit flows where connections grow.",
+    "tags": [
+      "trade",
+      "diplomacy",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "cpt_004",
+    "name": "Combat Ace",
+    "category": "captain",
+    "rarity": "uncommon",
+    "stats": {
+      "tactics": 4,
+      "attack": 2,
+      "speed": 2
+    },
+    "cost": {
+      "food": 3,
+      "energy": 2
+    },
+    "special": "",
+    "flavor": "Five kills before breakfast.",
+    "tags": [
+      "combat",
+      "tactics",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "cpt_005",
+    "name": "Fleet Surgeon",
+    "category": "captain",
+    "rarity": "uncommon",
+    "stats": {
+      "morale": 3,
+      "hull": 3
+    },
+    "cost": {
+      "food": 4,
+      "research": 1
+    },
+    "special": "Repairs 1 hull per tick in combat.",
+    "flavor": "Mending ships and spirits alike.",
+    "tags": [
+      "support",
+      "repair",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "cpt_006",
+    "name": "Astrocartographer",
+    "category": "captain",
+    "rarity": "uncommon",
+    "stats": {
+      "navigation": 5,
+      "research": 2
+    },
+    "cost": {
+      "food": 3,
+      "research": 2
+    },
+    "special": "",
+    "flavor": "She names the stars no one has seen.",
+    "tags": [
+      "exploration",
+      "navigation",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "cpt_007",
+    "name": "Corsair Queen",
+    "category": "captain",
+    "rarity": "rare",
+    "stats": {
+      "attack": 5,
+      "speed": 4,
+      "charisma": 3
+    },
+    "cost": {
+      "food": 5,
+      "energy": 3
+    },
+    "special": "Chance to capture enemy ships.",
+    "flavor": "The void bows to no law but hers.",
+    "tags": [
+      "combat",
+      "pirate",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "cpt_008",
+    "name": "Xenolinguist",
+    "category": "captain",
+    "rarity": "rare",
+    "stats": {
+      "diplomacy": 6,
+      "research": 3
+    },
+    "cost": {
+      "food": 4,
+      "research": 3
+    },
+    "special": "Unlocks alien trade routes.",
+    "flavor": "Every species speaks the language of need.",
+    "tags": [
+      "diplomacy",
+      "research",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "cpt_009",
+    "name": "Ghost Runner",
+    "category": "captain",
+    "rarity": "epic",
+    "stats": {
+      "speed": 8,
+      "navigation": 5,
+      "tactics": 4
+    },
+    "cost": {
+      "food": 6,
+      "energy": 4,
+      "research": 2
+    },
+    "special": "Ship cannot be targeted for 1 round.",
+    "flavor": "You can't hit what you can't find.",
+    "tags": [
+      "stealth",
+      "fast",
+      "tactics",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "cpt_010",
+    "name": "Admiral-Errant",
+    "category": "captain",
+    "rarity": "epic",
+    "stats": {
+      "tactics": 7,
+      "attack": 4,
+      "charisma": 4,
+      "morale": 3
+    },
+    "cost": {
+      "food": 7,
+      "energy": 5
+    },
+    "special": "Inspires nearby ships: +1 morale.",
+    "flavor": "Rank means nothing. Results mean everything.",
+    "tags": [
+      "combat",
+      "leadership",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "cpt_011",
+    "name": "The Pathfinder",
+    "category": "captain",
+    "rarity": "legendary",
+    "stats": {
+      "navigation": 10,
+      "speed": 6,
+      "research": 5,
+      "diplomacy": 4
+    },
+    "cost": {
+      "food": 8,
+      "energy": 5,
+      "research": 4
+    },
+    "special": "Discovers anomalies twice as fast.",
+    "flavor": "Where others see emptiness, she sees roads.",
+    "tags": [
+      "exploration",
+      "navigation",
+      "legendary",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ],
+    "notes": "Portrait of a weathered female starship captain standing on a command bridge, gazing out through a panoramic viewport at an uncharted nebula filled with swirling colors and hidden stellar phenomena. She wears a well-worn exploration flight suit with star charts stitched into the sleeve patches, her silver-streaked hair pulled back, expression calm and knowing. Holographic star maps glow faintly around her, projected from the console behind. Soft blue nebula light illuminates her face from the viewport, warm amber instrument glow from behind. Wise, seasoned explorer energy. Digital concept art, detailed sci-fi portrait illustration, cinematic lighting, sharp focus, painterly rendering."
+  },
+  {
+    "id": "cpt_012",
+    "name": "War Sage",
+    "category": "captain",
+    "rarity": "rare",
+    "stats": {
+      "tactics": 5,
+      "defense": 3,
+      "morale": 3
+    },
+    "cost": {
+      "food": 5,
+      "research": 2
+    },
+    "special": "Reduces damage taken by 15%.",
+    "flavor": "Every battle is a lesson. He has learned them all.",
+    "tags": [
+      "combat",
+      "defense",
+      "tactics",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "ldr_001",
+    "name": "Colony Overseer",
+    "category": "leader",
+    "rarity": "common",
+    "stats": {
+      "efficiency": 2,
+      "morale": 1
+    },
+    "cost": {
+      "food": 3
+    },
+    "special": "",
+    "flavor": "Keeping the gears turning.",
+    "tags": [
+      "management",
+      "starter",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "ldr_002",
+    "name": "Frontier Preacher",
+    "category": "leader",
+    "rarity": "common",
+    "stats": {
+      "morale": 3
+    },
+    "cost": {
+      "food": 2
+    },
+    "special": "",
+    "flavor": "Faith holds where bulkheads fail.",
+    "tags": [
+      "morale",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "ldr_003",
+    "name": "Supply Coordinator",
+    "category": "leader",
+    "rarity": "common",
+    "stats": {
+      "logistics": 3,
+      "efficiency": 1
+    },
+    "cost": {
+      "food": 2,
+      "energy": 1
+    },
+    "special": "",
+    "flavor": "Every crate accounted for.",
+    "tags": [
+      "logistics",
+      "efficiency",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "ldr_004",
+    "name": "Chief Engineer",
+    "category": "leader",
+    "rarity": "uncommon",
+    "stats": {
+      "engineering": 4,
+      "efficiency": 2
+    },
+    "cost": {
+      "food": 3,
+      "minerals": 2
+    },
+    "special": "",
+    "flavor": "If it's broken, she'll fix it. If it works, she'll make it better.",
+    "tags": [
+      "engineering",
+      "efficiency",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "ldr_005",
+    "name": "Propaganda Minister",
+    "category": "leader",
+    "rarity": "uncommon",
+    "stats": {
+      "morale": 4,
+      "charisma": 3
+    },
+    "cost": {
+      "food": 4,
+      "energy": 1
+    },
+    "special": "Boosts colony growth by 10%.",
+    "flavor": "The truth is whatever keeps them working.",
+    "tags": [
+      "morale",
+      "growth",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "ldr_006",
+    "name": "Research Director",
+    "category": "leader",
+    "rarity": "uncommon",
+    "stats": {
+      "research_bonus": 4,
+      "research": 2
+    },
+    "cost": {
+      "food": 4,
+      "research": 2
+    },
+    "special": "",
+    "flavor": "Funding the questions no one else asks.",
+    "tags": [
+      "research",
+      "management",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "ldr_007",
+    "name": "Trade Magnate",
+    "category": "leader",
+    "rarity": "rare",
+    "stats": {
+      "logistics": 5,
+      "diplomacy": 4,
+      "charisma": 2
+    },
+    "cost": {
+      "food": 5,
+      "energy": 3
+    },
+    "special": "Trade routes yield 20% more.",
+    "flavor": "Credits are just a way of keeping score.",
+    "tags": [
+      "trade",
+      "diplomacy",
+      "economy",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "ldr_008",
+    "name": "War Marshal",
+    "category": "leader",
+    "rarity": "rare",
+    "stats": {
+      "tactics": 5,
+      "morale": 3,
+      "attack": 2
+    },
+    "cost": {
+      "food": 6,
+      "energy": 3
+    },
+    "special": "All ships gain +1 attack.",
+    "flavor": "Strategy wins battles. Logistics wins wars.",
+    "tags": [
+      "military",
+      "tactics",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "ldr_009",
+    "name": "Visionary Architect",
+    "category": "leader",
+    "rarity": "epic",
+    "stats": {
+      "engineering": 7,
+      "efficiency": 5,
+      "research": 3
+    },
+    "cost": {
+      "food": 7,
+      "minerals": 5,
+      "research": 3
+    },
+    "special": "Buildings cost 20% less.",
+    "flavor": "She sees the city that will stand in a thousand years.",
+    "tags": [
+      "engineering",
+      "efficiency",
+      "building",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "ldr_010",
+    "name": "Galactic Diplomat",
+    "category": "leader",
+    "rarity": "epic",
+    "stats": {
+      "diplomacy": 8,
+      "charisma": 5,
+      "morale": 3
+    },
+    "cost": {
+      "food": 8,
+      "energy": 4
+    },
+    "special": "Prevents war declarations for 10 ticks.",
+    "flavor": "Peace is not weakness. It is the hardest victory.",
+    "tags": [
+      "diplomacy",
+      "peace",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "ldr_011",
+    "name": "Eternal Chancellor",
+    "category": "leader",
+    "rarity": "legendary",
+    "stats": {
+      "efficiency": 10,
+      "morale": 6,
+      "charisma": 5,
+      "growth": 4
+    },
+    "cost": {
+      "food": 10,
+      "energy": 6,
+      "research": 4
+    },
+    "special": "All colony output +15%.",
+    "flavor": "Under her rule, empires do not merely survive. They flourish.",
+    "tags": [
+      "management",
+      "legendary",
+      "growth",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ],
+    "notes": "Regal portrait of an ageless woman seated on an ornate throne in a grand futuristic council chamber, wearing flowing robes of deep imperial purple with golden circuitry thread patterns woven through the fabric. Behind her, enormous floor-to-ceiling windows reveal a thriving space colony cityscape with gleaming towers and orbital rings. Her expression is serene and commanding, one hand resting on the arm of the throne, the other holding a holographic data tablet. Warm golden light floods through the windows, soft purple accent lighting from the throne's embedded panels. Authority, prosperity, eternal wisdom. Digital concept art, detailed sci-fi portrait illustration, cinematic lighting, sharp focus, painterly rendering."
+  },
+  {
+    "id": "ldr_012",
+    "name": "Spymaster",
+    "category": "leader",
+    "rarity": "rare",
+    "stats": {
+      "tactics": 4,
+      "charisma": 4,
+      "efficiency": 3
+    },
+    "cost": {
+      "food": 5,
+      "energy": 4
+    },
+    "special": "Reveals enemy fleet composition.",
+    "flavor": "Information is the only currency that never devalues.",
+    "tags": [
+      "intelligence",
+      "tactics",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "adm_001",
+    "name": "Patrol Commander",
+    "category": "admiral",
+    "rarity": "common",
+    "stats": {
+      "fleet_size": 1,
+      "tactics": 2
+    },
+    "cost": {
+      "food": 3,
+      "energy": 2
+    },
+    "special": "",
+    "flavor": "Order in the void.",
+    "tags": [
+      "military",
+      "starter",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "adm_002",
+    "name": "Convoy Leader",
+    "category": "admiral",
+    "rarity": "common",
+    "stats": {
+      "fleet_size": 2,
+      "logistics": 2
+    },
+    "cost": {
+      "food": 3,
+      "energy": 1
+    },
+    "special": "",
+    "flavor": "Safety in numbers.",
+    "tags": [
+      "logistics",
+      "fleet",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "adm_003",
+    "name": "Strike Commander",
+    "category": "admiral",
+    "rarity": "uncommon",
+    "stats": {
+      "fleet_size": 2,
+      "tactics": 3,
+      "attack": 2
+    },
+    "cost": {
+      "food": 4,
+      "energy": 3
+    },
+    "special": "",
+    "flavor": "Hit hard. Hit fast. Go home.",
+    "tags": [
+      "combat",
+      "tactics",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "adm_004",
+    "name": "Siege Admiral",
+    "category": "admiral",
+    "rarity": "uncommon",
+    "stats": {
+      "fleet_size": 2,
+      "attack": 4,
+      "defense": 2
+    },
+    "cost": {
+      "food": 5,
+      "energy": 4
+    },
+    "special": "Bonus damage to stations.",
+    "flavor": "Walls crumble. Always.",
+    "tags": [
+      "combat",
+      "siege",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "adm_005",
+    "name": "Exploration Admiral",
+    "category": "admiral",
+    "rarity": "rare",
+    "stats": {
+      "fleet_size": 3,
+      "navigation": 4,
+      "research": 3
+    },
+    "cost": {
+      "food": 6,
+      "energy": 4,
+      "research": 2
+    },
+    "special": "Fleet gains +2 speed in unexplored space.",
+    "flavor": "The frontier is his battlefield.",
+    "tags": [
+      "exploration",
+      "fleet",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "adm_006",
+    "name": "Defense Marshal",
+    "category": "admiral",
+    "rarity": "rare",
+    "stats": {
+      "fleet_size": 3,
+      "defense": 5,
+      "tactics": 3
+    },
+    "cost": {
+      "food": 6,
+      "energy": 5
+    },
+    "special": "Stationed fleet takes 20% less damage.",
+    "flavor": "No system falls under his watch.",
+    "tags": [
+      "defense",
+      "fleet",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "adm_007",
+    "name": "Grand Strategist",
+    "category": "admiral",
+    "rarity": "epic",
+    "stats": {
+      "fleet_size": 4,
+      "tactics": 7,
+      "attack": 3,
+      "morale": 3
+    },
+    "cost": {
+      "food": 8,
+      "energy": 6,
+      "research": 3
+    },
+    "special": "Can coordinate two fleets simultaneously.",
+    "flavor": "He sees twelve moves ahead.",
+    "tags": [
+      "tactics",
+      "fleet",
+      "capital",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "adm_008",
+    "name": "Void Tyrant",
+    "category": "admiral",
+    "rarity": "epic",
+    "stats": {
+      "fleet_size": 4,
+      "attack": 6,
+      "morale": 5,
+      "charisma": 3
+    },
+    "cost": {
+      "food": 9,
+      "energy": 7
+    },
+    "special": "Enemy fleets suffer -2 morale.",
+    "flavor": "His reputation arrives before his ships.",
+    "tags": [
+      "combat",
+      "morale",
+      "intimidation",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "adm_009",
+    "name": "Fleet Sovereign",
+    "category": "admiral",
+    "rarity": "legendary",
+    "stats": {
+      "fleet_size": 6,
+      "tactics": 8,
+      "attack": 5,
+      "defense": 5,
+      "morale": 4
+    },
+    "cost": {
+      "food": 12,
+      "energy": 10,
+      "research": 5
+    },
+    "special": "All fleet stats +10%. Flagship aura stacks.",
+    "flavor": "Armadas bend to a single will.",
+    "tags": [
+      "fleet",
+      "legendary",
+      "capital",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ],
+    "notes": "Imposing portrait of a battle-hardened admiral standing at a massive tactical holotable displaying fleet formations, dozens of ship icons arrayed in precise combat patterns. He wears a decorated dark naval greatcoat with luminous rank insignia across the shoulders, medals across the chest. Behind him through the flagship's bridge viewport, an enormous armada stretches into the distance, hundreds of warships in formation with running lights glowing. His expression is steely and absolute, hands clasped behind his back. Cool blue holographic light from below, deep space starlight from the viewport. Supreme command, unified fleet power. Digital concept art, detailed sci-fi portrait illustration, cinematic lighting, sharp focus, painterly rendering."
+  },
+  {
+    "id": "adm_010",
+    "name": "Armada Warden",
+    "category": "admiral",
+    "rarity": "rare",
+    "stats": {
+      "fleet_size": 3,
+      "defense": 4,
+      "hull": 3,
+      "logistics": 2
+    },
+    "cost": {
+      "food": 6,
+      "energy": 5,
+      "minerals": 2
+    },
+    "special": "Fleet auto-repairs 2 hull/tick.",
+    "flavor": "His ships endure what others cannot.",
+    "tags": [
+      "defense",
+      "fleet",
+      "repair",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "str_001",
+    "name": "Red Dwarf",
+    "category": "star",
+    "rarity": "common",
+    "stats": {
+      "luminosity": 2,
+      "stability": 4,
+      "planets_max": 2
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "Small, steady, eternal.",
+    "tags": [
+      "dwarf",
+      "stable",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "str_002",
+    "name": "Yellow Main Sequence",
+    "category": "star",
+    "rarity": "common",
+    "stats": {
+      "luminosity": 4,
+      "stability": 3,
+      "planets_max": 4
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "The kind of star that breeds life.",
+    "tags": [
+      "main-sequence",
+      "habitable",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "str_003",
+    "name": "Orange Giant",
+    "category": "star",
+    "rarity": "uncommon",
+    "stats": {
+      "luminosity": 5,
+      "stability": 3,
+      "planets_max": 5
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "Swollen with age, rich with possibility.",
+    "tags": [
+      "giant",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "str_004",
+    "name": "Blue Supergiant",
+    "category": "star",
+    "rarity": "rare",
+    "stats": {
+      "luminosity": 9,
+      "stability": 2,
+      "planets_max": 3,
+      "energy": 4
+    },
+    "cost": {},
+    "special": "Extreme energy output but unstable.",
+    "flavor": "Burning bright, burning fast.",
+    "tags": [
+      "supergiant",
+      "energy",
+      "unstable",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "str_005",
+    "name": "Binary System",
+    "category": "star",
+    "rarity": "rare",
+    "stats": {
+      "luminosity": 7,
+      "stability": 2,
+      "planets_max": 4,
+      "research": 3
+    },
+    "cost": {},
+    "special": "Unique orbital mechanics to study.",
+    "flavor": "Two hearts, one system.",
+    "tags": [
+      "binary",
+      "research",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "str_006",
+    "name": "White Dwarf",
+    "category": "star",
+    "rarity": "uncommon",
+    "stats": {
+      "luminosity": 3,
+      "stability": 5,
+      "planets_max": 2,
+      "research": 2
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "The ember of a once-great fire.",
+    "tags": [
+      "dwarf",
+      "stable",
+      "remnant",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "str_007",
+    "name": "Neutron Star",
+    "category": "star",
+    "rarity": "epic",
+    "stats": {
+      "luminosity": 6,
+      "stability": 4,
+      "research": 8,
+      "energy": 5
+    },
+    "cost": {},
+    "special": "Pulsar emissions boost research.",
+    "flavor": "A teaspoon weighs a billion tons.",
+    "tags": [
+      "exotic",
+      "research",
+      "energy",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "str_008",
+    "name": "Magnetar",
+    "category": "star",
+    "rarity": "epic",
+    "stats": {
+      "luminosity": 8,
+      "stability": 1,
+      "energy": 10,
+      "research": 5
+    },
+    "cost": {},
+    "special": "Dangerous but incredibly energy-rich.",
+    "flavor": "Space itself screams near its poles.",
+    "tags": [
+      "exotic",
+      "energy",
+      "dangerous",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "str_009",
+    "name": "Primordial Quasar Remnant",
+    "category": "star",
+    "rarity": "legendary",
+    "stats": {
+      "luminosity": 15,
+      "stability": 3,
+      "planets_max": 6,
+      "energy": 10,
+      "research": 8
+    },
+    "cost": {},
+    "special": "All colonies in system gain +25% output.",
+    "flavor": "A relic of creation, still burning with the first light.",
+    "tags": [
+      "exotic",
+      "legendary",
+      "megastructure",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ],
+    "notes": "A primordial quasar remnant blazing at the center of the frame, an intensely luminous core of swirling superheated plasma in vivid white, violet, and electric blue, surrounded by vast spiraling accretion jets shooting outward in opposing directions. Ancient debris rings orbit the remnant, fragments of long-destroyed worlds glowing faintly from reflected light. The surrounding space is lit with an otherworldly radiance, nearby gas clouds fluorescing in deep purples and magentas. Overwhelming primordial energy, the first light of the universe still burning. Digital concept art, detailed sci-fi illustration, cinematic dramatic lighting, vivid color palette, sharp focus, painterly rendering, centered composition."
+  },
+  {
+    "id": "str_010",
+    "name": "Brown Dwarf",
+    "category": "star",
+    "rarity": "common",
+    "stats": {
+      "luminosity": 1,
+      "stability": 5,
+      "planets_max": 1
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "Not quite a star, not quite nothing.",
+    "tags": [
+      "dwarf",
+      "dim",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "str_011",
+    "name": "Pulsar",
+    "category": "star",
+    "rarity": "rare",
+    "stats": {
+      "luminosity": 5,
+      "stability": 3,
+      "energy": 5,
+      "research": 4
+    },
+    "cost": {},
+    "special": "Provides navigation beacon to nearby systems.",
+    "flavor": "A lighthouse spinning in the dark.",
+    "tags": [
+      "exotic",
+      "navigation",
+      "energy",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_001",
+    "name": "Barren Rock",
+    "category": "planet",
+    "rarity": "common",
+    "stats": {
+      "size": 3,
+      "gravity": 2,
+      "minerals": 3
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "Ugly, but the minerals are plentiful.",
+    "tags": [
+      "barren",
+      "mining",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_002",
+    "name": "Arid Waste",
+    "category": "planet",
+    "rarity": "common",
+    "stats": {
+      "size": 3,
+      "gravity": 3,
+      "minerals": 2,
+      "energy": 1
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "Sand and silence, horizon to horizon.",
+    "tags": [
+      "arid",
+      "mining",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_003",
+    "name": "Frozen Moon",
+    "category": "planet",
+    "rarity": "common",
+    "stats": {
+      "size": 2,
+      "gravity": 1,
+      "research": 2
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "Ice hides secrets beneath.",
+    "tags": [
+      "frozen",
+      "moon",
+      "research",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_004",
+    "name": "Temperate World",
+    "category": "planet",
+    "rarity": "uncommon",
+    "stats": {
+      "size": 4,
+      "gravity": 3,
+      "ecology": 4,
+      "food": 3
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "Blue skies and open fields. A colonist's dream.",
+    "tags": [
+      "habitable",
+      "colony",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_005",
+    "name": "Ocean World",
+    "category": "planet",
+    "rarity": "uncommon",
+    "stats": {
+      "size": 4,
+      "gravity": 3,
+      "ecology": 3,
+      "food": 4,
+      "research": 1
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "Depths unexplored, teeming with life.",
+    "tags": [
+      "ocean",
+      "habitable",
+      "research",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_006",
+    "name": "Volcanic World",
+    "category": "planet",
+    "rarity": "uncommon",
+    "stats": {
+      "size": 3,
+      "gravity": 4,
+      "minerals": 5,
+      "energy": 3
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "The ground itself is fuel.",
+    "tags": [
+      "volcanic",
+      "mining",
+      "energy",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_007",
+    "name": "Gas Giant",
+    "category": "planet",
+    "rarity": "rare",
+    "stats": {
+      "size": 8,
+      "gravity": 7,
+      "energy": 5,
+      "atmosphere": 5
+    },
+    "cost": {},
+    "special": "Cannot be colonized. Orbital stations only.",
+    "flavor": "A world of storms and hydrogen seas.",
+    "tags": [
+      "gas-giant",
+      "orbital",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_008",
+    "name": "Jungle World",
+    "category": "planet",
+    "rarity": "rare",
+    "stats": {
+      "size": 4,
+      "gravity": 3,
+      "ecology": 6,
+      "food": 5,
+      "growth": 3
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "Growth unchecked, life unbounded.",
+    "tags": [
+      "habitable",
+      "jungle",
+      "growth",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_009",
+    "name": "Crystalline World",
+    "category": "planet",
+    "rarity": "epic",
+    "stats": {
+      "size": 3,
+      "gravity": 2,
+      "minerals": 8,
+      "research": 5,
+      "energy": 3
+    },
+    "cost": {},
+    "special": "Yields rare crystalline resources.",
+    "flavor": "Every surface refracts light into rainbows.",
+    "tags": [
+      "exotic",
+      "mining",
+      "research",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_010",
+    "name": "Gaia World",
+    "category": "planet",
+    "rarity": "epic",
+    "stats": {
+      "size": 5,
+      "gravity": 3,
+      "ecology": 8,
+      "food": 7,
+      "growth": 4,
+      "morale": 3
+    },
+    "cost": {},
+    "special": "Perfect habitability. All output +20%.",
+    "flavor": "As if the planet was made for us.",
+    "tags": [
+      "habitable",
+      "paradise",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_011",
+    "name": "Precursor Homeworld",
+    "category": "planet",
+    "rarity": "legendary",
+    "stats": {
+      "size": 6,
+      "gravity": 3,
+      "ecology": 5,
+      "research": 12,
+      "minerals": 6,
+      "energy": 5
+    },
+    "cost": {},
+    "special": "Ancient ruins grant unique technologies.",
+    "flavor": "They were here before us. Their gifts remain.",
+    "tags": [
+      "exotic",
+      "legendary",
+      "precursor",
+      "research",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ],
+    "notes": "A lush alien world viewed from low orbit, its surface covered in ancient precursor ruins — towering crystalline spires and geometric monoliths rising from dense alien jungle, overgrown with bioluminescent vegetation in teal and amber hues. Faint energy pulses travel along the surface ruins in geometric patterns, suggesting dormant technology still active beneath the growth. The planet's atmosphere has a faint golden shimmer, and two small moons hang in the sky. Warm golden sunlight filtering through the atmosphere, cool teal bioluminescence from below. Ancient mystery, gifts left behind by a vanished civilization. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, orbital perspective composition."
+  },
+  {
+    "id": "plt_012",
+    "name": "Tidally Locked World",
+    "category": "planet",
+    "rarity": "uncommon",
+    "stats": {
+      "size": 3,
+      "gravity": 3,
+      "energy": 3,
+      "minerals": 2,
+      "ecology": 1
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "One face burns, the other freezes. Life clings to the twilight.",
+    "tags": [
+      "exotic",
+      "habitable",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_019",
+    "name": "Spaceport",
+    "category": "building",
+    "rarity": "common",
+    "stats": {
+      "logistics": 3,
+      "speed": 1
+    },
+    "cost": {
+      "minerals": 3,
+      "energy": 1
+    },
+    "special": "",
+    "flavor": "The gateway between ground and sky.",
+    "tags": [
+      "logistics",
+      "trade",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "bld_020",
+    "name": "Dark Matter Lab",
+    "category": "building",
+    "rarity": "rare",
+    "stats": {
+      "research": 6,
+      "energy": 3
+    },
+    "cost": {
+      "energy": 6,
+      "minerals": 3,
+      "research": 2
+    },
+    "special": "Chance to discover exotic tech.",
+    "flavor": "Probing the invisible scaffolding of reality.",
+    "tags": [
+      "research",
+      "exotic",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_016",
+    "name": "Torpedo Bomber",
+    "category": "ship",
+    "rarity": "common",
+    "stats": {
+      "attack": 4,
+      "speed": 3
+    },
+    "cost": {
+      "minerals": 4,
+      "energy": 2
+    },
+    "special": "",
+    "flavor": "One shot, one kill.",
+    "tags": [
+      "combat",
+      "fast",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "shp_017",
+    "name": "Shield Frigate",
+    "category": "ship",
+    "rarity": "uncommon",
+    "stats": {
+      "defense": 5,
+      "hull": 3
+    },
+    "cost": {
+      "minerals": 5,
+      "energy": 3
+    },
+    "special": "Extends shield to adjacent ships.",
+    "flavor": "Stand behind me.",
+    "tags": [
+      "defense",
+      "support",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "cpt_013",
+    "name": "Smuggler",
+    "category": "captain",
+    "rarity": "common",
+    "stats": {
+      "speed": 3,
+      "logistics": 2
+    },
+    "cost": {
+      "food": 2
+    },
+    "special": "",
+    "flavor": "No questions asked, no cargo refused.",
+    "tags": [
+      "trade",
+      "stealth",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "ldr_013",
+    "name": "Labor Organizer",
+    "category": "leader",
+    "rarity": "common",
+    "stats": {
+      "efficiency": 3,
+      "morale": 1
+    },
+    "cost": {
+      "food": 2
+    },
+    "special": "",
+    "flavor": "Together we build.",
+    "tags": [
+      "efficiency",
+      "morale",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "adm_011",
+    "name": "Raider Admiral",
+    "category": "admiral",
+    "rarity": "uncommon",
+    "stats": {
+      "fleet_size": 2,
+      "attack": 3,
+      "speed": 3
+    },
+    "cost": {
+      "food": 4,
+      "energy": 3
+    },
+    "special": "Bonus loot from defeated fleets.",
+    "flavor": "Take everything. Leave nothing.",
+    "tags": [
+      "combat",
+      "pirate",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "str_012",
+    "name": "Trinary System",
+    "category": "star",
+    "rarity": "epic",
+    "stats": {
+      "luminosity": 10,
+      "stability": 1,
+      "planets_max": 3,
+      "energy": 6,
+      "research": 4
+    },
+    "cost": {},
+    "special": "Complex orbits yield unique research.",
+    "flavor": "Three suns dance an eternal waltz.",
+    "tags": [
+      "exotic",
+      "research",
+      "unstable",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_013",
+    "name": "Desert Oasis",
+    "category": "planet",
+    "rarity": "common",
+    "stats": {
+      "size": 3,
+      "gravity": 3,
+      "food": 2,
+      "minerals": 1
+    },
+    "cost": {},
+    "special": "",
+    "flavor": "Life persists in the harshest places.",
+    "tags": [
+      "arid",
+      "habitable",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ]
+  },
+  {
+    "id": "plt_014",
+    "name": "Ring World Fragment",
+    "category": "planet",
+    "rarity": "legendary",
+    "stats": {
+      "size": 10,
+      "gravity": 2,
+      "ecology": 6,
+      "food": 10,
+      "minerals": 8,
+      "research": 6
+    },
+    "cost": {},
+    "special": "Massive habitable surface area.",
+    "flavor": "A sliver of a god's ambition, still grander than any world.",
+    "tags": [
+      "exotic",
+      "legendary",
+      "megastructure",
+      "precursor",
+      "needs-art",
+      "ai",
+      "unbalanced"
+    ],
+    "notes": "A colossal curved fragment of a ringworld arcing across the frame, its inner surface revealing a vast habitable landscape of oceans, forests, mountain ranges, and rivers stretching along the band's interior. The broken edges of the fragment expose layered structural superstructure beneath — massive girders and support lattices of alien metal. A distant star shines through the gap where the ring is shattered, casting long dramatic shadows across the interior terrain. The scale is staggering, dwarfing everything. Warm sunlight on the inner habitable surface, cool shadow on the structural underside. Awe-inspiring ancient megastructure, a fragment grander than worlds. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, wide sweeping composition."
+  }
+]

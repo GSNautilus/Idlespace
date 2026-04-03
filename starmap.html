@@ -95,8 +95,8 @@ body {
   display: none;
 }
 
-/* ── Star Card Popup Overlay ── */
-#card-overlay {
+/* ── Star Selection Panel (right side, on single-click) ── */
+#select-panel {
   position: absolute;
   top: 0;
   right: 0;
@@ -111,10 +111,8 @@ body {
   z-index: 15;
   overflow-y: auto;
 }
-#card-overlay.visible {
-  display: flex;
-}
-#card-overlay-close {
+#select-panel.visible { display: flex; }
+#select-panel-close {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -126,7 +124,131 @@ body {
   padding: 4px 8px;
   border-radius: 4px;
 }
-#card-overlay-close:hover { color: #c8d0e0; background: #0c0e18; }
+#select-panel-close:hover { color: #c8d0e0; background: #0c0e18; }
+#select-panel-info {
+  margin-top: 12px;
+  width: 220px;
+  font-size: 11px;
+  color: #4a5a7b;
+  text-align: center;
+}
+.planet-count {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #6a7a9b;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.planet-count .count-icon { font-size: 14px; }
+.planet-count .count-value { font-weight: 600; color: #8090b0; }
+
+/* ── System View Overlay (50% centered) ── */
+#system-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70.7%;   /* sqrt(0.5) ≈ 0.707 → 50% area */
+  height: 70.7%;
+  background: rgba(5,5,8,0.95);
+  border: 1px solid #1e2744;
+  border-radius: 12px;
+  z-index: 25;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  overflow: hidden;
+}
+#system-overlay.visible {
+  display: block;
+  opacity: 1;
+}
+#system-overlay.fade-in {
+  opacity: 1;
+}
+/* Dim backdrop behind the overlay */
+#system-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 24;
+  display: none;
+}
+#system-backdrop.visible { display: block; }
+
+#system-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+#system-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: rgba(12,14,24,0.7);
+  border: 1px solid #1e2744;
+  color: #4a5a7b;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  z-index: 26;
+  transition: all 0.15s;
+}
+#system-close:hover { color: #c8d0e0; background: rgba(20,26,48,0.9); }
+
+/* Star card in corner */
+#system-star-card {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 26;
+  transform: scale(0.75);
+  transform-origin: top left;
+}
+
+/* Planet card popup */
+#system-planet-card {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 26;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+#system-planet-card.visible {
+  display: flex;
+}
+#planet-card-close {
+  background: rgba(12,14,24,0.7);
+  border: 1px solid #1e2744;
+  color: #4a5a7b;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+#planet-card-close:hover { color: #c8d0e0; background: rgba(20,26,48,0.9); }
+
+/* Detected state centered content */
+#system-detected {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 26;
+}
+#system-detected.visible {
+  display: flex;
+}
 
 /* ── Card Preview (ported from card-builder) ── */
 .card-preview {
@@ -173,6 +295,11 @@ body {
   flex: 1;
   min-height: 16px;
   line-height: 1.2;
+}
+.card-preview .card-type {
+  font-size: 9px;
+  color: #4a5a7b;
+  font-style: italic;
 }
 .card-preview .card-image {
   width: 205px;
@@ -277,7 +404,7 @@ body {
 }
 
 /* ── Action Buttons ── */
-#card-actions {
+#detected-actions {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -303,21 +430,308 @@ body {
 }
 .card-action-btn.secondary:hover { background: linear-gradient(135deg, #243060, #2e4080); }
 
-/* ── Star Info Label (below card) ── */
-#star-info {
+/* ── Detected Info Label ── */
+#detected-info {
   margin-top: 12px;
   width: 220px;
   font-size: 11px;
   color: #4a5a7b;
   text-align: center;
 }
+
+/* ── Colonize Button (in planet card popup) ── */
+#colonize-btn {
+  margin-top: 8px;
+}
+
+/* ── Colonies Button (top bar) ── */
+#colonies-btn {
+  background: #1a2040;
+  border: 1px solid #2a3460;
+  color: #8090b0;
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 10px;
+  transition: all 0.15s;
+}
+#colonies-btn:hover { background: #252f55; color: #c0d0f0; }
+
+/* ── Colonies List Overlay ── */
+#colonies-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 30;
+  display: none;
+}
+#colonies-backdrop.visible { display: block; }
+#colonies-list-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 340px;
+  max-height: 70%;
+  background: rgba(5,5,8,0.97);
+  border: 1px solid #1e2744;
+  border-radius: 12px;
+  z-index: 31;
+  display: none;
+  flex-direction: column;
+  padding: 16px;
+  overflow: hidden;
+}
+#colonies-list-overlay.visible { display: flex; }
+#colonies-list-overlay h2 {
+  font-size: 14px;
+  color: #8090b0;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+#colonies-list-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #4a5a7b;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+#colonies-list-close:hover { color: #c8d0e0; background: #0c0e18; }
+#colonies-list-items {
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.colony-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #0a0c14;
+  border: 1px solid #151a2a;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.colony-list-item:hover { background: #111628; border-color: #2a3460; }
+.colony-list-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c8d0e0;
+  flex: 1;
+}
+.colony-list-type {
+  font-size: 10px;
+  color: #4a5a7b;
+  font-style: italic;
+}
+.colony-list-rarity {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.colonies-empty {
+  font-size: 12px;
+  color: #384868;
+  text-align: center;
+  padding: 24px;
+}
+
+/* ── Colony Screen Overlay ── */
+#colony-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 34;
+  display: none;
+}
+#colony-backdrop.visible { display: block; }
+#colony-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70.7%;
+  height: 70.7%;
+  background: rgba(5,5,8,0.95);
+  border: 1px solid #1e2744;
+  border-radius: 12px;
+  z-index: 35;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  overflow: hidden;
+}
+#colony-overlay.visible { display: flex; flex-direction: column; opacity: 1; }
+#colony-overlay.fade-in { opacity: 1; }
+
+#colony-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: rgba(12,14,24,0.7);
+  border: 1px solid #1e2744;
+  color: #4a5a7b;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  z-index: 36;
+  transition: all 0.15s;
+}
+#colony-close:hover { color: #c8d0e0; background: rgba(20,26,48,0.9); }
+
+/* Colony header bar */
+#colony-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 8px 16px;
+  border-bottom: 1px solid #111828;
+  flex-shrink: 0;
+}
+#colony-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #c8d0e0;
+}
+#colony-resources {
+  display: flex;
+  gap: 12px;
+  margin-right: 32px;
+}
+.colony-res {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+}
+.colony-res-icon { font-size: 12px; }
+.colony-res-value { font-weight: 600; color: #fff; }
+.colony-res-rate { font-size: 9px; color: #6a7a9b; }
+
+/* Colony body: left sidebar + right main area */
+#colony-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Left column: leader slot + action buttons */
+#colony-left {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  border-right: 1px solid #111828;
+  gap: 12px;
+}
+#colony-left h3 {
+  font-size: 11px;
+  color: #4a5a7b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+/* Leader card slot */
+#leader-slot {
+  width: 176px;
+  height: 256px;
+  border: 2px dashed #1e2744;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2a3460;
+  font-size: 11px;
+  background: rgba(10,12,20,0.5);
+  flex-shrink: 0;
+}
+
+/* Action buttons panel */
+#colony-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.colony-action-btn {
+  padding: 7px 10px;
+  background: #0a0c14;
+  border: 1px solid #151a2a;
+  color: #6a7a9b;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+.colony-action-btn:hover { background: #111628; color: #8090b0; border-color: #2a3460; }
+.colony-action-btn.active {
+  background: #1a2540;
+  border-color: #4060c0;
+  color: #c0d0f0;
+}
+
+/* Right main area: building slots grid */
+#colony-right {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+#colony-right h3 {
+  font-size: 11px;
+  color: #4a5a7b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+#building-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  flex: 1;
+  align-content: start;
+}
+.building-slot {
+  width: 100%;
+  aspect-ratio: 11/16;
+  border: 2px dashed #1e2744;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2a3460;
+  font-size: 20px;
+  background: rgba(10,12,20,0.5);
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.building-slot:hover { border-color: #2a3a60; background: rgba(15,18,30,0.6); }
 </style>
 </head>
 <body>
 
 <!-- Top Bar -->
 <div id="top-bar">
-  <h1>Idle<span>Space</span></h1>
+  <div style="display:flex;align-items:center;gap:10px">
+    <h1>Idle<span>Space</span></h1>
+    <button id="colonies-btn" onclick="showColoniesList()">🏠 Colonies</button>
+  </div>
   <div id="resources">
     <div class="resource">
       <span class="resource-icon">⚡</span>
@@ -358,11 +772,66 @@ body {
 <div id="map-container">
   <canvas id="starmap"></canvas>
   <div id="tooltip"></div>
-  <div id="card-overlay">
-    <button id="card-overlay-close">✕</button>
-    <div id="card-preview-slot"></div>
-    <div id="card-actions"></div>
-    <div id="star-info"></div>
+  <div id="select-panel">
+    <button id="select-panel-close">✕</button>
+    <div id="select-card-slot"></div>
+    <div id="select-actions"></div>
+    <div id="select-panel-info"></div>
+  </div>
+  <div id="system-backdrop"></div>
+  <div id="system-overlay">
+    <canvas id="system-canvas"></canvas>
+    <button id="system-close">✕</button>
+    <div id="system-star-card"></div>
+    <div id="system-detected">
+      <div id="detected-card-slot"></div>
+      <div id="detected-actions"></div>
+      <div id="detected-info"></div>
+    </div>
+    <div id="system-planet-card">
+      <div id="planet-card-slot"></div>
+      <button id="planet-card-close">✕</button>
+    </div>
+  </div>
+  <!-- Colonies List -->
+  <div id="colonies-backdrop"></div>
+  <div id="colonies-list-overlay">
+    <button id="colonies-list-close">✕</button>
+    <h2>🏠 Colonies</h2>
+    <div id="colonies-list-items"></div>
+  </div>
+  <!-- Colony Screen -->
+  <div id="colony-backdrop"></div>
+  <div id="colony-overlay">
+    <button id="colony-close">✕</button>
+    <div id="colony-header">
+      <div id="colony-name">Colony Name</div>
+      <div id="colony-resources">
+        <div class="colony-res"><span class="colony-res-icon">⚡</span><span class="colony-res-value" id="col-energy">0</span><span class="colony-res-rate" id="col-rate-energy">+0/t</span></div>
+        <div class="colony-res"><span class="colony-res-icon">⛏️</span><span class="colony-res-value" id="col-minerals">0</span><span class="colony-res-rate" id="col-rate-minerals">+0/t</span></div>
+        <div class="colony-res"><span class="colony-res-icon">🔬</span><span class="colony-res-value" id="col-research">0</span><span class="colony-res-rate" id="col-rate-research">+0/t</span></div>
+        <div class="colony-res"><span class="colony-res-icon">🌾</span><span class="colony-res-value" id="col-food">0</span><span class="colony-res-rate" id="col-rate-food">+0/t</span></div>
+      </div>
+    </div>
+    <div id="colony-body">
+      <div id="colony-left">
+        <h3>Leader</h3>
+        <div id="leader-slot">No Leader</div>
+        <h3>Actions</h3>
+        <div id="colony-actions">
+          <button class="colony-action-btn" data-action="trade">Trade</button>
+          <button class="colony-action-btn" data-action="buildings">Build Buildings</button>
+          <button class="colony-action-btn" data-action="captains">Recruit Captains</button>
+          <button class="colony-action-btn" data-action="leaders">Elect Leaders</button>
+          <button class="colony-action-btn" data-action="ships">Build Ships</button>
+          <button class="colony-action-btn" data-action="terraform">Terraform</button>
+        </div>
+      </div>
+      <div id="colony-right">
+        <h3>Buildings</h3>
+        <div id="building-slots"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -407,7 +876,111 @@ const STAR_VISUALS = {
 const STAT_ICONS = {
   luminosity:"☀️", stability:"🛡️", planets_max:"🪐",
   energy:"⚡", minerals:"⛏️", research:"🔬", food:"🌾",
+  ecology:"🌿", gravity:"🌀", size:"📐", atmosphere:"💨",
+  growth:"📈", morale:"😊",
 };
+
+// ═══════════════════════════════════════════
+//  PLANET CARD TEMPLATES
+// ═══════════════════════════════════════════
+const PLANET_TEMPLATES = [
+  // Common (4)
+  { id:"pln_001", name:"Barren Rock", type:"planet", rarity:"common", stats:{size:3,gravity:2,minerals:3}, special:"", flavor:"Nothing grows here, but the ground is rich." },
+  { id:"pln_002", name:"Arid Waste", type:"planet", rarity:"common", stats:{size:3,gravity:3,minerals:2,energy:1}, special:"", flavor:"Sun-blasted plains of cracked earth." },
+  { id:"pln_003", name:"Frozen Moon", type:"planet", rarity:"common", stats:{size:2,gravity:1,research:2}, special:"", flavor:"Silent, cold, and full of secrets." },
+  { id:"pln_004", name:"Desert Oasis", type:"planet", rarity:"common", stats:{size:3,gravity:3,food:2,minerals:1}, special:"", flavor:"Life clings to scattered water sources." },
+  // Uncommon (4)
+  { id:"pln_005", name:"Temperate World", type:"planet", rarity:"uncommon", stats:{size:4,gravity:3,ecology:4,food:3}, special:"", flavor:"A gentle world with room to breathe." },
+  { id:"pln_006", name:"Ocean World", type:"planet", rarity:"uncommon", stats:{size:4,gravity:3,ecology:3,food:4,research:1}, special:"", flavor:"Endless waves hide endless depth." },
+  { id:"pln_007", name:"Volcanic World", type:"planet", rarity:"uncommon", stats:{size:3,gravity:4,minerals:5,energy:3}, special:"", flavor:"The ground never stops shaking." },
+  { id:"pln_008", name:"Tidally Locked World", type:"planet", rarity:"uncommon", stats:{size:3,gravity:3,energy:3,minerals:2,ecology:1}, special:"", flavor:"One face burns, the other freezes." },
+  // Rare (2)
+  { id:"pln_009", name:"Gas Giant", type:"planet", rarity:"rare", stats:{size:8,gravity:7,energy:5,atmosphere:5}, special:"Cannot be colonized — orbital stations only.", flavor:"A world of storms with no ground to stand on." },
+  { id:"pln_010", name:"Jungle World", type:"planet", rarity:"rare", stats:{size:4,gravity:3,ecology:6,food:5,growth:3}, special:"", flavor:"Green devours everything. Even the sky." },
+  // Epic (2)
+  { id:"pln_011", name:"Crystalline World", type:"planet", rarity:"epic", stats:{size:3,gravity:2,minerals:8,research:5,energy:3}, special:"Yields rare crystalline resources.", flavor:"The surface refracts light into impossible colors." },
+  { id:"pln_012", name:"Gaia World", type:"planet", rarity:"epic", stats:{size:5,gravity:3,ecology:8,food:7,growth:4,morale:3}, special:"Perfect habitability — all output +20%.", flavor:"As if the planet was made for us." },
+  // Legendary (2)
+  { id:"pln_013", name:"Precursor Homeworld", type:"planet", rarity:"legendary", stats:{size:6,gravity:3,ecology:5,research:12,minerals:6,energy:5}, special:"Ancient ruins grant unique technologies.", flavor:"They were here long before us. Where did they go?" },
+  { id:"pln_014", name:"Ring World Fragment", type:"planet", rarity:"legendary", stats:{size:10,gravity:2,ecology:6,food:10,minerals:8,research:6}, special:"Massive habitable surface area.", flavor:"A broken circle that still dwarfs most worlds." },
+];
+
+const PLANET_VISUALS = {
+  "Barren Rock":          { color:"#8a7a6a", glowColor:"rgba(138,122,106,0.2)", baseSize:4 },
+  "Arid Waste":           { color:"#c4a55a", glowColor:"rgba(196,165,90,0.2)", baseSize:4 },
+  "Frozen Moon":          { color:"#b0d0e8", glowColor:"rgba(176,208,232,0.25)", baseSize:3 },
+  "Desert Oasis":         { color:"#c4a860", glowColor:"rgba(196,168,96,0.2)", baseSize:4 },
+  "Temperate World":      { color:"#5aaa7a", glowColor:"rgba(90,170,122,0.3)", baseSize:5.5 },
+  "Ocean World":          { color:"#3070c0", glowColor:"rgba(48,112,192,0.3)", baseSize:5.5 },
+  "Volcanic World":       { color:"#c04020", glowColor:"rgba(192,64,32,0.35)", baseSize:4.5 },
+  "Tidally Locked World": { color:"#a08870", glowColor:"rgba(160,136,112,0.25)", baseSize:4.5 },
+  "Gas Giant":            { color:"#c89050", glowColor:"rgba(200,144,80,0.35)", baseSize:9 },
+  "Jungle World":         { color:"#2a8a30", glowColor:"rgba(42,138,48,0.3)", baseSize:5.5 },
+  "Crystalline World":    { color:"#a0c0f0", glowColor:"rgba(160,192,240,0.4)", baseSize:4 },
+  "Gaia World":           { color:"#40b080", glowColor:"rgba(64,176,128,0.35)", baseSize:6.5 },
+  "Precursor Homeworld":  { color:"#60b060", glowColor:"rgba(96,176,96,0.35)", baseSize:7 },
+  "Ring World Fragment":  { color:"#90a8c0", glowColor:"rgba(144,168,192,0.35)", baseSize:10 },
+};
+
+// ═══════════════════════════════════════════
+//  REAL STAR NAMES (IAU Catalog of Star Names)
+// ═══════════════════════════════════════════
+const STAR_NAMES = [
+  "Absolutno","Acamar","Achernar","Achird","Acrab","Acrux","Acubens","Adhafera","Adhara","Adhil",
+  "Ain","Ainalrami","Aladfar","Alasia","Albaldah","Albali","Albireo","Alchiba","Alcor","Alcyone",
+  "Aldebaran","Alderamin","Aldhanab","Aldhibah","Aldulfin","Alfirk","Algedi","Algenib","Algieba","Algol",
+  "Algorab","Alhena","Alioth","Aljanah","Alkaid","Alkalurops","Alkaphrah","Alkarab","Alkes","Almaaz",
+  "Almach","Alnair","Alnasl","Alnilam","Alnitak","Alniyat","Alphard","Alphecca","Alpheratz","Alpherg",
+  "Alrakis","Alrescha","Alruba","Alsafi","Alsciaukat","Alsephina","Alshain","Alshat","Altair","Altais",
+  "Alterf","Aludra","Alya","Alzirr","Amadioha","Anadolu","Ancha","Angetenar","Aniara","Ankaa",
+  "Anser","Antares","Arcalis","Arcturus","Arneb","Ascella","Aspidiske","Asterope","Atakoraka","Athebyne",
+  "Atik","Atlas","Atria","Avior","Axolotl","Ayeyarwady","Azelfafage","Azha","Azmidi","Baekdu",
+  "Baten Kaitos","Beemim","Beid","Belel","Belenos","Bellatrix","Berehynia","Betelgeuse","Bharani","Bibha",
+  "Biham","Bosona","Botein","Brachium","Bubup","Buna","Bunda","Canopus","Capella","Caph",
+  "Castor","Castula","Cebalrai","Ceibo","Celaeno","Cervantes","Chalawan","Chamukuy","Chaophraya","Chara",
+  "Chason","Chechia","Chertan","Citadelle","Citala","Cocibolca","Copernicus","Cujam","Cursa","Dabih",
+  "Dalim","Deneb","Denebola","Diadem","Dingolay","Diphda","Diwo","Diya","Dofida","Dombay",
+  "Dschubba","Dubhe","Dziban","Ebla","Edasich","Electra","Elgafar","Elkurud","Elnath","Eltanin",
+  "Emiw","Enif","Errai","Fafnir","Fang","Fawaris","Felis","Felixvarela","Flegetonte","Fomalhaut",
+  "Formosa","Franz","Fulu","Funi","Furud","Fuyue","Gacrux","Gakyid","Geminga","Giausar",
+  "Gienah","Ginan","Gloas","Gomeisa","Grumium","Gudja","Gumala","Guniibuu","Hadar","Haedus",
+  "Hamal","Hassaleh","Hatysa","Helvetios","Heze","Hoggar","Homam","Horna","Hunahpu","Hunor",
+  "Iklil","Imai","Inquill","Intan","Intercrus","Irena","Itonda","Izar","Jabbah","Jishui",
+  "Kaffaljidhma","Kalausi","Kamuy","Kang","Karaka","Kaveh","Keid","Khambalia","Kitalpha","Kochab",
+  "Koeia","Koit","Kornephoros","Kraz","Kurhah","Larawag","Lerna","Lesath","Libertas","Lich",
+  "Liesma","Lionrock","Lusitania","Maasym","Macondo","Mago","Mahasim","Mahsati","Maia","Malmok",
+  "Marfik","Markab","Markeb","Marohu","Marsic","Matar","Mazaalai","Mebsuta","Megrez","Meissa",
+  "Mekbuda","Meleph","Menkalinan","Menkar","Menkent","Menkib","Merak","Merga","Meridiana","Merope",
+  "Mesarthim","Miaplacidus","Mimosa","Minchir","Minelauva","Mintaka","Mira","Mirach","Miram","Mirfak",
+  "Mirzam","Misam","Mizar","Moldoveanu","Monch","Montuno","Morava","Moriah","Mothallah","Mouhoun",
+  "Mpingo","Muliphein","Muphrid","Muscida","Musica","Muspelheim","Nahn","Naledi","Naos","Nashira",
+  "Nasti","Natasha","Nekkar","Nembus","Nenque","Nervia","Nihal","Nikawiy","Nosaxa","Nunki",
+  "Nusakan","Nushagak","Nyamien","Ogma","Okab","Paikauhale","Parumleo","Peacock","Petra","Phact",
+  "Phecda","Pherkad","Phoenicia","Piautos","Pincoya","Pipirima","Pipoltr","Pleione","Poerava","Polaris",
+  "Polis","Pollux","Porrima","Praecipua","Procyon","Propus","Ran","Rana","Rapeto","Rasalas",
+  "Rasalgethi","Rasalhague","Rastaban","Regulus","Revati","Rigel","Rosaliadecastro","Rotanev","Ruchbah","Rukbat",
+  "Sabik","Saclateni","Sadachbia","Sadalbari","Sadalmelik","Sadalsuud","Sadr","Sagarmatha","Saiph","Salm",
+  "Samaya","Sansuna","Sargas","Sarin","Sceptrum","Scheat","Schedar","Segin","Seginus","Sham",
+  "Shama","Sharjah","Shaula","Sheliak","Sheratan","Sika","Sirius","Situla","Skat","Solaris",
+  "Spica","Sterrennacht","Stribor","Sualocin","Subra","Suhail","Sulafat","Syrma","Tabit","Taika",
+  "Taiyangshou","Taiyi","Talitha","Tangra","Tapecue","Tarazed","Tarf","Taygeta","Tegmine","Tejat",
+  "Terebellum","Tevel","Theemin","Thuban","Tiaki","Tianguan","Tianyi","Timir","Tislit","Titawin",
+  "Tojil","Toliman","Tonatiuh","Torcular","Tuiren","Tupa","Tupi","Tureis","Ukdah","Uklun",
+  "Unukalhai","Uruk","Vega","Veritate","Vindemiatrix","Wasat","Wazn","Wezen","Wurren","Xamidimura",
+  "Xihe","Xuange","Zaurak","Zavijava","Zhang","Zibal","Zosma","Zubenelgenubi","Zubeneschamali",
+];
+// Shuffle on load so each playthrough gets a different order
+const _shuffledStarNames = [...STAR_NAMES];
+for (let i = _shuffledStarNames.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [_shuffledStarNames[i], _shuffledStarNames[j]] = [_shuffledStarNames[j], _shuffledStarNames[i]];
+}
+let _nextStarNameIdx = 0;
+function drawStarName() {
+  if (_nextStarNameIdx < _shuffledStarNames.length) return _shuffledStarNames[_nextStarNameIdx++];
+  // Fallback: generate a synthetic name if we somehow exhaust 400+ names
+  return "Star-" + (nextStarId + Math.floor(Math.random() * 9000));
+}
 
 // Detected star visuals
 const DETECTED_VISUAL = { color:"#384868", glowColor:"rgba(56,72,104,0.2)", baseSize:3 };
@@ -429,8 +1002,36 @@ function rollStarCard() {
   const rarity = rollRarity();
   const pool = STAR_TEMPLATES.filter(t => t.rarity === rarity);
   const template = pool[Math.floor(Math.random() * pool.length)];
-  // Deep copy stats
+  // Deep copy — assign a unique proper name, keep template name as `type`
+  return { ...template, stats: { ...template.stats }, type: template.name, name: drawStarName() };
+}
+
+function rollPlanetCard() {
+  const rarity = rollRarity();
+  const pool = PLANET_TEMPLATES.filter(t => t.rarity === rarity);
+  const template = pool[Math.floor(Math.random() * pool.length)];
   return { ...template, stats: { ...template.stats } };
+}
+
+const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X"];
+
+function generatePlanets(star) {
+  if (star.planets) return; // already generated
+  const maxP = star.card.stats.planets_max || 1;
+  const count = 1 + Math.floor(Math.random() * maxP);
+  star.planets = [];
+  for (let i = 0; i < count; i++) {
+    const card = rollPlanetCard();
+    // Keep template name as `type` for visual lookup, name after parent star
+    card.type = card.name;
+    card.name = `${star.card.name} ${ROMAN[i] || (i + 1)}`;
+    star.planets.push({
+      card,
+      orbitRadius: 80 + i * 50,
+      orbitSpeed: 0.04 / (1 + i * 0.3),
+      orbitPhase: Math.random() * Math.PI * 2,
+    });
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -497,7 +1098,7 @@ function generateFrontierStars(parent) {
 // Create initial seed cluster
 function generateSeedCluster() {
   // Home star — always Yellow Main Sequence
-  const homeCard = { ...STAR_TEMPLATES[1], stats: { ...STAR_TEMPLATES[1].stats } };
+  const homeCard = { ...STAR_TEMPLATES[1], stats: { ...STAR_TEMPLATES[1].stats }, type: STAR_TEMPLATES[1].name, name: drawStarName() };
   const home = createStar(0, 0, "explored", homeCard);
 
   // Generate 4-6 neighbors
@@ -644,7 +1245,7 @@ function drawStar(ctx, star, time) {
   const isDetected = star.visibility === "detected";
   if (star.visibility === "unknown") return;
 
-  const visual = isExplored ? (STAR_VISUALS[star.card.name] || DETECTED_VISUAL) : DETECTED_VISUAL;
+  const visual = isExplored ? (STAR_VISUALS[star.card.type] || DETECTED_VISUAL) : DETECTED_VISUAL;
   const lum = isExplored ? (star.card.stats.luminosity || 3) : 2;
   const baseRadius = visual.baseSize * (1 + lum * 0.08);
 
@@ -696,7 +1297,7 @@ function drawStar(ctx, star, time) {
   }
 
   // Binary system: draw second smaller star offset
-  if (isExplored && star.card.name === "Binary System") {
+  if (isExplored && star.card.type === "Binary System") {
     const offset = radius * 1.2;
     const angle2 = time * 0.5 + star.x;
     const bx = pos.x + Math.cos(angle2) * offset;
@@ -708,7 +1309,7 @@ function drawStar(ctx, star, time) {
   }
 
   // Trinary system: draw two extra stars
-  if (isExplored && star.card.name === "Trinary System") {
+  if (isExplored && star.card.type === "Trinary System") {
     for (let i = 0; i < 2; i++) {
       const offset = radius * 1.3;
       const angle2 = time * 0.4 + star.x + i * Math.PI * 0.67;
@@ -722,7 +1323,7 @@ function drawStar(ctx, star, time) {
   }
 
   // Pulsar beams
-  if (isExplored && star.card.name === "Pulsar") {
+  if (isExplored && star.card.type === "Pulsar") {
     const beamAngle = time * 2;
     ctx.save();
     ctx.translate(pos.x, pos.y);
@@ -796,14 +1397,442 @@ function render() {
 }
 
 // ═══════════════════════════════════════════
-//  STAR CARD POPUP
+//  CARD PREVIEW RENDERER (shared)
 // ═══════════════════════════════════════════
-function renderCardPreview(card, isDetected) {
-  const slot = document.getElementById("card-preview-slot");
-  const actions = document.getElementById("card-actions");
-  const info = document.getElementById("star-info");
+function buildCardHtml(card, watermark) {
+  const statsHtml = Object.entries(card.stats)
+    .map(([key, val]) => {
+      const icon = STAT_ICONS[key] || "◆";
+      return `<div class="card-stat"><span class="card-stat-icon">${icon}</span><span class="card-stat-value">${val}</span></div>`;
+    }).join("");
+  const hasSpecial = card.special && card.special.length > 0;
+  const expandedClass = !hasSpecial ? " expanded" : "";
+  return `
+    <div class="card-preview ${card.rarity}">
+      <div class="card-bg"></div>
+      <div class="card-header">
+        <div class="card-name">${card.name}</div>
+        ${card.type ? `<div class="card-type">${card.type}</div>` : ""}
+      </div>
+      <div class="card-image">
+        ${card.image ? `<img src="${card.image}">` : (watermark || "☀️")}
+      </div>
+      <div class="card-stats${expandedClass}">${statsHtml}</div>
+      ${hasSpecial ? `<div class="card-special">${card.special}</div>` : ""}
+      <div class="card-flavor">${card.flavor}</div>
+      <div class="card-watermark">${watermark || "☀️"}</div>
+    </div>`;
+}
 
-  if (isDetected) {
+// ═══════════════════════════════════════════
+//  SYSTEM VIEW OVERLAY
+// ═══════════════════════════════════════════
+let systemAnimFrame = null;
+let systemViewStar = null;
+let hoveredPlanetIdx = null;
+let selectedPlanetIdx = null;
+
+function resizeSystemCanvas() {
+  const canvas = document.getElementById("system-canvas");
+  const overlay = document.getElementById("system-overlay");
+  // Use offsetWidth/Height since the overlay is now a sized box, not fullscreen
+  canvas.width = overlay.offsetWidth;
+  canvas.height = overlay.offsetHeight;
+}
+
+function drawSystemStar(ctx, cx, cy, star, time) {
+  const visual = STAR_VISUALS[star.card.type] || DETECTED_VISUAL;
+  const lum = star.card.stats.luminosity || 3;
+  const scale = 3.5;
+  const baseRadius = visual.baseSize * (1 + lum * 0.08) * scale;
+  const pulse = 1 + Math.sin(time * 3) * 0.05;
+  const radius = baseRadius * pulse;
+
+  // Rarity aura
+  if (star.card.rarity === "epic" || star.card.rarity === "legendary") {
+    const auraColor = RARITY_COLORS[star.card.rarity];
+    const auraRadius = radius * 3;
+    const aura = ctx.createRadialGradient(cx, cy, radius, cx, cy, auraRadius);
+    aura.addColorStop(0, auraColor + "40");
+    aura.addColorStop(1, auraColor + "00");
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(cx, cy, auraRadius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Glow
+  const glowRadius = radius * 3;
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
+  glow.addColorStop(0, visual.glowColor);
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, glowRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body
+  ctx.fillStyle = visual.color;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Core
+  const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+  coreGrad.addColorStop(0, "rgba(255,255,255,0.6)");
+  coreGrad.addColorStop(0.3, "rgba(255,255,255,0.15)");
+  coreGrad.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = coreGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Binary companion
+  if (star.card.type === "Binary System") {
+    const offset = radius * 1.2;
+    const angle2 = time * 0.5;
+    ctx.fillStyle = "#90d0f0";
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(angle2) * offset, cy + Math.sin(angle2) * offset, radius * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Trinary companions
+  if (star.card.type === "Trinary System") {
+    for (let i = 0; i < 2; i++) {
+      const offset = radius * 1.3;
+      const angle2 = time * 0.4 + i * Math.PI * 0.67;
+      ctx.fillStyle = i === 0 ? "#f0c060" : "#e09050";
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(angle2) * offset, cy + Math.sin(angle2) * offset, radius * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Pulsar beams
+  if (star.card.type === "Pulsar") {
+    const beamAngle = time * 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(beamAngle);
+    const beamLen = radius * 5;
+    const beamGrad = ctx.createLinearGradient(0, 0, beamLen, 0);
+    beamGrad.addColorStop(0, "rgba(128,224,224,0.4)");
+    beamGrad.addColorStop(1, "rgba(128,224,224,0)");
+    ctx.fillStyle = beamGrad;
+    ctx.fillRect(0, -radius * 0.3, beamLen, radius * 0.6);
+    ctx.rotate(Math.PI);
+    ctx.fillRect(0, -radius * 0.3, beamLen, radius * 0.6);
+    ctx.restore();
+  }
+
+  return radius; // return for orbit ring offset
+}
+
+function getPlanetScreenPos(planet, cx, cy, time) {
+  const angle = planet.orbitPhase + planet.orbitSpeed * time;
+  const scale = Math.min(cx, cy) / 250; // scale orbits to canvas size
+  const r = planet.orbitRadius * scale;
+  return {
+    x: cx + Math.cos(angle) * r,
+    y: cy + Math.sin(angle) * r,
+  };
+}
+
+function getPlanetScreenRadius(planet) {
+  const pv = PLANET_VISUALS[planet.card.type] || { baseSize: 5 };
+  return pv.baseSize * 1.5;
+}
+
+function renderSystemView(time) {
+  const star = systemViewStar;
+  if (!star || !star.planets) return;
+
+  const canvas = document.getElementById("system-canvas");
+  const ctx = canvas.getContext("2d");
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Background (slightly transparent — overlay bg shows through)
+  ctx.fillStyle = "rgba(5,5,8,0.3)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Background star field (subtle)
+  for (let i = 0; i < 120; i++) {
+    const bx = ((i * 137.508 + 50) % canvas.width);
+    const by = ((i * 97.231 + 30) % canvas.height);
+    const brightness = 0.1 + (i % 5) * 0.04;
+    ctx.fillStyle = `rgba(180,200,240,${brightness})`;
+    ctx.fillRect(bx, by, 0.8, 0.8);
+  }
+
+  const scale = Math.min(cx, cy) / 250;
+
+  // Orbital rings
+  for (const planet of star.planets) {
+    const r = planet.orbitRadius * scale;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(42,58,96,0.3)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Star
+  drawSystemStar(ctx, cx, cy, star, time);
+
+  // Planets
+  star.planets.forEach((planet, idx) => {
+    const pos = getPlanetScreenPos(planet, cx, cy, time);
+    const pv = PLANET_VISUALS[planet.card.type] || { color:"#888", glowColor:"rgba(128,128,128,0.3)", baseSize:5 };
+    const radius = getPlanetScreenRadius(planet);
+
+    // Glow
+    const glowR = radius * 2.5;
+    const glow = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, glowR);
+    glow.addColorStop(0, pv.glowColor);
+    glow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, glowR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rarity aura for epic/legendary
+    if (planet.card.rarity === "epic" || planet.card.rarity === "legendary") {
+      const auraColor = RARITY_COLORS[planet.card.rarity];
+      const auraR = radius * 3;
+      const aura = ctx.createRadialGradient(pos.x, pos.y, radius, pos.x, pos.y, auraR);
+      aura.addColorStop(0, auraColor + "30");
+      aura.addColorStop(1, auraColor + "00");
+      ctx.fillStyle = aura;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, auraR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Body
+    ctx.fillStyle = pv.color;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ring World Fragment — draw arc ring
+    if (planet.card.type === "Ring World Fragment") {
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius * 1.6, -0.8, 0.8);
+      ctx.strokeStyle = "rgba(144,168,192,0.6)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Tidally Locked — half dark
+    if (planet.card.type === "Tidally Locked World") {
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius, Math.PI * 0.5, Math.PI * 1.5);
+      ctx.fill();
+    }
+
+    // Volcanic glow
+    if (planet.card.type === "Volcanic World") {
+      const vGlow = ctx.createRadialGradient(pos.x, pos.y, radius * 0.3, pos.x, pos.y, radius);
+      vGlow.addColorStop(0, "rgba(255,100,20,0.3)");
+      vGlow.addColorStop(1, "rgba(255,60,10,0)");
+      ctx.fillStyle = vGlow;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Crystalline shimmer
+    if (planet.card.type === "Crystalline World") {
+      const shimmer = 0.3 + Math.sin(time * 4 + idx) * 0.15;
+      ctx.fillStyle = `rgba(200,220,255,${shimmer})`;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Gas Giant bands
+    if (planet.card.type === "Gas Giant") {
+      for (let b = -3; b <= 3; b++) {
+        const by = pos.y + b * (radius * 0.25);
+        const bandW = Math.sqrt(Math.max(0, radius * radius - (b * radius * 0.25) ** 2));
+        ctx.fillStyle = b % 2 === 0 ? "rgba(180,120,50,0.2)" : "rgba(200,150,70,0.15)";
+        ctx.fillRect(pos.x - bandW, by - 1, bandW * 2, 2);
+      }
+    }
+
+    // Precursor golden glow
+    if (planet.card.type === "Precursor Homeworld") {
+      const pGlow = ctx.createRadialGradient(pos.x, pos.y, radius * 0.5, pos.x, pos.y, radius * 1.5);
+      pGlow.addColorStop(0, "rgba(200,180,60,0.2)");
+      pGlow.addColorStop(1, "rgba(200,180,60,0)");
+      ctx.fillStyle = pGlow;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Colonized highlight (permanent green glow ring)
+    if (planet.colony) {
+      const colR = radius + 6;
+      const colGlow = ctx.createRadialGradient(pos.x, pos.y, radius, pos.x, pos.y, colR + 4);
+      colGlow.addColorStop(0, "rgba(74,155,90,0.4)");
+      colGlow.addColorStop(1, "rgba(74,155,90,0)");
+      ctx.fillStyle = colGlow;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, colR + 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(74,155,90,0.6)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, colR, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Hover ring
+    if (hoveredPlanetIdx === idx) {
+      ctx.strokeStyle = "rgba(200,220,255,0.5)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius + 4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Selection ring
+    if (selectedPlanetIdx === idx) {
+      ctx.strokeStyle = "#4a7ac0";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.lineDashOffset = -time * 30;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius + 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+    }
+
+    // Name label
+    ctx.fillStyle = "rgba(200,210,230,0.6)";
+    ctx.font = "10px 'Segoe UI', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(planet.card.name, pos.x, pos.y + radius + 14);
+  });
+}
+
+function systemLoop(timestamp) {
+  const time = timestamp / 1000;
+  renderSystemView(time);
+  systemAnimFrame = requestAnimationFrame(systemLoop);
+}
+
+function showSystemOverlay(star) {
+  selectedStarId = star.id;
+  systemViewStar = star;
+  hoveredPlanetIdx = null;
+  selectedPlanetIdx = null;
+
+  const overlay = document.getElementById("system-overlay");
+  const backdrop = document.getElementById("system-backdrop");
+  const detected = document.getElementById("system-detected");
+  const starCard = document.getElementById("system-star-card");
+  const planetCard = document.getElementById("system-planet-card");
+
+  backdrop.classList.add("visible");
+  overlay.style.display = "block";
+  requestAnimationFrame(() => overlay.classList.add("visible", "fade-in"));
+
+  planetCard.classList.remove("visible");
+
+  if (star.visibility === "detected") {
+    // Show mystery card + Explore
+    detected.classList.add("visible");
+    starCard.innerHTML = "";
+    document.getElementById("detected-card-slot").innerHTML = `
+      <div class="card-preview common" style="--rarity-color:#384868">
+        <div class="card-bg"></div>
+        <div class="card-mystery-face">
+          <div class="mystery-icon">✦</div>
+          <div class="mystery-text">Unknown Star</div>
+        </div>
+      </div>`;
+    document.getElementById("detected-actions").innerHTML =
+      `<button class="card-action-btn" onclick="exploreSelectedStar()">Explore</button>`;
+    document.getElementById("detected-info").textContent = "Send a probe to discover this star.";
+    // No system canvas
+    if (systemAnimFrame) { cancelAnimationFrame(systemAnimFrame); systemAnimFrame = null; }
+  } else {
+    // Explored — show system view
+    detected.classList.remove("visible");
+    generatePlanets(star);
+    starCard.innerHTML = buildCardHtml(star.card, "☀️");
+    resizeSystemCanvas();
+    if (systemAnimFrame) cancelAnimationFrame(systemAnimFrame);
+    systemAnimFrame = requestAnimationFrame(systemLoop);
+  }
+}
+
+function hideSystemOverlay() {
+  systemViewStar = null;
+  hoveredPlanetIdx = null;
+  selectedPlanetIdx = null;
+  const overlay = document.getElementById("system-overlay");
+  const backdrop = document.getElementById("system-backdrop");
+  overlay.classList.remove("visible", "fade-in");
+  backdrop.classList.remove("visible");
+  setTimeout(() => { overlay.style.display = "none"; }, 300);
+  if (systemAnimFrame) { cancelAnimationFrame(systemAnimFrame); systemAnimFrame = null; }
+  document.getElementById("system-detected").classList.remove("visible");
+  document.getElementById("system-planet-card").classList.remove("visible");
+}
+
+function exploreSelectedStar() {
+  const star = stars.get(selectedStarId);
+  if (!star || star.visibility !== "detected") return;
+
+  star.visibility = "explored";
+
+  for (const neighborId of star.lanes) {
+    const neighbor = stars.get(neighborId);
+    if (neighbor && neighbor.visibility === "unknown") {
+      neighbor.visibility = "detected";
+    }
+  }
+
+  generateFrontierStars(star);
+
+  // Transition to system view within overlay
+  document.getElementById("system-detected").classList.remove("visible");
+  generatePlanets(star);
+  document.getElementById("system-star-card").innerHTML = buildCardHtml(star.card, "☀️");
+  resizeSystemCanvas();
+  if (systemAnimFrame) cancelAnimationFrame(systemAnimFrame);
+  systemAnimFrame = requestAnimationFrame(systemLoop);
+}
+
+function hidePlanetCard() {
+  selectedPlanetIdx = null;
+  document.getElementById("system-planet-card").classList.remove("visible");
+}
+
+// ═══════════════════════════════════════════
+//  STAR SELECTION PANEL (single-click)
+// ═══════════════════════════════════════════
+function showSelectPanel(star) {
+  selectedStarId = star.id;
+  const panel = document.getElementById("select-panel");
+  const slot = document.getElementById("select-card-slot");
+  const actions = document.getElementById("select-actions");
+  const info = document.getElementById("select-panel-info");
+
+  panel.classList.add("visible");
+
+  if (star.visibility === "detected") {
     slot.innerHTML = `
       <div class="card-preview common" style="--rarity-color:#384868">
         <div class="card-bg"></div>
@@ -812,74 +1841,48 @@ function renderCardPreview(card, isDetected) {
           <div class="mystery-text">Unknown Star</div>
         </div>
       </div>`;
-    actions.innerHTML = `<button class="card-action-btn" onclick="exploreSelectedStar()">Explore</button>`;
+    actions.innerHTML = `<button class="card-action-btn" onclick="exploreFromPanel()">Explore</button>`;
     info.textContent = "Send a probe to discover this star.";
-    return;
+  } else {
+    slot.innerHTML = buildCardHtml(star.card, "☀️");
+    // Generate planets to know count (but don't open system view)
+    generatePlanets(star);
+    const pCount = star.planets ? star.planets.length : 0;
+    actions.innerHTML = `<button class="card-action-btn" onclick="openSystemFromPanel()">View System</button>`;
+    info.innerHTML = `
+      <div>${star.card.rarity.charAt(0).toUpperCase() + star.card.rarity.slice(1)} Star</div>
+      <div class="planet-count">
+        <span class="count-icon">🪐</span>
+        <span class="count-value">${pCount}</span>
+        <span>planet${pCount !== 1 ? 's' : ''}</span>
+      </div>`;
   }
-
-  // Explored — render full card
-  const statsHtml = Object.entries(card.stats)
-    .map(([key, val]) => {
-      const icon = STAT_ICONS[key] || "◆";
-      return `<div class="card-stat"><span class="card-stat-icon">${icon}</span><span class="card-stat-value">${val}</span></div>`;
-    }).join("");
-
-  const hasSpecial = card.special && card.special.length > 0;
-  const expandedClass = !hasSpecial ? " expanded" : "";
-
-  slot.innerHTML = `
-    <div class="card-preview ${card.rarity}">
-      <div class="card-bg"></div>
-      <div class="card-header">
-        <div class="card-name">${card.name}</div>
-      </div>
-      <div class="card-image">
-        ${card.image ? `<img src="${card.image}">` : "☀️"}
-      </div>
-      <div class="card-stats${expandedClass}">${statsHtml}</div>
-      ${hasSpecial ? `<div class="card-special">${card.special}</div>` : ""}
-      <div class="card-flavor">${card.flavor}</div>
-      <div class="card-watermark">☀️</div>
-    </div>`;
-
-  actions.innerHTML = `
-    <button class="card-action-btn secondary" disabled>View System</button>`;
-  info.textContent = `${card.rarity.charAt(0).toUpperCase() + card.rarity.slice(1)} Star`;
 }
 
-function showCardOverlay(star) {
-  selectedStarId = star.id;
-  const overlay = document.getElementById("card-overlay");
-  overlay.classList.add("visible");
-  renderCardPreview(star.card, star.visibility === "detected");
-}
-
-function hideCardOverlay() {
+function hideSelectPanel() {
   selectedStarId = null;
-  const overlay = document.getElementById("card-overlay");
-  overlay.classList.remove("visible");
+  document.getElementById("select-panel").classList.remove("visible");
 }
 
-function exploreSelectedStar() {
+function exploreFromPanel() {
   const star = stars.get(selectedStarId);
   if (!star || star.visibility !== "detected") return;
-
-  // Reveal the star
   star.visibility = "explored";
-
-  // Set neighbors to detected
   for (const neighborId of star.lanes) {
     const neighbor = stars.get(neighborId);
     if (neighbor && neighbor.visibility === "unknown") {
       neighbor.visibility = "detected";
     }
   }
-
-  // Generate new frontier
   generateFrontierStars(star);
+  showSelectPanel(star); // refresh panel with explored state
+}
 
-  // Update the popup to show the revealed card
-  renderCardPreview(star.card, false);
+function openSystemFromPanel() {
+  const star = stars.get(selectedStarId);
+  if (!star || star.visibility !== "explored") return;
+  hideSelectPanel();
+  showSystemOverlay(star);
 }
 
 // ═══════════════════════════════════════════
@@ -898,7 +1901,7 @@ function getStarAtScreen(sx, sy) {
     if (star.visibility === "unknown") continue;
     const d = distanceBetween(world, star);
     const hitRadius = star.visibility === "explored"
-      ? (STAR_VISUALS[star.card.name]?.baseSize || 4) * 2
+      ? (STAR_VISUALS[star.card.type]?.baseSize || 4) * 2
       : DETECTED_VISUAL.baseSize * 2;
     if (d < hitRadius && d < closestDist) {
       closest = star;
@@ -913,7 +1916,7 @@ const canvasEl = document.getElementById("starmap");
 const tooltip = document.getElementById("tooltip");
 
 container.addEventListener("mousedown", (e) => {
-  if (e.target.closest("#card-overlay")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#system-backdrop") || e.target.closest("#select-panel")) return;
   isDragging = true;
   dragMoved = false;
   dragStart = { x: e.clientX, y: e.clientY };
@@ -958,22 +1961,34 @@ window.addEventListener("mouseup", (e) => {
     container.classList.remove("dragging");
 
     if (!dragMoved) {
-      // Click — check for star
+      // Single click — select star or deselect
       const rect = canvasEl.getBoundingClientRect();
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
       const star = getStarAtScreen(sx, sy);
       if (star) {
-        showCardOverlay(star);
+        showSelectPanel(star);
       } else {
-        hideCardOverlay();
+        hideSelectPanel();
       }
     }
   }
 });
 
+// Double-click to enter system view
+canvasEl.addEventListener("dblclick", (e) => {
+  const rect = canvasEl.getBoundingClientRect();
+  const sx = e.clientX - rect.left;
+  const sy = e.clientY - rect.top;
+  const star = getStarAtScreen(sx, sy);
+  if (star && star.visibility === "explored") {
+    hideSelectPanel();
+    showSystemOverlay(star);
+  }
+});
+
 container.addEventListener("wheel", (e) => {
-  if (e.target.closest("#card-overlay")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel")) return;
   e.preventDefault();
   const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
   const newZoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomFactor));
@@ -991,7 +2006,253 @@ container.addEventListener("wheel", (e) => {
   camera.y -= (worldAfter.y - worldBefore.y);
 }, { passive: false });
 
-document.getElementById("card-overlay-close").addEventListener("click", hideCardOverlay);
+document.getElementById("system-close").addEventListener("click", hideSystemOverlay);
+document.getElementById("system-backdrop").addEventListener("click", hideSystemOverlay);
+document.getElementById("planet-card-close").addEventListener("click", hidePlanetCard);
+document.getElementById("select-panel-close").addEventListener("click", hideSelectPanel);
+
+// System overlay mouse interaction
+const systemCanvas = document.getElementById("system-canvas");
+
+systemCanvas.addEventListener("mousemove", (e) => {
+  if (!systemViewStar || !systemViewStar.planets) return;
+  const rect = systemCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const cx = systemCanvas.width / 2;
+  const cy = systemCanvas.height / 2;
+  const time = animTime;
+
+  let found = -1;
+  for (let i = 0; i < systemViewStar.planets.length; i++) {
+    const planet = systemViewStar.planets[i];
+    const pos = getPlanetScreenPos(planet, cx, cy, time);
+    const r = getPlanetScreenRadius(planet);
+    const dx = mx - pos.x;
+    const dy = my - pos.y;
+    if (dx * dx + dy * dy < (r + 6) * (r + 6)) {
+      found = i;
+      break;
+    }
+  }
+  hoveredPlanetIdx = found >= 0 ? found : null;
+  systemCanvas.style.cursor = found >= 0 ? "pointer" : "default";
+});
+
+systemCanvas.addEventListener("click", (e) => {
+  if (!systemViewStar || !systemViewStar.planets) return;
+  const rect = systemCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const cx = systemCanvas.width / 2;
+  const cy = systemCanvas.height / 2;
+  const time = animTime;
+
+  for (let i = 0; i < systemViewStar.planets.length; i++) {
+    const planet = systemViewStar.planets[i];
+    const pos = getPlanetScreenPos(planet, cx, cy, time);
+    const r = getPlanetScreenRadius(planet);
+    const dx = mx - pos.x;
+    const dy = my - pos.y;
+    if (dx * dx + dy * dy < (r + 6) * (r + 6)) {
+      selectedPlanetIdx = i;
+      showPlanetCard(planet);
+      return;
+    }
+  }
+  // Clicked empty space in system view — deselect planet
+  hidePlanetCard();
+});
+
+// Resize system canvas when window resizes
+window.addEventListener("resize", () => {
+  if (systemViewStar) resizeSystemCanvas();
+});
+
+// ═══════════════════════════════════════════
+//  COLONIZATION & COLONY SCREEN
+// ═══════════════════════════════════════════
+const colonies = []; // array of { starId, planetIdx, planet } references
+
+function colonizePlanet(star, planetIdx) {
+  const planet = star.planets[planetIdx];
+  if (planet.colony) return; // already colonized
+  planet.colony = {
+    population: 1,
+    buildings: [],
+    leaders: [],
+    currentProject: null,
+    projectProgress: 0,
+  };
+  colonies.push({ starId: star.id, planetIdx, planet });
+  // Refresh the planet card to show "Manage Colony" instead of "Colonize"
+  showPlanetCard(planet);
+}
+
+function showPlanetCard(planet) {
+  const slot = document.getElementById("planet-card-slot");
+  let btnHtml;
+  if (planet.colony) {
+    btnHtml = `<button class="card-action-btn" onclick="openColonyFromSystem()">Manage Colony</button>`;
+  } else {
+    btnHtml = `<button class="card-action-btn" id="colonize-btn" onclick="colonizeFromSystem()">Colonize</button>`;
+  }
+  slot.innerHTML = buildCardHtml(planet.card, "🪐") + btnHtml;
+  document.getElementById("system-planet-card").classList.add("visible");
+}
+
+function colonizeFromSystem() {
+  if (!systemViewStar || selectedPlanetIdx == null) return;
+  colonizePlanet(systemViewStar, selectedPlanetIdx);
+}
+
+function openColonyFromSystem() {
+  if (!systemViewStar || selectedPlanetIdx == null) return;
+  const planet = systemViewStar.planets[selectedPlanetIdx];
+  if (!planet.colony) return;
+  showColonyScreen(systemViewStar, selectedPlanetIdx);
+}
+
+// ── Colonies List ──
+function showColoniesList() {
+  const backdrop = document.getElementById("colonies-backdrop");
+  const overlay = document.getElementById("colonies-list-overlay");
+  const items = document.getElementById("colonies-list-items");
+
+  backdrop.classList.add("visible");
+  overlay.classList.add("visible");
+
+  if (colonies.length === 0) {
+    items.innerHTML = `<div class="colonies-empty">No colonies yet. Colonize a planet to get started.</div>`;
+    return;
+  }
+
+  items.innerHTML = colonies.map((c, i) => {
+    const rarityColor = RARITY_COLORS[c.planet.card.rarity] || "#6a7a9b";
+    return `<div class="colony-list-item" onclick="selectColonyFromList(${i})">
+      <div class="colony-list-rarity" style="background:${rarityColor}"></div>
+      <div class="colony-list-name">${c.planet.card.name}</div>
+      <div class="colony-list-type">${c.planet.card.type}</div>
+    </div>`;
+  }).join("");
+}
+
+function hideColoniesList() {
+  document.getElementById("colonies-backdrop").classList.remove("visible");
+  document.getElementById("colonies-list-overlay").classList.remove("visible");
+}
+
+function selectColonyFromList(idx) {
+  const c = colonies[idx];
+  if (!c) return;
+  hideColoniesList();
+  const star = stars.get(c.starId);
+  if (!star) return;
+  // Close any open overlays first
+  hideSystemOverlay();
+  showColonyScreen(star, c.planetIdx);
+}
+
+document.getElementById("colonies-list-close").addEventListener("click", hideColoniesList);
+document.getElementById("colonies-backdrop").addEventListener("click", hideColoniesList);
+
+// ── Colony Screen ──
+let colonyViewStar = null;
+let colonyViewPlanetIdx = null;
+
+function showColonyScreen(star, planetIdx) {
+  const planet = star.planets[planetIdx];
+  if (!planet.colony) return;
+
+  colonyViewStar = star;
+  colonyViewPlanetIdx = planetIdx;
+
+  document.getElementById("colony-name").textContent = planet.card.name;
+
+  // Resource output (all zeros for now — no buildings placed yet)
+  const res = { energy: 0, minerals: 0, research: 0, food: 0 };
+  for (const b of planet.colony.buildings) {
+    if (b && b.stats) {
+      for (const key of Object.keys(res)) {
+        res[key] += (b.stats[key] || 0);
+      }
+    }
+  }
+  document.getElementById("col-energy").textContent = res.energy;
+  document.getElementById("col-rate-energy").textContent = `+${res.energy}/t`;
+  document.getElementById("col-minerals").textContent = res.minerals;
+  document.getElementById("col-rate-minerals").textContent = `+${res.minerals}/t`;
+  document.getElementById("col-research").textContent = res.research;
+  document.getElementById("col-rate-research").textContent = `+${res.research}/t`;
+  document.getElementById("col-food").textContent = res.food;
+  document.getElementById("col-rate-food").textContent = `+${res.food}/t`;
+
+  // Building slots (12 empty slots for now)
+  const slotsContainer = document.getElementById("building-slots");
+  const slotCount = 12;
+  slotsContainer.innerHTML = "";
+  for (let i = 0; i < slotCount; i++) {
+    const slot = document.createElement("div");
+    slot.className = "building-slot";
+    slot.textContent = "+";
+    slotsContainer.appendChild(slot);
+  }
+
+  // Reset action buttons
+  document.querySelectorAll(".colony-action-btn").forEach(b => b.classList.remove("active"));
+
+  const backdrop = document.getElementById("colony-backdrop");
+  const overlay = document.getElementById("colony-overlay");
+  backdrop.classList.add("visible");
+  overlay.style.display = "flex";
+  requestAnimationFrame(() => overlay.classList.add("visible", "fade-in"));
+}
+
+function hideColonyScreen() {
+  colonyViewStar = null;
+  colonyViewPlanetIdx = null;
+  const overlay = document.getElementById("colony-overlay");
+  const backdrop = document.getElementById("colony-backdrop");
+  overlay.classList.remove("visible", "fade-in");
+  backdrop.classList.remove("visible");
+  setTimeout(() => { overlay.style.display = "none"; }, 300);
+}
+
+document.getElementById("colony-close").addEventListener("click", hideColonyScreen);
+document.getElementById("colony-backdrop").addEventListener("click", hideColonyScreen);
+
+// Action button radio behavior
+document.querySelectorAll(".colony-action-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".colony-action-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+
+// Double-click planet in system view to open colony screen
+systemCanvas.addEventListener("dblclick", (e) => {
+  if (!systemViewStar || !systemViewStar.planets) return;
+  const rect = systemCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const cx = systemCanvas.width / 2;
+  const cy = systemCanvas.height / 2;
+  const time = animTime;
+
+  for (let i = 0; i < systemViewStar.planets.length; i++) {
+    const planet = systemViewStar.planets[i];
+    const pos = getPlanetScreenPos(planet, cx, cy, time);
+    const r = getPlanetScreenRadius(planet);
+    const dx = mx - pos.x;
+    const dy = my - pos.y;
+    if (dx * dx + dy * dy < (r + 6) * (r + 6)) {
+      if (planet.colony) {
+        showColonyScreen(systemViewStar, i);
+      }
+      return;
+    }
+  }
+});
 
 // Speed controls
 document.querySelectorAll("#speed-controls button").forEach(btn => {

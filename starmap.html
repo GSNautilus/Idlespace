@@ -151,6 +151,8 @@ body {
   transform: translate(-50%, -50%);
   width: 81%;
   height: 81%;
+  max-width: 1400px;
+  max-height: 900px;
   background: rgba(5,5,8,0.95);
   border: 1px solid #1e2744;
   border-radius: 12px;
@@ -300,6 +302,19 @@ body {
   font-size: 9px;
   color: #4a5a7b;
   font-style: italic;
+}
+.card-preview .card-cost-badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  z-index: 3;
+  background: rgba(10,10,20,0.85);
+  border: 1px solid #4a5a7b;
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-size: 9px;
+  color: #d4af37;
+  white-space: nowrap;
 }
 .card-preview .card-image {
   width: 205px;
@@ -563,6 +578,8 @@ body {
   transform: translate(-50%, -50%);
   width: 81%;
   height: 81%;
+  max-width: 1400px;
+  max-height: 900px;
   background: rgba(5,5,8,0.95);
   border: 1px solid #1e2744;
   border-radius: 12px;
@@ -792,6 +809,20 @@ body {
   border-radius: 10px;
   z-index: 2;
 }
+.deck-draw-cost {
+  position: absolute;
+  bottom: -8px;
+  right: -6px;
+  background: rgba(20,20,40,0.9);
+  border: 1px solid #d4af37;
+  color: #d4af37;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 6px;
+  z-index: 2;
+  white-space: nowrap;
+}
 .deck-empty {
   width: 120px;
   height: 174px;
@@ -935,6 +966,73 @@ body {
   transition: all 0.15s;
 }
 #card-select-discard-all:hover { background: rgba(160,40,40,0.8); color: #e0a0a0; }
+
+/* Research Panel */
+#research-backdrop {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 50;
+}
+#research-backdrop.visible { display: flex; align-items: center; justify-content: center; }
+#research-overlay {
+  background: #06080c;
+  border: 1px solid #1a2040;
+  border-radius: 10px;
+  width: 700px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 20px;
+}
+#research-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+#research-header h2 { margin: 0; color: #a0b4d0; font-size: 18px; }
+#research-header .close-btn {
+  background: none; border: none; color: #6a7a9b; font-size: 16px; cursor: pointer;
+}
+#research-active {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: rgba(74,122,192,0.1);
+  border: 1px solid #1a2a50;
+  border-radius: 8px;
+}
+#research-active:empty { display: none; }
+.research-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid #1a2040;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.research-item:hover { background: rgba(74,122,192,0.1); }
+.research-item.researched { opacity: 0.4; cursor: default; }
+.research-item.active { border-color: #4a7ac0; background: rgba(74,122,192,0.15); }
+.research-item .ri-name { flex: 1; color: #c0d0e0; font-size: 13px; }
+.research-item .ri-rarity { font-size: 10px; padding: 2px 6px; border-radius: 4px; }
+.research-item .ri-cost { color: #a4e4a4; font-size: 12px; white-space: nowrap; }
+.research-item .ri-category { color: #6a7a9b; font-size: 11px; }
+.research-progress {
+  height: 6px;
+  background: #1a2040;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.research-progress-bar {
+  height: 100%;
+  background: #4a9b5a;
+  transition: width 0.3s;
+}
 </style>
 </head>
 <body>
@@ -944,33 +1042,28 @@ body {
   <div style="display:flex;align-items:center;gap:10px">
     <h1>Idle<span>Space</span></h1>
     <button id="colonies-btn" onclick="showColoniesList()">🏠 Colonies</button>
+    <button id="research-btn" onclick="showResearchPanel()">🔬 Research</button>
   </div>
-  <div id="resources">
-    <div class="resource">
-      <span class="resource-icon">⚡</span>
-      <span class="resource-value" id="res-energy">0</span>
-      <span class="resource-rate" id="rate-energy">+0/s</span>
-      <span class="resource-label">Energy</span>
-    </div>
-    <div class="resource">
-      <span class="resource-icon">⛏️</span>
-      <span class="resource-value" id="res-minerals">0</span>
-      <span class="resource-rate" id="rate-minerals">+0/s</span>
-      <span class="resource-label">Minerals</span>
-    </div>
-    <div class="resource">
-      <span class="resource-icon">🔬</span>
-      <span class="resource-value" id="res-research">0</span>
-      <span class="resource-rate" id="rate-research">+0/s</span>
-      <span class="resource-label">Research</span>
-    </div>
-    <div class="resource">
-      <span class="resource-icon">🌾</span>
-      <span class="resource-value" id="res-food">0</span>
-      <span class="resource-rate" id="rate-food">+0/s</span>
-      <span class="resource-label">Food</span>
-    </div>
-  </div>
+  <div id="resources"></div>
+  <script>
+  // Generate resource display from RESOURCE_DEFS (runs immediately)
+  (function() {
+    const container = document.getElementById("resources");
+    const defs = [
+      { id: "credits",  icon: "💰", name: "Credits" },
+      { id: "energy",   icon: "⚡", name: "Energy" },
+      { id: "minerals", icon: "⛏️", name: "Minerals" },
+      { id: "research", icon: "🔬", name: "Research" },
+      { id: "food",     icon: "🌾", name: "Food" },
+    ];
+    for (const d of defs) {
+      const div = document.createElement("div");
+      div.className = "resource";
+      div.innerHTML = `<span class="resource-icon">${d.icon}</span><span class="resource-value" id="res-${d.id}">0</span><span class="resource-rate" id="rate-${d.id}">+0/s</span><span class="resource-label">${d.name}</span>`;
+      container.appendChild(div);
+    }
+  })();
+  </script>
   <div id="speed-controls">
     <button data-speed="0">⏸</button>
     <button data-speed="0.25">¼×</button>
@@ -1022,12 +1115,25 @@ body {
         <div id="colony-name">Colony Name</div>
         <div id="colony-pop" style="font-size:12px;color:#6a7a9b;">👤 0/0</div>
       </div>
-      <div id="colony-resources">
-        <div class="colony-res"><span class="colony-res-icon">⚡</span><span class="colony-res-value" id="col-energy">0</span><span class="colony-res-rate" id="col-rate-energy">+0/t</span></div>
-        <div class="colony-res"><span class="colony-res-icon">⛏️</span><span class="colony-res-value" id="col-minerals">0</span><span class="colony-res-rate" id="col-rate-minerals">+0/t</span></div>
-        <div class="colony-res"><span class="colony-res-icon">🔬</span><span class="colony-res-value" id="col-research">0</span><span class="colony-res-rate" id="col-rate-research">+0/t</span></div>
-        <div class="colony-res"><span class="colony-res-icon">🌾</span><span class="colony-res-value" id="col-food">0</span><span class="colony-res-rate" id="col-rate-food">+0/t</span></div>
-      </div>
+      <div id="colony-resources"></div>
+      <script>
+      (function() {
+        const cr = document.getElementById("colony-resources");
+        const defs = [
+          { id: "credits",  icon: "💰" },
+          { id: "energy",   icon: "⚡" },
+          { id: "minerals", icon: "⛏️" },
+          { id: "research", icon: "🔬" },
+          { id: "food",     icon: "🌾" },
+        ];
+        for (const d of defs) {
+          const div = document.createElement("div");
+          div.className = "colony-res";
+          div.innerHTML = `<span class="colony-res-icon">${d.icon}</span><span class="colony-res-value" id="col-${d.id}">0</span><span class="colony-res-rate" id="col-rate-${d.id}">+0/t</span>`;
+          cr.appendChild(div);
+        }
+      })();
+      </script>
     </div>
     <div id="colony-body">
       <div id="colony-left">
@@ -1062,6 +1168,18 @@ body {
       <div id="card-select-options"></div>
       <button id="card-select-discard-all">Discard All</button>
     </div>
+  </div>
+</div>
+
+<!-- Research Panel Overlay -->
+<div id="research-backdrop" onclick="if(event.target===this)hideResearchPanel()">
+  <div id="research-overlay">
+    <div id="research-header">
+      <h2>🔬 Research</h2>
+      <button class="close-btn" onclick="hideResearchPanel()">✕</button>
+    </div>
+    <div id="research-active"></div>
+    <div id="research-list"></div>
   </div>
 </div>
 
@@ -1105,7 +1223,7 @@ const STAR_VISUALS = {
 
 const STAT_ICONS = {
   luminosity:"☀️", stability:"🛡️", planets_max:"🪐",
-  energy:"⚡", minerals:"⛏️", research:"🔬", food:"🌾",
+  credits:"💰", energy:"⚡", minerals:"⛏️", research:"🔬", food:"🌾",
   ecology:"🌿", gravity:"🌀", size:"📐", atmosphere:"💨",
   growth:"📈", morale:"😊", efficiency:"⚙️", engineering:"🔧",
   charisma:"💬", logistics:"📦", diplomacy:"🤝", defense:"🛡️",
@@ -1159,26 +1277,31 @@ const PLANET_VISUALS = {
 //  BUILDING / LEADER / CAPTAIN / SHIP TEMPLATES
 // ═══════════════════════════════════════════
 const BUILDING_TEMPLATES = [
+  // Common — no upkeep, basic production, no research required
   { id:"bld_001", name:"Solar Array", category:"building", rarity:"common", stats:{energy:3}, cost:{minerals:2}, special:"", flavor:"Harnessing the light of distant suns." },
   { id:"bld_002", name:"Mining Outpost", category:"building", rarity:"common", stats:{minerals:3}, cost:{energy:2}, special:"", flavor:"Deep core extractors never rest." },
   { id:"bld_003", name:"Research Lab", category:"building", rarity:"common", stats:{research:3}, cost:{energy:2,minerals:1}, special:"", flavor:"Knowledge is the ultimate resource." },
   { id:"bld_004", name:"Hydroponics Bay", category:"building", rarity:"common", stats:{food:3}, cost:{energy:1,minerals:1}, special:"", flavor:"Life finds a way, even in the void." },
-  { id:"bld_005", name:"Fusion Reactor", category:"building", rarity:"uncommon", stats:{energy:5}, cost:{minerals:4,research:1}, special:"", flavor:"Atoms split, power flows." },
-  { id:"bld_006", name:"Ore Refinery", category:"building", rarity:"uncommon", stats:{minerals:5,energy:1}, cost:{energy:3}, special:"", flavor:"Raw stone becomes refined wealth." },
-  { id:"bld_007", name:"Data Archive", category:"building", rarity:"uncommon", stats:{research:5}, cost:{energy:3,minerals:2}, special:"", flavor:"Every discovery preserved for eternity." },
-  { id:"bld_008", name:"Bio Dome", category:"building", rarity:"uncommon", stats:{food:5,morale:1}, cost:{energy:2,minerals:2}, special:"", flavor:"A garden among the stars." },
-  { id:"bld_009", name:"Quantum Computer", category:"building", rarity:"rare", stats:{research:7,energy:2}, cost:{energy:5,minerals:4}, special:"Boosts all research output by 10%.", flavor:"Processing power beyond mortal comprehension." },
-  { id:"bld_010", name:"Stellar Foundry", category:"building", rarity:"rare", stats:{minerals:7,energy:2}, cost:{energy:6,food:2}, special:"", flavor:"Forged in the heat of captured stars." },
-  { id:"bld_011", name:"Antimatter Plant", category:"building", rarity:"epic", stats:{energy:12}, cost:{minerals:8,research:4}, special:"Powers adjacent buildings for free.", flavor:"The annihilation of matter feeds the empire." },
-  { id:"bld_012", name:"Megastructure Scaffold", category:"building", rarity:"epic", stats:{minerals:10,energy:4}, cost:{energy:10,research:5}, special:"Unlocks tier-3 buildings.", flavor:"The skeleton of something immense takes shape." },
-  { id:"bld_013", name:"Orbital Farm Ring", category:"building", rarity:"rare", stats:{food:7,growth:2}, cost:{energy:4,minerals:3}, special:"", flavor:"Endless fields circling the world below." },
-  { id:"bld_014", name:"Dyson Collector", category:"building", rarity:"legendary", stats:{energy:18,research:5}, cost:{minerals:15,research:8}, special:"Energy output scales with star luminosity.", flavor:"To harness a star is to hold infinity." },
-  { id:"bld_015", name:"Nanite Assembler", category:"building", rarity:"epic", stats:{minerals:10,efficiency:3}, cost:{energy:7,research:5}, special:"Reduces all building costs by 15%.", flavor:"Molecule by molecule, a world remade." },
-  { id:"bld_016", name:"Colony Hub", category:"building", rarity:"common", stats:{food:2,morale:2}, cost:{minerals:3}, special:"", flavor:"Where settlers first call home." },
-  { id:"bld_017", name:"Shield Generator", category:"building", rarity:"uncommon", stats:{defense:4}, cost:{energy:4,minerals:2}, special:"", flavor:"An invisible dome of safety." },
-  { id:"bld_018", name:"Terraform Engine", category:"building", rarity:"legendary", stats:{food:15,growth:5,ecology:3}, cost:{energy:12,minerals:10,research:6}, special:"Gradually improves planet habitability.", flavor:"Rewriting the laws of a world." },
-  { id:"bld_019", name:"Spaceport", category:"building", rarity:"common", stats:{logistics:3,speed:1}, cost:{minerals:3,energy:1}, special:"", flavor:"The gateway between ground and sky." },
-  { id:"bld_020", name:"Dark Matter Lab", category:"building", rarity:"rare", stats:{research:6,energy:3}, cost:{energy:6,minerals:3,research:2}, special:"Chance to discover exotic tech.", flavor:"Probing the invisible scaffolding of reality." },
+  { id:"bld_016", name:"Colony Hub", category:"building", rarity:"common", stats:{food:2,credits:5}, cost:{minerals:3}, special:"", flavor:"Where settlers first call home." },
+  { id:"bld_019", name:"Spaceport", category:"building", rarity:"common", stats:{credits:8}, cost:{minerals:3,energy:1}, special:"", flavor:"The gateway between ground and sky." },
+  // Uncommon — some upkeep, better efficiency
+  { id:"bld_005", name:"Fusion Reactor", category:"building", rarity:"uncommon", stats:{energy:6}, upkeep:{minerals:1}, cost:{minerals:4,research:1}, special:"", flavor:"Atoms split, power flows." },
+  { id:"bld_006", name:"Ore Refinery", category:"building", rarity:"uncommon", stats:{minerals:5}, upkeep:{energy:1}, cost:{energy:3}, special:"", flavor:"Raw stone becomes refined wealth." },
+  { id:"bld_007", name:"Data Archive", category:"building", rarity:"uncommon", stats:{research:5}, upkeep:{energy:1}, cost:{energy:3,minerals:2}, special:"", flavor:"Every discovery preserved for eternity." },
+  { id:"bld_008", name:"Bio Dome", category:"building", rarity:"uncommon", stats:{food:5}, cost:{energy:2,minerals:2}, special:"", flavor:"A garden among the stars." },
+  { id:"bld_017", name:"Shield Generator", category:"building", rarity:"uncommon", stats:{defense:4}, upkeep:{energy:2}, cost:{energy:4,minerals:2}, special:"", flavor:"An invisible dome of safety." },
+  // Rare — meaningful upkeep, strong production, specials
+  { id:"bld_009", name:"Quantum Computer", category:"building", rarity:"rare", stats:{research:8}, upkeep:{energy:3}, cost:{energy:5,minerals:4}, special:"Boosts all research output by 10%.", flavor:"Processing power beyond mortal comprehension." },
+  { id:"bld_010", name:"Stellar Foundry", category:"building", rarity:"rare", stats:{minerals:8}, upkeep:{energy:3,food:1}, cost:{energy:6,food:2}, special:"", flavor:"Forged in the heat of captured stars." },
+  { id:"bld_013", name:"Orbital Farm Ring", category:"building", rarity:"rare", stats:{food:8}, upkeep:{energy:2}, cost:{energy:4,minerals:3}, special:"", flavor:"Endless fields circling the world below." },
+  { id:"bld_020", name:"Dark Matter Lab", category:"building", rarity:"rare", stats:{research:7}, upkeep:{energy:3,credits:10}, cost:{energy:6,minerals:3,research:2}, special:"Chance to discover exotic tech.", flavor:"Probing the invisible scaffolding of reality." },
+  // Epic — heavy upkeep, powerful effects
+  { id:"bld_011", name:"Antimatter Plant", category:"building", rarity:"epic", stats:{energy:15}, upkeep:{minerals:3,credits:15}, cost:{minerals:8,research:4}, special:"Powers adjacent buildings for free.", flavor:"The annihilation of matter feeds the empire." },
+  { id:"bld_012", name:"Megastructure Scaffold", category:"building", rarity:"epic", stats:{minerals:12,energy:4}, upkeep:{energy:4,credits:20}, cost:{energy:10,research:5}, special:"Unlocks tier-3 buildings.", flavor:"The skeleton of something immense takes shape." },
+  { id:"bld_015", name:"Nanite Assembler", category:"building", rarity:"epic", stats:{minerals:10}, upkeep:{energy:4,research:2}, cost:{energy:7,research:5}, special:"Reduces all building costs by 15%.", flavor:"Molecule by molecule, a world remade." },
+  // Legendary — game-changing, expensive upkeep
+  { id:"bld_014", name:"Dyson Collector", category:"building", rarity:"legendary", stats:{energy:20,research:5}, upkeep:{minerals:5,credits:30}, cost:{minerals:15,research:8}, special:"Energy output scales with star luminosity.", flavor:"To harness a star is to hold infinity." },
+  { id:"bld_018", name:"Terraform Engine", category:"building", rarity:"legendary", stats:{food:15}, upkeep:{energy:6,minerals:3,credits:25}, cost:{energy:12,minerals:10,research:6}, special:"Gradually improves planet habitability.", flavor:"Rewriting the laws of a world." },
 ];
 
 const LEADER_TEMPLATES = [
@@ -1245,11 +1368,16 @@ const ACTION_TO_CATEGORY = { buildings:"building", captains:"captain", leaders:"
 function rollCardFromCategory(category) {
   const pool = CATEGORY_TEMPLATES[category];
   if (!pool) return null;
+  // Filter to only researched cards for gated categories
+  const available = RESEARCH_GATED_CATEGORIES.includes(category)
+    ? pool.filter(t => researchedCards.has(t.id))
+    : pool;
+  if (available.length === 0) return null;
   const rarity = rollRarity();
-  const matches = pool.filter(t => t.rarity === rarity);
-  const fallback = matches.length > 0 ? matches : pool;
+  const matches = available.filter(t => t.rarity === rarity);
+  const fallback = matches.length > 0 ? matches : available;
   const template = fallback[Math.floor(Math.random() * fallback.length)];
-  return { ...template, stats: { ...template.stats }, cost: { ...template.cost } };
+  return { ...template, stats: { ...template.stats }, cost: { ...(template.cost || {}) }, upkeep: { ...(template.upkeep || {}) } };
 }
 
 // ═══════════════════════════════════════════
@@ -1847,6 +1975,16 @@ function buildCardHtml(card, watermark) {
       const icon = STAT_ICONS[key] || "◆";
       return `<div class="card-stat"><span class="card-stat-icon">${icon}</span><span class="card-stat-value">${val}</span></div>`;
     }).join("");
+  // Upkeep display (shown as red consumption stats)
+  const upkeepHtml = card.upkeep ? Object.entries(card.upkeep)
+    .map(([key, val]) => {
+      const icon = STAT_ICONS[key] || "◆";
+      return `<div class="card-stat upkeep"><span class="card-stat-icon">${icon}</span><span class="card-stat-value" style="color:#e05050">-${val}</span></div>`;
+    }).join("") : "";
+  // Cost badge (top-right)
+  const costHtml = card.cost ? Object.entries(card.cost)
+    .map(([key, val]) => `${STAT_ICONS[key] || ""}${val}`)
+    .join(" ") : "";
   const hasSpecial = card.special && card.special.length > 0;
   const expandedClass = !hasSpecial ? " expanded" : "";
   return `
@@ -1856,10 +1994,11 @@ function buildCardHtml(card, watermark) {
         <div class="card-name">${card.name}</div>
         ${card.type ? `<div class="card-type">${card.type}</div>` : ""}
       </div>
+      ${costHtml ? `<div class="card-cost-badge">${costHtml}</div>` : ""}
       <div class="card-image">
         ${card.image ? `<img src="${card.image}">` : (watermark || "☀️")}
       </div>
-      <div class="card-stats${expandedClass}">${statsHtml}</div>
+      <div class="card-stats${expandedClass}">${statsHtml}${upkeepHtml}</div>
       ${hasSpecial ? `<div class="card-special">${card.special}</div>` : ""}
       <div class="card-flavor">${card.flavor}</div>
       <div class="card-watermark">${watermark || "☀️"}</div>
@@ -2360,7 +2499,7 @@ const canvasEl = document.getElementById("starmap");
 const tooltip = document.getElementById("tooltip");
 
 container.addEventListener("mousedown", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#system-backdrop") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colony-backdrop") || e.target.closest("#colonies-list-overlay") || e.target.closest("#colonies-backdrop") || e.target.closest("#card-select-backdrop")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#system-backdrop") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colony-backdrop") || e.target.closest("#colonies-list-overlay") || e.target.closest("#colonies-backdrop") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop")) return;
   isDragging = true;
   dragMoved = false;
   dragStart = { x: e.clientX, y: e.clientY };
@@ -2432,7 +2571,7 @@ canvasEl.addEventListener("dblclick", (e) => {
 });
 
 container.addEventListener("wheel", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#card-select-backdrop")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop")) return;
   e.preventDefault();
   const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
   const newZoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomFactor));
@@ -2519,23 +2658,123 @@ window.addEventListener("resize", () => {
 // ═══════════════════════════════════════════
 //  GLOBAL RESOURCES & ECONOMY
 // ═══════════════════════════════════════════
-const resources = { energy: 5000, minerals: 5000, research: 5000, food: 5000 };
+const RESOURCE_DEFS = [
+  { id: "credits",  name: "Credits",  icon: "💰", color: "#d4af37", category: "base" },
+  { id: "energy",   name: "Energy",   icon: "⚡", color: "#f0c040", category: "base" },
+  { id: "minerals", name: "Minerals", icon: "⛏️", color: "#8ab4f8", category: "base" },
+  { id: "research", name: "Research", icon: "🔬", color: "#a4e4a4", category: "base" },
+  { id: "food",     name: "Food",     icon: "🌾", color: "#e8c06a", category: "base" },
+];
+const RESOURCE_IDS = RESOURCE_DEFS.map(r => r.id);
+const resources = {};
+for (const r of RESOURCE_DEFS) resources[r.id] = r.id === "credits" ? 500 : 5000;
 let gameSpeed = 1;
 let lastTickTime = 0;
 let tickAccumulator = 0;
 
+// Card draw cost escalation
+const DRAW_BASE_COST = 10;
+let drawCostMultiplier = 1;
+const DRAW_COST_DECAY_HALF_LIFE = 60; // seconds to halve multiplier back toward 1
+
+// Colony upkeep
+const COLONY_UPKEEP_BASE = 10;
+const COLONY_UPKEEP_EXPONENT = 1.5;
+
+// Population system
+const POP_LEVELS = [
+  { level: 1,  label: "100K", people: 100000,            foodMaint: 1 },
+  { level: 2,  label: "1M",   people: 1000000,           foodMaint: 3 },
+  { level: 3,  label: "10M",  people: 10000000,          foodMaint: 6 },
+  { level: 4,  label: "100M", people: 100000000,         foodMaint: 10 },
+  { level: 5,  label: "500M", people: 500000000,         foodMaint: 15 },
+  { level: 6,  label: "1B",   people: 1000000000,        foodMaint: 22 },
+  { level: 7,  label: "5B",   people: 5000000000,        foodMaint: 30 },
+  { level: 8,  label: "50B",  people: 50000000000,       foodMaint: 42 },
+  { level: 9,  label: "200B", people: 200000000000,      foodMaint: 58 },
+  { level: 10, label: "1T",   people: 1000000000000,     foodMaint: 80 },
+];
+
+function getPopLabel(pop) {
+  const entry = POP_LEVELS[Math.min(pop, POP_LEVELS.length) - 1];
+  return entry ? entry.label : pop.toString();
+}
+
+function getFoodMaintenance(pop) {
+  const entry = POP_LEVELS[Math.min(pop, POP_LEVELS.length) - 1];
+  return entry ? entry.foodMaint : 0;
+}
+
+function getGrowthThreshold(nextLevel) {
+  return 100 * nextLevel * nextLevel;
+}
+
+// Research system
+const RESEARCH_COSTS_BY_RARITY = {
+  common: 0,
+  uncommon: 100,
+  rare: 350,
+  epic: 1000,
+  legendary: 3000,
+};
+const researchedCards = new Set(); // card IDs that have been researched
+let activeResearch = null;         // { cardId, templateRef, cost, progress }
+
+// Categories that require research to draw
+const RESEARCH_GATED_CATEGORIES = ["building", "ship"];
+
+function initResearch() {
+  // Auto-unlock all common building/ship cards + all non-gated categories
+  for (const [catName, templates] of Object.entries(CATEGORY_TEMPLATES)) {
+    for (const t of templates) {
+      if (!RESEARCH_GATED_CATEGORIES.includes(catName) || t.rarity === "common") {
+        researchedCards.add(t.id);
+      }
+    }
+  }
+}
+
+function getDrawCost() {
+  return Math.ceil(DRAW_BASE_COST * drawCostMultiplier);
+}
+
+function getColonyUpkeep() {
+  let total = 0;
+  for (let i = 0; i < colonies.length; i++) {
+    if (i === 0) continue; // first colony is free
+    total += COLONY_UPKEEP_BASE * Math.pow(i + 1, COLONY_UPKEEP_EXPONENT);
+  }
+  return Math.ceil(total);
+}
+
+function getTradeIncome(colony) {
+  if (!colony.activeAction || colony.activeAction !== "trade") return 0;
+  return colony.population * 50;
+}
+
 function getColonyOutput(colony) {
-  const out = { energy:0, minerals:0, research:0, food:0 };
-  for (const b of colony.buildings) {
+  const out = {};
+  for (const id of RESOURCE_IDS) out[id] = 0;
+  // Only count buildings in unlocked slots (up to population)
+  for (let i = 0; i < colony.population; i++) {
+    const b = colony.buildings[i];
     if (b && b.stats) {
-      for (const k of Object.keys(out)) out[k] += (b.stats[k] || 0);
+      for (const id of RESOURCE_IDS) out[id] += (b.stats[id] || 0);
+    }
+    if (b && b.upkeep) {
+      for (const id of RESOURCE_IDS) out[id] -= (b.upkeep[id] || 0);
     }
   }
   for (const l of colony.leaders) {
     if (l && l.stats) {
-      for (const k of Object.keys(out)) out[k] += (l.stats[k] || 0);
+      for (const id of RESOURCE_IDS) out[id] += (l.stats[id] || 0);
+    }
+    if (l && l.upkeep) {
+      for (const id of RESOURCE_IDS) out[id] -= (l.upkeep[id] || 0);
     }
   }
+  // Food maintenance for population
+  out.food -= getFoodMaintenance(colony.population);
   return out;
 }
 
@@ -2544,10 +2783,18 @@ function tickEconomy(dt) {
   const scaledDt = dt * gameSpeed;
   tickAccumulator += scaledDt;
 
-  // Card generation timers (every colony with activeAction)
+  // Draw cost multiplier decay (halves every DRAW_COST_DECAY_HALF_LIFE seconds)
+  if (drawCostMultiplier > 1.01) {
+    const decayRate = Math.log(2) / DRAW_COST_DECAY_HALF_LIFE;
+    drawCostMultiplier = 1 + (drawCostMultiplier - 1) * Math.exp(-decayRate * scaledDt);
+    if (drawCostMultiplier < 1.01) drawCostMultiplier = 1;
+  }
+
+  // Card generation timers (every colony with activeAction, except Trade)
   for (const c of colonies) {
     const col = c.planet.colony;
     if (!col || !col.activeAction) continue;
+    if (col.activeAction === "trade") continue; // Trade generates credits, not cards
     const deckSize = col.deck.length;
     const genInterval = 10 * Math.pow(3, deckSize); // exponential: 10s, 30s, 90s, 270s...
     col.genTimer += scaledDt;
@@ -2565,10 +2812,55 @@ function tickEconomy(dt) {
       const col = c.planet.colony;
       if (!col) continue;
       const out = getColonyOutput(col);
-      resources.energy += out.energy;
-      resources.minerals += out.minerals;
-      resources.research += out.research;
-      resources.food += out.food;
+      for (const id of RESOURCE_IDS) resources[id] += (out[id] || 0);
+      // Trade income
+      resources.credits += getTradeIncome(col);
+      // Population growth / starvation
+      const foodRate = out.food; // net food including maintenance
+      if (foodRate >= 0 && col.population < col.maxPopulation) {
+        col.growthProgress += foodRate;
+        const threshold = getGrowthThreshold(col.population + 1);
+        if (col.growthProgress >= threshold) {
+          col.growthProgress = 0;
+          col.population = Math.min(col.population + 1, col.maxPopulation);
+          colonyDirty = true;
+        }
+        col.starvationTimer = 0;
+      } else if (foodRate < 0) {
+        col.growthProgress = 0;
+        col.starvationTimer += 1;
+        if (col.starvationTimer >= 30 && col.population > 1) {
+          col.population -= 1;
+          col.starvationTimer = 0;
+          // If a building is in a now-locked slot, return it to queue
+          for (let si = col.population; si < col.buildings.length; si++) {
+            if (col.buildings[si]) {
+              col.queue.push(col.buildings[si]);
+              col.buildings[si] = null;
+            }
+          }
+          colonyDirty = true;
+        }
+      }
+    }
+    // Colony upkeep (credits drain)
+    resources.credits -= getColonyUpkeep();
+
+    // Research spending — consume research points toward active research
+    if (activeResearch && resources.research > 0) {
+      const spend = Math.min(resources.research, activeResearch.cost - activeResearch.progress);
+      if (spend > 0) {
+        resources.research -= spend;
+        activeResearch.progress += spend;
+        if (activeResearch.progress >= activeResearch.cost) {
+          researchedCards.add(activeResearch.cardId);
+          activeResearch = null;
+          // Refresh research panel if visible
+          if (document.getElementById("research-overlay").classList.contains("visible")) {
+            refreshResearchPanel();
+          }
+        }
+      }
     }
   }
 
@@ -2577,23 +2869,99 @@ function tickEconomy(dt) {
 }
 
 function updateResourceDisplay() {
-  document.getElementById("res-energy").textContent = Math.floor(resources.energy);
-  document.getElementById("res-minerals").textContent = Math.floor(resources.minerals);
-  document.getElementById("res-research").textContent = Math.floor(resources.research);
-  document.getElementById("res-food").textContent = Math.floor(resources.food);
-
-  // Compute global rates
-  let totalOut = { energy:0, minerals:0, research:0, food:0 };
+  const totalOut = {};
+  for (const id of RESOURCE_IDS) totalOut[id] = 0;
   for (const c of colonies) {
     const col = c.planet.colony;
     if (!col) continue;
     const out = getColonyOutput(col);
-    for (const k of Object.keys(totalOut)) totalOut[k] += out[k];
+    for (const id of RESOURCE_IDS) totalOut[id] += (out[id] || 0);
+    totalOut.credits += getTradeIncome(col);
   }
-  document.getElementById("rate-energy").textContent = `+${totalOut.energy}/s`;
-  document.getElementById("rate-minerals").textContent = `+${totalOut.minerals}/s`;
-  document.getElementById("rate-research").textContent = `+${totalOut.research}/s`;
-  document.getElementById("rate-food").textContent = `+${totalOut.food}/s`;
+  totalOut.credits -= getColonyUpkeep();
+  for (const id of RESOURCE_IDS) {
+    const valEl = document.getElementById(`res-${id}`);
+    const rateEl = document.getElementById(`rate-${id}`);
+    if (valEl) valEl.textContent = formatResourceValue(resources[id]);
+    if (rateEl) {
+      const rate = totalOut[id];
+      rateEl.textContent = `${rate >= 0 ? "+" : ""}${rate}/s`;
+      rateEl.style.color = rate < 0 ? "#e05050" : "";
+    }
+  }
+}
+
+function canAfford(cost) {
+  if (!cost) return true;
+  for (const [k, v] of Object.entries(cost)) {
+    if ((resources[k] || 0) < v) return false;
+  }
+  return true;
+}
+
+function deductCost(cost) {
+  if (!cost) return;
+  for (const [k, v] of Object.entries(cost)) {
+    resources[k] = (resources[k] || 0) - v;
+  }
+  flashResourceCost(cost);
+}
+
+function flashResourceCost(cost) {
+  for (const k of Object.keys(cost)) {
+    const el = document.getElementById(`res-${k}`);
+    if (el) {
+      el.style.color = "#e05050";
+      el.style.transition = "color 0.3s";
+      setTimeout(() => { el.style.color = ""; }, 600);
+    }
+  }
+}
+
+function showCostTooltip(anchorEl, cost) {
+  const msg = getAffordabilityTooltip(cost);
+  if (!msg) return;
+  const tip = document.createElement("div");
+  tip.textContent = msg;
+  tip.style.cssText = "position:absolute;background:#1a0000;color:#e05050;border:1px solid #e05050;padding:6px 12px;border-radius:6px;font-size:12px;z-index:9999;pointer-events:none;white-space:nowrap;";
+  const rect = anchorEl.getBoundingClientRect();
+  tip.style.left = rect.left + "px";
+  tip.style.top = (rect.top - 30) + "px";
+  document.body.appendChild(tip);
+  setTimeout(() => tip.remove(), 2000);
+}
+
+function getAffordabilityTooltip(cost) {
+  const missing = [];
+  for (const [k, v] of Object.entries(cost)) {
+    const have = resources[k] || 0;
+    if (have < v) {
+      const def = RESOURCE_DEFS.find(r => r.id === k);
+      missing.push(`${def ? def.icon : ""} ${Math.ceil(v - have)} more ${k}`);
+    }
+  }
+  return missing.length ? "Need " + missing.join(", ") : "";
+}
+
+function updateColonyResourceDisplay(out) {
+  for (const id of RESOURCE_IDS) {
+    const valEl = document.getElementById(`col-${id}`);
+    const rateEl = document.getElementById(`col-rate-${id}`);
+    const rate = out[id] || 0;
+    if (valEl) valEl.textContent = rate;
+    if (rateEl) {
+      rateEl.textContent = `${rate >= 0 ? "+" : ""}${rate}/t`;
+      rateEl.style.color = rate < 0 ? "#e05050" : "";
+    }
+  }
+}
+
+function formatResourceValue(val) {
+  const v = Math.floor(val);
+  if (v >= 1e9) return (v / 1e9).toFixed(1) + "B";
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + "M";
+  if (v >= 1e4) return (v / 1e3).toFixed(1) + "K";
+  return v.toString();
 }
 
 const colonies = []; // array of { starId, planetIdx, planet } references
@@ -2602,14 +2970,16 @@ function colonizePlanet(star, planetIdx) {
   const planet = star.planets[planetIdx];
   if (planet.colony) return; // already colonized
   planet.colony = {
-    population: 10,
+    population: 1,                        // starts at pop 1 (100K people, 1 building slot)
     maxPopulation: 10,
-    buildings: new Array(10).fill(null), // building slots = population
+    buildings: new Array(10).fill(null),   // 10 slots max, but only `population` are unlocked
     leaders: [],                          // leader slot (max 1)
     deck: [],                             // face-down cards awaiting selection
     queue: [],                            // face-up selected cards awaiting placement
-    activeAction: null,                   // "buildings"|"captains"|"leaders"|"ships"
+    activeAction: null,                   // "trade"|"buildings"|"captains"|"leaders"|"ships"
     genTimer: 0,                          // seconds toward next card
+    growthProgress: 0,                    // food accumulated toward next pop level
+    starvationTimer: 0,                   // seconds of sustained food deficit
   };
   colonies.push({ starId: star.id, planetIdx, planet });
   // Refresh the planet card to show "Manage Colony" instead of "Colonize"
@@ -2754,7 +3124,8 @@ function refreshDeckDisplay(col) {
     for (let i = 0; i < maxShow; i++) {
       html += `<div class="deck-card-back" style="top:${i * 2}px;left:${i}px"><div class="deck-logo">Idle<br><span>Space</span></div></div>`;
     }
-    html += `<div class="deck-count">${col.deck.length}</div></div>`;
+    html += `<div class="deck-count">${col.deck.length}</div>`;
+    html += `<div class="deck-draw-cost">💰 ${getDrawCost()}</div></div>`;
     deckEl.innerHTML = html;
   }
 }
@@ -2765,26 +3136,38 @@ function refreshColonyScreen() {
   const planet = colonyViewStar.planets[colonyViewPlanetIdx];
 
   document.getElementById("colony-name").textContent = planet.card.name;
-  document.getElementById("colony-pop").textContent = `👤 ${col.population}/${col.maxPopulation}`;
+  // Population display with growth progress
+  const popLabel = getPopLabel(col.population);
+  let popText = `👤 ${popLabel} (${col.population}/${col.maxPopulation})`;
+  if (col.population < col.maxPopulation) {
+    const threshold = getGrowthThreshold(col.population + 1);
+    const pct = Math.floor((col.growthProgress / threshold) * 100);
+    popText += ` — Growth: ${pct}%`;
+  }
+  const out2 = getColonyOutput(col);
+  if (out2.food < 0) {
+    const starvSecs = 30 - col.starvationTimer;
+    popText += ` ⚠️ Starving (${starvSecs}s)`;
+  }
+  document.getElementById("colony-pop").textContent = popText;
 
   // Colony resource output
   const out = getColonyOutput(col);
-  document.getElementById("col-energy").textContent = out.energy;
-  document.getElementById("col-rate-energy").textContent = `+${out.energy}/t`;
-  document.getElementById("col-minerals").textContent = out.minerals;
-  document.getElementById("col-rate-minerals").textContent = `+${out.minerals}/t`;
-  document.getElementById("col-research").textContent = out.research;
-  document.getElementById("col-rate-research").textContent = `+${out.research}/t`;
-  document.getElementById("col-food").textContent = out.food;
-  document.getElementById("col-rate-food").textContent = `+${out.food}/t`;
+  updateColonyResourceDisplay(out);
 
   // ── Building slots ──
   const slotsEl = document.getElementById("building-slots");
   slotsEl.innerHTML = "";
   for (let i = 0; i < col.buildings.length; i++) {
     const slot = document.createElement("div");
+    const isLocked = i >= col.population;
     const card = col.buildings[i];
-    if (card) {
+    if (isLocked) {
+      slot.className = "building-slot locked";
+      slot.innerHTML = `<span style="color:#3a3a5a;font-size:18px">🔒</span><span style="color:#3a3a5a;font-size:9px">Pop ${i+1}</span>`;
+      slot.style.opacity = "0.4";
+      slot.style.cursor = "not-allowed";
+    } else if (card) {
       slot.className = "building-slot occupied";
       slot.innerHTML = buildCardHtml(card, CATEGORY_WATERMARKS[card.category] || "🏗️");
       slot.draggable = true;
@@ -2805,7 +3188,7 @@ function refreshColonyScreen() {
     }
     // Drop target
     slot.addEventListener("dragover", (e) => {
-      if (!draggedCard) return;
+      if (!draggedCard || isLocked) return;
       if (draggedCard.card.category === "building" && !col.buildings[i]) {
         e.preventDefault();
         slot.classList.add("drag-over");
@@ -2816,6 +3199,14 @@ function refreshColonyScreen() {
       e.preventDefault();
       slot.classList.remove("drag-over");
       if (!draggedCard || draggedCard.card.category !== "building" || col.buildings[i]) return;
+      // Cost check (only when placing from queue, not rearranging from another slot)
+      if (draggedCard.source === "queue" && draggedCard.card.cost) {
+        if (!canAfford(draggedCard.card.cost)) {
+          showCostTooltip(slot, draggedCard.card.cost);
+          return;
+        }
+        deductCost(draggedCard.card.cost);
+      }
       // Place card
       if (draggedCard.source === "queue") {
         col.queue.splice(draggedCard.index, 1);
@@ -2864,6 +3255,14 @@ function refreshColonyScreen() {
     e.preventDefault();
     leaderEl.classList.remove("drag-over");
     if (!draggedCard || draggedCard.card.category !== "leader" || col.leaders.length > 0) return;
+    // Cost check (only from queue)
+    if (draggedCard.source === "queue" && draggedCard.card.cost) {
+      if (!canAfford(draggedCard.card.cost)) {
+        showCostTooltip(leaderEl, draggedCard.card.cost);
+        return;
+      }
+      deductCost(draggedCard.card.cost);
+    }
     if (draggedCard.source === "queue") col.queue.splice(draggedCard.index, 1);
     col.leaders.push(draggedCard.card);
     draggedCard = null;
@@ -2943,6 +3342,17 @@ function refreshColonyScreen() {
 document.getElementById("colony-deck").addEventListener("click", () => {
   const col = getActiveColony();
   if (!col || col.deck.length === 0) return;
+  // Check draw cost
+  const drawCost = getDrawCost();
+  if (resources.credits < drawCost) {
+    const deckEl = document.getElementById("colony-deck");
+    showCostTooltip(deckEl, { credits: drawCost });
+    return;
+  }
+  // Pay draw cost and escalate multiplier
+  resources.credits -= drawCost;
+  drawCostMultiplier *= 1.5;
+  flashResourceCost({ credits: drawCost });
   const faceDown = col.deck[0];
   const cat = faceDown.category;
   // Roll 3 cards
@@ -3074,7 +3484,7 @@ document.querySelectorAll(".colony-action-btn").forEach(btn => {
     const col = getActiveColony();
     if (!col) return;
     const action = btn.dataset.action;
-    const isGenerating = ["buildings", "captains", "leaders", "ships"].includes(action);
+    const isActive = ["buildings", "captains", "leaders", "ships", "trade"].includes(action);
     if (col.activeAction === action) {
       // Deactivate
       col.activeAction = null;
@@ -3083,7 +3493,7 @@ document.querySelectorAll(".colony-action-btn").forEach(btn => {
     } else {
       document.querySelectorAll(".colony-action-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      if (isGenerating) {
+      if (isActive) {
         col.activeAction = action;
         col.genTimer = 0;
       } else {
@@ -3148,14 +3558,7 @@ function gameLoop(timestamp) {
       }
       // Update colony resource header without full refresh
       const out = getColonyOutput(col);
-      document.getElementById("col-energy").textContent = out.energy;
-      document.getElementById("col-rate-energy").textContent = `+${out.energy}/t`;
-      document.getElementById("col-minerals").textContent = out.minerals;
-      document.getElementById("col-rate-minerals").textContent = `+${out.minerals}/t`;
-      document.getElementById("col-research").textContent = out.research;
-      document.getElementById("col-rate-research").textContent = `+${out.research}/t`;
-      document.getElementById("col-food").textContent = out.food;
-      document.getElementById("col-rate-food").textContent = `+${out.food}/t`;
+      updateColonyResourceDisplay(out);
     }
     if (colonyDirty) {
       colonyDirty = false;
@@ -3167,8 +3570,85 @@ function gameLoop(timestamp) {
 }
 
 // ═══════════════════════════════════════════
+//  RESEARCH PANEL
+// ═══════════════════════════════════════════
+function showResearchPanel() {
+  document.getElementById("research-backdrop").classList.add("visible");
+  refreshResearchPanel();
+}
+
+function hideResearchPanel() {
+  document.getElementById("research-backdrop").classList.remove("visible");
+}
+
+function refreshResearchPanel() {
+  // Active research display
+  const activeEl = document.getElementById("research-active");
+  if (activeResearch) {
+    const pct = Math.floor((activeResearch.progress / activeResearch.cost) * 100);
+    activeEl.innerHTML = `
+      <div style="color:#c0d0e0;font-size:14px;margin-bottom:6px">
+        Researching: <strong>${activeResearch.templateRef.name}</strong>
+        <span style="color:#6a7a9b">(${activeResearch.templateRef.category})</span>
+      </div>
+      <div style="color:#a4e4a4;font-size:12px">${Math.floor(activeResearch.progress)} / ${activeResearch.cost} 🔬 (${pct}%)</div>
+      <div class="research-progress"><div class="research-progress-bar" style="width:${pct}%"></div></div>
+      <button onclick="activeResearch=null;refreshResearchPanel()" style="margin-top:8px;background:#1a2040;border:1px solid #2a3460;color:#8090b0;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:11px">Cancel</button>
+    `;
+  } else {
+    activeEl.innerHTML = `<div style="color:#6a7a9b;font-size:13px">No active research. Select a card below to begin.</div>`;
+  }
+
+  // Research list — show all gated cards
+  const listEl = document.getElementById("research-list");
+  listEl.innerHTML = "";
+
+  const rarityOrder = ["common", "uncommon", "rare", "epic", "legendary"];
+
+  for (const catName of RESEARCH_GATED_CATEGORIES) {
+    const templates = CATEGORY_TEMPLATES[catName];
+    if (!templates) continue;
+
+    const header = document.createElement("h3");
+    header.textContent = catName.charAt(0).toUpperCase() + catName.slice(1) + "s";
+    header.style.cssText = "color:#6a7a9b;font-size:13px;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;";
+    listEl.appendChild(header);
+
+    // Sort by rarity
+    const sorted = [...templates].sort((a, b) => rarityOrder.indexOf(a.rarity) - rarityOrder.indexOf(b.rarity));
+    for (const t of sorted) {
+      const isResearched = researchedCards.has(t.id);
+      const isActive = activeResearch && activeResearch.cardId === t.id;
+      const cost = RESEARCH_COSTS_BY_RARITY[t.rarity] || 0;
+      if (cost === 0 && isResearched) continue; // don't show free/already-researched commons
+
+      const item = document.createElement("div");
+      item.className = "research-item" + (isResearched ? " researched" : "") + (isActive ? " active" : "");
+
+      const rarityColor = { common: "#6a7a9b", uncommon: "#4a9b5a", rare: "#4a7ac0", epic: "#8a4ac0", legendary: "#c0a020" }[t.rarity] || "#6a7a9b";
+
+      item.innerHTML = `
+        <span class="ri-category">${CATEGORY_WATERMARKS[catName] || ""}</span>
+        <span class="ri-name">${t.name}</span>
+        <span class="ri-rarity" style="background:${rarityColor}20;color:${rarityColor};border:1px solid ${rarityColor}40">${t.rarity}</span>
+        <span class="ri-cost">${isResearched ? "✓ Researched" : `🔬 ${cost}`}</span>
+      `;
+
+      if (!isResearched && !isActive) {
+        item.addEventListener("click", () => {
+          activeResearch = { cardId: t.id, templateRef: t, cost, progress: 0 };
+          refreshResearchPanel();
+        });
+      }
+      listEl.appendChild(item);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════
+initResearch();
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 const homeStar = generateSeedCluster();

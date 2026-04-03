@@ -18,7 +18,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "bld_002",
@@ -39,7 +41,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "bld_003",
@@ -61,7 +65,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "bld_004",
@@ -83,7 +89,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "bld_005",
@@ -104,8 +112,12 @@
       "production",
       "needs-art",
       "ai",
-      "unbalanced"
-    ]
+      "balanced"
+    ],
+    "upkeep": {
+      "minerals": 1
+    },
+    "researchCost": 100
   },
   {
     "id": "bld_006",
@@ -126,8 +138,12 @@
       "production",
       "needs-art",
       "ai",
-      "unbalanced"
-    ]
+      "balanced"
+    ],
+    "upkeep": {
+      "energy": 1
+    },
+    "researchCost": 100
   },
   {
     "id": "bld_007",
@@ -148,8 +164,12 @@
       "production",
       "needs-art",
       "ai",
-      "unbalanced"
-    ]
+      "balanced"
+    ],
+    "upkeep": {
+      "energy": 1
+    },
+    "researchCost": 100
   },
   {
     "id": "bld_008",
@@ -172,7 +192,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 100
   },
   {
     "id": "bld_009",
@@ -195,8 +217,12 @@
       "boost",
       "needs-art",
       "ai",
-      "unbalanced"
-    ]
+      "balanced"
+    ],
+    "upkeep": {
+      "energy": 3
+    },
+    "researchCost": 350
   },
   {
     "id": "bld_010",
@@ -218,8 +244,13 @@
       "production",
       "needs-art",
       "ai",
-      "unbalanced"
-    ]
+      "balanced"
+    ],
+    "upkeep": {
+      "energy": 3,
+      "food": 1
+    },
+    "researchCost": 350
   },
   {
     "id": "bld_011",
@@ -240,8 +271,13 @@
       "production",
       "needs-art",
       "ai",
-      "unbalanced"
-    ]
+      "balanced"
+    ],
+    "upkeep": {
+      "minerals": 3,
+      "credits": 15
+    },
+    "researchCost": 1000
   },
   {
     "id": "bld_012",
@@ -264,8 +300,13 @@
       "unlock",
       "needs-art",
       "ai",
-      "unbalanced"
-    ]
+      "balanced"
+    ],
+    "upkeep": {
+      "energy": 4,
+      "credits": 20
+    },
+    "researchCost": 1000
   },
   {
     "id": "bld_013",
@@ -287,8 +328,12 @@
       "production",
       "needs-art",
       "ai",
-      "unbalanced"
-    ]
+      "balanced"
+    ],
+    "upkeep": {
+      "energy": 2
+    },
+    "researchCost": 350
   },
   {
     "id": "bld_014",
@@ -311,8 +356,13 @@
       "megastructure",
       "needs-art",
       "ai",
-      "unbalanced"
-    ]
+      "balanced"
+    ],
+    "upkeep": {
+      "minerals": 5,
+      "credits": 30
+    },
+    "researchCost": 3000
   },
   {
     "id": "bld_015",
@@ -335,8 +385,13 @@
       "efficiency",
       "needs-art",
       "ai",
-      "unbalanced"
-    ]
+      "balanced"
+    ],
+    "upkeep": {
+      "energy": 4,
+      "research": 2
+    },
+    "researchCost": 1000
   },
   {
     "id": "bld_016",
@@ -345,7 +400,7 @@
     "rarity": "common",
     "stats": {
       "food": 2,
-      "morale": 2
+      "credits": 5
     },
     "cost": {
       "minerals": 3
@@ -359,7 +414,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "bld_017",
@@ -379,9 +436,13 @@
       "defense",
       "needs-art",
       "ai",
-      "unbalanced"
+      "balanced"
     ],
-    "notes": "A colossal Dyson sphere collector array partially encircling a blazing white-blue star, vast curved metallic panels stretching across the void, catching and channeling stellar energy through glowing conduit lines. The structure dwarfs nearby rocky planets visible in the background. Brilliant golden-white starlight reflects off polished alloy surfaces, energy streams flowing along the collector arms in vivid cyan channels. Grand, awe-inspiring scale, the pinnacle of stellar engineering. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, centered composition."
+    "notes": "A colossal Dyson sphere collector array partially encircling a blazing white-blue star, vast curved metallic panels stretching across the void, catching and channeling stellar energy through glowing conduit lines. The structure dwarfs nearby rocky planets visible in the background. Brilliant golden-white starlight reflects off polished alloy surfaces, energy streams flowing along the collector arms in vivid cyan channels. Grand, awe-inspiring scale, the pinnacle of stellar engineering. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, centered composition.",
+    "upkeep": {
+      "energy": 2
+    },
+    "researchCost": 100
   },
   {
     "id": "bld_018",
@@ -407,9 +468,15 @@
       "megastructure",
       "needs-art",
       "ai",
-      "unbalanced"
+      "balanced"
     ],
-    "notes": "A massive planetary terraforming engine embedded into the surface of a barren red-brown world, enormous mechanical spires rising from the crust and projecting beams of green bio-energy into the atmosphere. Lush vegetation is spreading outward from the engine's base in a visible ring of transformation, contrasting against the dead rocky terrain beyond. Swirling clouds form overhead where the beams converge. Warm amber light from the machinery contrasts with the emerging green biosphere. Epic scale, a world being reborn. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, wide composition."
+    "notes": "A massive planetary terraforming engine embedded into the surface of a barren red-brown world, enormous mechanical spires rising from the crust and projecting beams of green bio-energy into the atmosphere. Lush vegetation is spreading outward from the engine's base in a visible ring of transformation, contrasting against the dead rocky terrain beyond. Swirling clouds form overhead where the beams converge. Warm amber light from the machinery contrasts with the emerging green biosphere. Epic scale, a world being reborn. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, wide composition.",
+    "upkeep": {
+      "energy": 6,
+      "minerals": 3,
+      "credits": 25
+    },
+    "researchCost": 3000
   },
   {
     "id": "shp_001",
@@ -431,7 +498,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "shp_002",
@@ -454,7 +523,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "shp_003",
@@ -479,7 +550,9 @@
       "ai",
       "unbalanced"
     ],
-    "notes": "A compact military patrol frigate spacecraft cruising through deep space, angular utilitarian hull plating in matte gunmetal gray with faded orange identification stripes. Twin forward-mounted pulse cannons flank the bow, a small sensor array dome sits on the dorsal spine, and twin rear engines emit a warm orange thruster glow. The hull is battle-worn with minor scorch marks and patched armor panels. Behind the ship, a quiet starfield stretches into the distance with a faint purple-blue nebula providing soft ambient light. Cinematic sci-fi lighting with soft rim light tracing the hull edges, warm engine glow contrasting cool deep-space blues. Digital concept art, detailed sci-fi illustration, sharp focus, painterly rendering, centered composition."
+    "notes": "A compact military patrol frigate spacecraft cruising through deep space, angular utilitarian hull plating in matte gunmetal gray with faded orange identification stripes. Twin forward-mounted pulse cannons flank the bow, a small sensor array dome sits on the dorsal spine, and twin rear engines emit a warm orange thruster glow. The hull is battle-worn with minor scorch marks and patched armor panels. Behind the ship, a quiet starfield stretches into the distance with a faint purple-blue nebula providing soft ambient light. Cinematic sci-fi lighting with soft rim light tracing the hull edges, warm engine glow contrasting cool deep-space blues. Digital concept art, detailed sci-fi illustration, sharp focus, painterly rendering, centered composition.",
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "shp_004",
@@ -501,7 +574,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "shp_005",
@@ -525,7 +600,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 100
   },
   {
     "id": "shp_006",
@@ -549,7 +626,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 100
   },
   {
     "id": "shp_007",
@@ -574,7 +653,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 350
   },
   {
     "id": "shp_008",
@@ -598,7 +679,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 350
   },
   {
     "id": "shp_009",
@@ -622,7 +705,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 100
   },
   {
     "id": "shp_010",
@@ -648,7 +733,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 1000
   },
   {
     "id": "shp_011",
@@ -673,7 +760,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 1000
   },
   {
     "id": "shp_012",
@@ -701,7 +790,9 @@
       "ai",
       "unbalanced"
     ],
-    "notes": "A massive wedge-shaped dreadnought battleship dominating the frame, dark angular armor plating bristling with heavy turret batteries along the dorsal ridge, glowing red weapon ports lining the flanks. The ship's immense scale is emphasized by tiny escort fighters flying alongside. A burning enemy vessel drifts in the background, debris field scattered across the starfield. Deep crimson and steel-gray color palette, harsh forward-facing spotlights cutting through thin wisps of nebula gas. Overwhelming military power, instrument of total dominance. Digital concept art, detailed sci-fi illustration, cinematic dramatic lighting, sharp focus, painterly rendering, centered composition."
+    "notes": "A massive wedge-shaped dreadnought battleship dominating the frame, dark angular armor plating bristling with heavy turret batteries along the dorsal ridge, glowing red weapon ports lining the flanks. The ship's immense scale is emphasized by tiny escort fighters flying alongside. A burning enemy vessel drifts in the background, debris field scattered across the starfield. Deep crimson and steel-gray color palette, harsh forward-facing spotlights cutting through thin wisps of nebula gas. Overwhelming military power, instrument of total dominance. Digital concept art, detailed sci-fi illustration, cinematic dramatic lighting, sharp focus, painterly rendering, centered composition.",
+    "upkeep": {},
+    "researchCost": 3000
   },
   {
     "id": "shp_013",
@@ -727,7 +818,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 350
   },
   {
     "id": "shp_014",
@@ -750,7 +843,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 100
   },
   {
     "id": "shp_015",
@@ -779,7 +874,9 @@
       "ai",
       "unbalanced"
     ],
-    "notes": "An impossibly massive titan-class capital ship, more space station than vessel, a cylindrical fortress bristling with weapons platforms and docking bays along its entire length. Smaller cruisers and frigates are docked along its flanks like remora fish, giving a sense of staggering scale. The ship's hull is layered with heavy armor segments and glowing blue shield emitter arrays. A dense star cluster provides a brilliant backdrop of golden and white stars. Cool blue and warm gold lighting, overwhelming presence of mobile sovereignty. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, wide composition."
+    "notes": "An impossibly massive titan-class capital ship, more space station than vessel, a cylindrical fortress bristling with weapons platforms and docking bays along its entire length. Smaller cruisers and frigates are docked along its flanks like remora fish, giving a sense of staggering scale. The ship's hull is layered with heavy armor segments and glowing blue shield emitter arrays. A dense star cluster provides a brilliant backdrop of golden and white stars. Cool blue and warm gold lighting, overwhelming presence of mobile sovereignty. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, wide composition.",
+    "upkeep": {},
+    "researchCost": 3000
   },
   {
     "id": "cpt_001",
@@ -801,7 +898,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "cpt_002",
@@ -822,7 +921,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "cpt_003",
@@ -845,7 +946,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "cpt_004",
@@ -869,7 +972,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "cpt_005",
@@ -892,7 +997,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "cpt_006",
@@ -915,7 +1022,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "cpt_007",
@@ -939,7 +1048,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "cpt_008",
@@ -962,7 +1073,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "cpt_009",
@@ -988,7 +1101,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "cpt_010",
@@ -1013,7 +1128,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "cpt_011",
@@ -1041,7 +1158,9 @@
       "ai",
       "unbalanced"
     ],
-    "notes": "Portrait of a weathered female starship captain standing on a command bridge, gazing out through a panoramic viewport at an uncharted nebula filled with swirling colors and hidden stellar phenomena. She wears a well-worn exploration flight suit with star charts stitched into the sleeve patches, her silver-streaked hair pulled back, expression calm and knowing. Holographic star maps glow faintly around her, projected from the console behind. Soft blue nebula light illuminates her face from the viewport, warm amber instrument glow from behind. Wise, seasoned explorer energy. Digital concept art, detailed sci-fi portrait illustration, cinematic lighting, sharp focus, painterly rendering."
+    "notes": "Portrait of a weathered female starship captain standing on a command bridge, gazing out through a panoramic viewport at an uncharted nebula filled with swirling colors and hidden stellar phenomena. She wears a well-worn exploration flight suit with star charts stitched into the sleeve patches, her silver-streaked hair pulled back, expression calm and knowing. Holographic star maps glow faintly around her, projected from the console behind. Soft blue nebula light illuminates her face from the viewport, warm amber instrument glow from behind. Wise, seasoned explorer energy. Digital concept art, detailed sci-fi portrait illustration, cinematic lighting, sharp focus, painterly rendering.",
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "cpt_012",
@@ -1066,7 +1185,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_001",
@@ -1088,7 +1209,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_002",
@@ -1108,7 +1231,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_003",
@@ -1131,7 +1256,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_004",
@@ -1154,7 +1281,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_005",
@@ -1177,7 +1306,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_006",
@@ -1200,7 +1331,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_007",
@@ -1225,7 +1358,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_008",
@@ -1249,7 +1384,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_009",
@@ -1275,7 +1412,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_010",
@@ -1299,7 +1438,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_011",
@@ -1327,7 +1468,9 @@
       "ai",
       "unbalanced"
     ],
-    "notes": "Regal portrait of an ageless woman seated on an ornate throne in a grand futuristic council chamber, wearing flowing robes of deep imperial purple with golden circuitry thread patterns woven through the fabric. Behind her, enormous floor-to-ceiling windows reveal a thriving space colony cityscape with gleaming towers and orbital rings. Her expression is serene and commanding, one hand resting on the arm of the throne, the other holding a holographic data tablet. Warm golden light floods through the windows, soft purple accent lighting from the throne's embedded panels. Authority, prosperity, eternal wisdom. Digital concept art, detailed sci-fi portrait illustration, cinematic lighting, sharp focus, painterly rendering."
+    "notes": "Regal portrait of an ageless woman seated on an ornate throne in a grand futuristic council chamber, wearing flowing robes of deep imperial purple with golden circuitry thread patterns woven through the fabric. Behind her, enormous floor-to-ceiling windows reveal a thriving space colony cityscape with gleaming towers and orbital rings. Her expression is serene and commanding, one hand resting on the arm of the throne, the other holding a holographic data tablet. Warm golden light floods through the windows, soft purple accent lighting from the throne's embedded panels. Authority, prosperity, eternal wisdom. Digital concept art, detailed sci-fi portrait illustration, cinematic lighting, sharp focus, painterly rendering.",
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_012",
@@ -1351,7 +1494,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "adm_001",
@@ -1374,7 +1519,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "adm_002",
@@ -1397,7 +1544,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "adm_003",
@@ -1421,7 +1570,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "adm_004",
@@ -1445,7 +1596,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "adm_005",
@@ -1470,7 +1623,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "adm_006",
@@ -1494,7 +1649,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "adm_007",
@@ -1521,7 +1678,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "adm_008",
@@ -1547,7 +1706,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "adm_009",
@@ -1576,7 +1737,9 @@
       "ai",
       "unbalanced"
     ],
-    "notes": "Imposing portrait of a battle-hardened admiral standing at a massive tactical holotable displaying fleet formations, dozens of ship icons arrayed in precise combat patterns. He wears a decorated dark naval greatcoat with luminous rank insignia across the shoulders, medals across the chest. Behind him through the flagship's bridge viewport, an enormous armada stretches into the distance, hundreds of warships in formation with running lights glowing. His expression is steely and absolute, hands clasped behind his back. Cool blue holographic light from below, deep space starlight from the viewport. Supreme command, unified fleet power. Digital concept art, detailed sci-fi portrait illustration, cinematic lighting, sharp focus, painterly rendering."
+    "notes": "Imposing portrait of a battle-hardened admiral standing at a massive tactical holotable displaying fleet formations, dozens of ship icons arrayed in precise combat patterns. He wears a decorated dark naval greatcoat with luminous rank insignia across the shoulders, medals across the chest. Behind him through the flagship's bridge viewport, an enormous armada stretches into the distance, hundreds of warships in formation with running lights glowing. His expression is steely and absolute, hands clasped behind his back. Cool blue holographic light from below, deep space starlight from the viewport. Supreme command, unified fleet power. Digital concept art, detailed sci-fi portrait illustration, cinematic lighting, sharp focus, painterly rendering.",
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "adm_010",
@@ -1603,7 +1766,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "str_001",
@@ -1624,7 +1789,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "str_002",
@@ -1645,7 +1812,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "str_003",
@@ -1665,7 +1834,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "str_004",
@@ -1688,7 +1859,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "str_005",
@@ -1710,7 +1883,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "str_006",
@@ -1733,7 +1908,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "str_007",
@@ -1756,7 +1933,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "str_008",
@@ -1779,7 +1958,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "str_009",
@@ -1804,7 +1985,9 @@
       "ai",
       "unbalanced"
     ],
-    "notes": "A primordial quasar remnant blazing at the center of the frame, an intensely luminous core of swirling superheated plasma in vivid white, violet, and electric blue, surrounded by vast spiraling accretion jets shooting outward in opposing directions. Ancient debris rings orbit the remnant, fragments of long-destroyed worlds glowing faintly from reflected light. The surrounding space is lit with an otherworldly radiance, nearby gas clouds fluorescing in deep purples and magentas. Overwhelming primordial energy, the first light of the universe still burning. Digital concept art, detailed sci-fi illustration, cinematic dramatic lighting, vivid color palette, sharp focus, painterly rendering, centered composition."
+    "notes": "A primordial quasar remnant blazing at the center of the frame, an intensely luminous core of swirling superheated plasma in vivid white, violet, and electric blue, surrounded by vast spiraling accretion jets shooting outward in opposing directions. Ancient debris rings orbit the remnant, fragments of long-destroyed worlds glowing faintly from reflected light. The surrounding space is lit with an otherworldly radiance, nearby gas clouds fluorescing in deep purples and magentas. Overwhelming primordial energy, the first light of the universe still burning. Digital concept art, detailed sci-fi illustration, cinematic dramatic lighting, vivid color palette, sharp focus, painterly rendering, centered composition.",
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "str_010",
@@ -1825,7 +2008,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "str_011",
@@ -1848,7 +2033,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_001",
@@ -1869,7 +2056,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_002",
@@ -1891,7 +2080,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_003",
@@ -1913,7 +2104,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_004",
@@ -1935,7 +2128,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_005",
@@ -1959,7 +2154,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_006",
@@ -1982,7 +2179,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_007",
@@ -2004,7 +2203,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_008",
@@ -2028,7 +2229,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_009",
@@ -2052,7 +2255,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_010",
@@ -2076,7 +2281,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_011",
@@ -2103,7 +2310,9 @@
       "ai",
       "unbalanced"
     ],
-    "notes": "A lush alien world viewed from low orbit, its surface covered in ancient precursor ruins — towering crystalline spires and geometric monoliths rising from dense alien jungle, overgrown with bioluminescent vegetation in teal and amber hues. Faint energy pulses travel along the surface ruins in geometric patterns, suggesting dormant technology still active beneath the growth. The planet's atmosphere has a faint golden shimmer, and two small moons hang in the sky. Warm golden sunlight filtering through the atmosphere, cool teal bioluminescence from below. Ancient mystery, gifts left behind by a vanished civilization. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, orbital perspective composition."
+    "notes": "A lush alien world viewed from low orbit, its surface covered in ancient precursor ruins \u00e2\u20ac\u201d towering crystalline spires and geometric monoliths rising from dense alien jungle, overgrown with bioluminescent vegetation in teal and amber hues. Faint energy pulses travel along the surface ruins in geometric patterns, suggesting dormant technology still active beneath the growth. The planet's atmosphere has a faint golden shimmer, and two small moons hang in the sky. Warm golden sunlight filtering through the atmosphere, cool teal bioluminescence from below. Ancient mystery, gifts left behind by a vanished civilization. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, orbital perspective composition.",
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_012",
@@ -2126,7 +2335,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "bld_019",
@@ -2134,8 +2345,7 @@
     "category": "building",
     "rarity": "common",
     "stats": {
-      "logistics": 3,
-      "speed": 1
+      "credits": 8
     },
     "cost": {
       "minerals": 3,
@@ -2149,7 +2359,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "bld_020",
@@ -2172,8 +2384,13 @@
       "exotic",
       "needs-art",
       "ai",
-      "unbalanced"
-    ]
+      "balanced"
+    ],
+    "upkeep": {
+      "energy": 3,
+      "credits": 10
+    },
+    "researchCost": 350
   },
   {
     "id": "shp_016",
@@ -2196,7 +2413,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "shp_017",
@@ -2219,7 +2438,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 100
   },
   {
     "id": "cpt_013",
@@ -2241,7 +2462,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "ldr_013",
@@ -2263,7 +2486,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "adm_011",
@@ -2287,7 +2512,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "str_012",
@@ -2311,7 +2538,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_013",
@@ -2333,7 +2562,9 @@
       "needs-art",
       "ai",
       "unbalanced"
-    ]
+    ],
+    "upkeep": {},
+    "researchCost": 0
   },
   {
     "id": "plt_014",
@@ -2360,6 +2591,8 @@
       "ai",
       "unbalanced"
     ],
-    "notes": "A colossal curved fragment of a ringworld arcing across the frame, its inner surface revealing a vast habitable landscape of oceans, forests, mountain ranges, and rivers stretching along the band's interior. The broken edges of the fragment expose layered structural superstructure beneath — massive girders and support lattices of alien metal. A distant star shines through the gap where the ring is shattered, casting long dramatic shadows across the interior terrain. The scale is staggering, dwarfing everything. Warm sunlight on the inner habitable surface, cool shadow on the structural underside. Awe-inspiring ancient megastructure, a fragment grander than worlds. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, wide sweeping composition."
+    "notes": "A colossal curved fragment of a ringworld arcing across the frame, its inner surface revealing a vast habitable landscape of oceans, forests, mountain ranges, and rivers stretching along the band's interior. The broken edges of the fragment expose layered structural superstructure beneath \u00e2\u20ac\u201d massive girders and support lattices of alien metal. A distant star shines through the gap where the ring is shattered, casting long dramatic shadows across the interior terrain. The scale is staggering, dwarfing everything. Warm sunlight on the inner habitable surface, cool shadow on the structural underside. Awe-inspiring ancient megastructure, a fragment grander than worlds. Digital concept art, detailed sci-fi illustration, cinematic lighting, sharp focus, painterly rendering, wide sweeping composition.",
+    "upkeep": {},
+    "researchCost": 0
   }
 ]

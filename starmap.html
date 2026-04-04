@@ -882,8 +882,11 @@ body {
 .queue-card.dragging { opacity: 0.4; }
 /* Magnified card on click — absolute overlay, no layout shift */
 .queue-card-magnified {
-  position: absolute;
-  z-index: 50;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
   pointer-events: none;
   filter: drop-shadow(0 8px 24px rgba(0,0,0,0.7));
   transition: opacity 0.15s;
@@ -1202,7 +1205,7 @@ const STAR_TEMPLATES = [
   { id:"str_009", name:"Primordial Quasar Remnant", rarity:"legendary", stats:{luminosity:15,stability:3,planets_max:6,energy:10,research:8}, special:"All colonies in system gain +25% output.", flavor:"A relic of creation, still burning with the first light." },
 ];
 
-const RARITY_WEIGHTS = { common:50, uncommon:28, rare:14, epic:6, legendary:2 };
+const RARITY_WEIGHTS = { common:60, uncommon:25, rare:10, epic:4, legendary:1 };
 const RARITY_COLORS = { common:"#6a7a9b", uncommon:"#4a9b5a", rare:"#4a7ac0", epic:"#8a4ac0", legendary:"#c0a020" };
 
 // Visual properties per star name
@@ -1456,6 +1459,26 @@ function rollRarity() {
   return "common";
 }
 
+// Roll rarity with a bonus that shifts weight from common into higher tiers
+function rollRarityWithBonus(bonus) {
+  if (!bonus) return rollRarity();
+  const w = { ...RARITY_WEIGHTS };
+  // Shift weight: remove from common, distribute to higher rarities
+  const shift = Math.min(w.common * 0.5, bonus * 8);
+  w.common -= shift;
+  w.uncommon += shift * 0.35;
+  w.rare += shift * 0.30;
+  w.epic += shift * 0.20;
+  w.legendary += shift * 0.15;
+  const total = Object.values(w).reduce((s, v) => s + v, 0);
+  let roll = Math.random() * total;
+  for (const [rarity, weight] of Object.entries(w)) {
+    roll -= weight;
+    if (roll <= 0) return rarity;
+  }
+  return "common";
+}
+
 function rollStarCard() {
   const rarity = rollRarity();
   const pool = STAR_TEMPLATES.filter(t => t.rarity === rarity);
@@ -1464,22 +1487,27 @@ function rollStarCard() {
   return { ...template, stats: { ...template.stats }, type: template.name, name: drawStarName() };
 }
 
-function rollPlanetCard() {
-  const rarity = rollRarity();
+function rollPlanetCard(rarityBonus) {
+  const rarity = rollRarityWithBonus(rarityBonus || 0);
   const pool = PLANET_TEMPLATES.filter(t => t.rarity === rarity);
-  const template = pool[Math.floor(Math.random() * pool.length)];
+  const fallback = pool.length > 0 ? pool : PLANET_TEMPLATES;
+  const template = fallback[Math.floor(Math.random() * fallback.length)];
   return { ...template, stats: { ...template.stats } };
 }
 
 const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X"];
+const STAR_RARITY_BONUS = { common:0, uncommon:1, rare:2, epic:3, legendary:5 };
 
 function generatePlanets(star) {
   if (star.planets) return; // already generated
   const maxP = star.card.stats.planets_max || 1;
-  const count = 1 + Math.floor(Math.random() * maxP);
+  const bonus = STAR_RARITY_BONUS[star.card.rarity] || 0;
+  // Higher rarity stars produce more planets (biased toward max)
+  const minP = Math.min(1 + Math.floor(bonus / 2), maxP);
+  const count = minP + Math.floor(Math.random() * (maxP - minP + 1));
   star.planets = [];
   for (let i = 0; i < count; i++) {
-    const card = rollPlanetCard();
+    const card = rollPlanetCard(bonus);
     // Keep template name as `type` for visual lookup, name after parent star
     card.type = card.name;
     card.name = `${star.card.name} ${ROMAN[i] || (i + 1)}`;
@@ -2709,6 +2737,26 @@ function getGrowthThreshold(nextLevel) {
   return 100 * nextLevel * nextLevel;
 }
 
+function getPopGrowthCost(nextLevel) {
+  return { credits: 100 * nextLevel * nextLevel, food: 50 * nextLevel * nextLevel };
+}
+
+function buyPopulation() {
+  const col = getActiveColony();
+  if (!col || col.population >= col.maxPopulation) return;
+  const cost = getPopGrowthCost(col.population + 1);
+  if (!canAfford(cost)) {
+    const btn = document.getElementById("buy-pop-btn");
+    if (btn) showCostTooltip(btn, cost);
+    return;
+  }
+  deductCost(cost);
+  col.population = Math.min(col.population + 1, col.maxPopulation);
+  col.growthProgress = 0;
+  colonyDirty = true;
+  refreshColonyScreen();
+}
+
 // Research system
 const RESEARCH_COSTS_BY_RARITY = {
   common: 0,
@@ -2846,9 +2894,10 @@ function tickEconomy(dt) {
     // Colony upkeep (credits drain)
     resources.credits -= getColonyUpkeep();
 
-    // Research spending — consume research points toward active research
+    // Research spending — capped rate per game-second so research takes real time
+    const RESEARCH_SPEND_RATE = 5; // max points consumed per game-second
     if (activeResearch && resources.research > 0) {
-      const spend = Math.min(resources.research, activeResearch.cost - activeResearch.progress);
+      const spend = Math.min(RESEARCH_SPEND_RATE, resources.research, activeResearch.cost - activeResearch.progress);
       if (spend > 0) {
         resources.research -= spend;
         activeResearch.progress += spend;
@@ -3136,20 +3185,23 @@ function refreshColonyScreen() {
   const planet = colonyViewStar.planets[colonyViewPlanetIdx];
 
   document.getElementById("colony-name").textContent = planet.card.name;
-  // Population display with growth progress
+  // Population display with growth progress + buy button
   const popLabel = getPopLabel(col.population);
-  let popText = `👤 ${popLabel} (${col.population}/${col.maxPopulation})`;
+  let popHtml = `👤 ${popLabel} (${col.population}/${col.maxPopulation})`;
   if (col.population < col.maxPopulation) {
     const threshold = getGrowthThreshold(col.population + 1);
     const pct = Math.floor((col.growthProgress / threshold) * 100);
-    popText += ` — Growth: ${pct}%`;
+    popHtml += ` — Growth: ${pct}%`;
+    const growCost = getPopGrowthCost(col.population + 1);
+    const affordable = canAfford(growCost);
+    popHtml += ` <button id="buy-pop-btn" onclick="buyPopulation()" style="margin-left:8px;padding:2px 8px;font-size:10px;border-radius:4px;cursor:pointer;border:1px solid ${affordable ? '#4a9b5a' : '#3a3a5a'};background:${affordable ? 'rgba(74,155,90,0.2)' : 'rgba(30,30,50,0.5)'};color:${affordable ? '#4a9b5a' : '#3a3a5a'}">+ Grow (💰${growCost.credits} 🌾${growCost.food})</button>`;
   }
   const out2 = getColonyOutput(col);
   if (out2.food < 0) {
     const starvSecs = 30 - col.starvationTimer;
-    popText += ` ⚠️ Starving (${starvSecs}s)`;
+    popHtml += ` <span style="color:#e05050">⚠️ Starving (${starvSecs}s)</span>`;
   }
-  document.getElementById("colony-pop").textContent = popText;
+  document.getElementById("colony-pop").innerHTML = popHtml;
 
   // Colony resource output
   const out = getColonyOutput(col);
@@ -3405,13 +3457,6 @@ function showMagnifiedCard(card, queueIndex, anchorEl) {
       <button class="magnify-close-btn">Close</button>
     </div>`;
 
-  // Position near the anchor card but above it
-  const colRight = document.getElementById("colony-right");
-  const crRect = colRight.getBoundingClientRect();
-  const aRect = anchorEl.getBoundingClientRect();
-  mag.style.left = Math.max(0, Math.min(aRect.left - crRect.left, crRect.width - 230)) + "px";
-  mag.style.bottom = (crRect.bottom - aRect.top + 8) + "px";
-
   mag.querySelector(".magnify-discard-btn").addEventListener("click", () => {
     col.queue.splice(queueIndex, 1);
     dismissMagnifiedCard();
@@ -3421,8 +3466,7 @@ function showMagnifiedCard(card, queueIndex, anchorEl) {
     dismissMagnifiedCard();
   });
 
-  colRight.style.position = "relative";
-  colRight.appendChild(mag);
+  document.body.appendChild(mag);
   magnifiedEl = mag;
 }
 
@@ -3439,12 +3483,6 @@ function showSlotMagnifiedCard(card, slotType, slotIndex, anchorEl) {
       <button class="magnify-close-btn">Close</button>
     </div>`;
 
-  const colRight = document.getElementById("colony-right");
-  const crRect = colRight.getBoundingClientRect();
-  const aRect = anchorEl.getBoundingClientRect();
-  mag.style.left = Math.max(0, Math.min(aRect.left - crRect.left, crRect.width - 230)) + "px";
-  mag.style.bottom = (crRect.bottom - aRect.top + 8) + "px";
-
   mag.querySelector(".magnify-discard-btn").addEventListener("click", () => {
     if (slotType === "building") {
       col.queue.push(col.buildings[slotIndex]);
@@ -3459,8 +3497,7 @@ function showSlotMagnifiedCard(card, slotType, slotIndex, anchorEl) {
     dismissMagnifiedCard();
   });
 
-  colRight.style.position = "relative";
-  colRight.appendChild(mag);
+  document.body.appendChild(mag);
   magnifiedEl = mag;
 }
 
@@ -3627,9 +3664,12 @@ function refreshResearchPanel() {
 
       const rarityColor = { common: "#6a7a9b", uncommon: "#4a9b5a", rare: "#4a7ac0", epic: "#8a4ac0", legendary: "#c0a020" }[t.rarity] || "#6a7a9b";
 
+      // Hide names of un-researched future cards (show name only if researched or actively being researched)
+      const displayName = (isResearched || isActive) ? t.name : "???";
+
       item.innerHTML = `
         <span class="ri-category">${CATEGORY_WATERMARKS[catName] || ""}</span>
-        <span class="ri-name">${t.name}</span>
+        <span class="ri-name">${displayName}</span>
         <span class="ri-rarity" style="background:${rarityColor}20;color:${rarityColor};border:1px solid ${rarityColor}40">${t.rarity}</span>
         <span class="ri-cost">${isResearched ? "✓ Researched" : `🔬 ${cost}`}</span>
       `;

@@ -358,6 +358,43 @@ body {
 .card-preview .card-stat-icon { font-size: 12px; }
 .card-preview .card-stats.expanded .card-stat-icon { font-size: 15px; }
 .card-preview .card-stat-value { font-weight: 600; color: #fff; }
+/* Ship card layout */
+.ship-stat-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  padding: 1px 0;
+}
+.ship-stat-row.ship-utils {
+  margin-top: 2px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(100,130,180,0.15);
+}
+.ship-weapons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px 8px;
+  margin-top: 2px;
+  border-top: 1px solid rgba(100,130,180,0.15);
+}
+.ship-weapon-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+.ship-weapon-row .card-stat-icon { font-size: 12px; }
+.ship-weapon-row .card-stat-value { font-weight: 600; }
+.ship-range-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 3px;
+  margin-left: auto;
+  letter-spacing: 0.5px;
+}
 .card-preview .card-special {
   font-size: 11px;
   color: #a0b0d0;
@@ -1240,6 +1277,10 @@ function rollStats(template) {
   const rolled = {};
   const ranges = {};
   for (const [key, val] of Object.entries(template.stats)) {
+    if (typeof val !== "number") {
+      rolled[key] = val;  // pass through non-numeric stats (e.g., weapon range strings)
+      continue;
+    }
     const min = Math.max(1, Math.round(val * (1 - STAT_ROLL_VARIANCE)));
     const max = Math.max(min + 1, Math.round(val * (1 + STAT_ROLL_VARIANCE)));
     rolled[key] = min + Math.round((max - min) * biasedRandom(bias));
@@ -1279,10 +1320,21 @@ const STAT_ICONS = {
   credits:"💰", energy:"⚡", minerals:"⛏️", research:"🔬", food:"🌾",
   ecology:"🌿", gravity:"🌀", size:"📐", atmosphere:"💨",
   growth:"📈", morale:"😊", efficiency:"⚙️", engineering:"🔧",
-  charisma:"💬", logistics:"📦", diplomacy:"🤝", defense:"🛡️",
-  attack:"⚔️", speed:"💨", hull:"🛸", navigation:"🧭",
-  tactics:"🎯", fleet_size:"⚓", research_bonus:"🔬",
+  charisma:"💬", logistics:"📦", diplomacy:"🤝",
+  // Ship combat stats
+  shields:"🔷", armor:"🛡️", speed:"💨", sensorRange:"📡",
+  stealth:"👁️", pointDefense:"🎯",
+  energyDmg:"⚡", kineticDmg:"💥", missileDmg:"🚀",
+  // Captain stats
+  commandBonus:"⭐", maxFleetSize:"⚓",
+  // Legacy
+  attack:"⚔️", hull:"🛸", navigation:"🧭",
+  tactics:"🎯", fleet_size:"⚓", research_bonus:"🔬", defense:"🛡️",
 };
+
+// Weapon range labels for ship card display
+const RANGE_LABELS = { short:"S", medium:"M", long:"L" };
+const RANGE_COLORS = { short:"#e0a040", medium:"#a0c0e0", long:"#60d060" };
 
 // ═══════════════════════════════════════════
 //  PLANET CARD TEMPLATES
@@ -1400,28 +1452,71 @@ const CAPTAIN_TEMPLATES = [
 ];
 
 const SHIP_TEMPLATES = [
-  // Common — ~1x baseline
-  { id:"shp_001", name:"Scout Corvette", category:"ship", rarity:"common", stats:{speed:4,hull:2}, cost:{minerals:6}, special:"", flavor:"First to see, last to be seen." },
-  { id:"shp_002", name:"Cargo Hauler", category:"ship", rarity:"common", stats:{hull:3,logistics:3}, cost:{minerals:6,energy:3}, special:"", flavor:"The backbone of interstellar commerce." },
-  { id:"shp_003", name:"Patrol Frigate", category:"ship", rarity:"common", stats:{attack:3,defense:2,speed:2}, cost:{minerals:8,energy:4}, special:"", flavor:"Keeping the lanes safe." },
-  { id:"shp_004", name:"Mining Barge", category:"ship", rarity:"common", stats:{hull:4,minerals:2}, cost:{minerals:8}, special:"", flavor:"Slow and steady fills the holds." },
-  { id:"shp_016", name:"Torpedo Bomber", category:"ship", rarity:"common", stats:{attack:4,speed:3}, cost:{minerals:8,energy:4}, special:"", flavor:"One shot, one kill." },
-  // Uncommon — ~5x
-  { id:"shp_005", name:"Destroyer", category:"ship", rarity:"uncommon", stats:{attack:20,defense:12,speed:12}, cost:{minerals:30,energy:20,credits:60}, special:"", flavor:"Purpose-built for one thing: war." },
-  { id:"shp_006", name:"Research Vessel", category:"ship", rarity:"uncommon", stats:{research:15,speed:12,hull:8}, cost:{minerals:25,energy:20,credits:50}, special:"Gains bonus research from anomalies.", flavor:"Charting the unknown, one system at a time." },
-  { id:"shp_009", name:"Colony Ship", category:"ship", rarity:"uncommon", stats:{hull:20,logistics:15}, cost:{minerals:40,food:25,energy:20,credits:80}, special:"Can establish a new colony on arrival.", flavor:"Hope, packed into every cargo bay." },
-  { id:"shp_014", name:"Warp Clipper", category:"ship", rarity:"uncommon", stats:{speed:25,hull:8}, cost:{energy:30,minerals:20,credits:50}, special:"", flavor:"Bending spacetime for the morning commute." },
-  { id:"shp_017", name:"Shield Frigate", category:"ship", rarity:"uncommon", stats:{defense:20,hull:12}, cost:{minerals:30,energy:20,credits:60}, special:"Extends shield to adjacent ships.", flavor:"Stand behind me." },
-  // Rare — ~25x
-  { id:"shp_007", name:"Stealth Interceptor", category:"ship", rarity:"rare", stats:{attack:75,speed:70}, cost:{minerals:120,energy:80,research:30,credits:300}, special:"First strike: attacks before enemy response.", flavor:"A whisper in the dark between stars." },
-  { id:"shp_008", name:"Heavy Cruiser", category:"ship", rarity:"rare", stats:{attack:60,defense:60,hull:60}, cost:{minerals:150,energy:80,credits:350}, special:"", flavor:"The iron fist of the fleet." },
-  { id:"shp_013", name:"Exploration Cruiser", category:"ship", rarity:"rare", stats:{speed:55,research:50,hull:40,navigation:35}, cost:{minerals:100,energy:80,research:30,credits:300}, special:"Reveals hidden star map features.", flavor:"Beyond the edge of every chart." },
-  // Epic — ~100x
-  { id:"shp_010", name:"Battlecruiser", category:"ship", rarity:"epic", stats:{attack:300,defense:200,hull:250,speed:80}, cost:{minerals:600,energy:400,research:120,credits:2500}, special:"", flavor:"A fortress that sails the void." },
-  { id:"shp_011", name:"Carrier", category:"ship", rarity:"epic", stats:{fleet_size:150,defense:180,hull:300}, cost:{minerals:700,energy:350,credits:3000}, special:"Deploys fighter squadrons in combat.", flavor:"Its children swarm like angry stars." },
-  // Legendary — ~500x
-  { id:"shp_012", name:"Dreadnought", category:"ship", rarity:"legendary", stats:{attack:1500,defense:1000,hull:1200,speed:150}, cost:{minerals:5000,energy:3000,research:800,credits:15000}, special:"Suppresses enemy morale on arrival.", flavor:"When it appears, wars end." },
-  { id:"shp_015", name:"Titan", category:"ship", rarity:"legendary", stats:{attack:1200,defense:1200,hull:1800,fleet_size:400}, cost:{minerals:6000,energy:4000,research:1200,credits:18000}, special:"Flagship aura: +2 attack to all allied ships.", flavor:"A mobile world, bristling with purpose." },
+  // ── Common ──
+  // Single weapon type, basic stats, cheap
+  { id:"shp_001", name:"Scout Corvette", category:"ship", rarity:"common",
+    stats:{ shields:2, armor:1, speed:8, sensorRange:5, energyDmg:3, energyRange:"short" },
+    cost:{minerals:8,energy:4}, special:"", flavor:"First to see, last to be seen." },
+  { id:"shp_002", name:"Patrol Frigate", category:"ship", rarity:"common",
+    stats:{ shields:3, armor:3, speed:4, sensorRange:2, kineticDmg:4, kineticRange:"medium" },
+    cost:{minerals:10,energy:4}, special:"", flavor:"Keeping the spacelanes safe." },
+  { id:"shp_003", name:"Missile Corvette", category:"ship", rarity:"common",
+    stats:{ shields:2, armor:2, speed:5, sensorRange:2, missileDmg:4, missileRange:"long" },
+    cost:{minerals:10,energy:6}, special:"", flavor:"One shot, one kill." },
+  { id:"shp_004", name:"Gunboat", category:"ship", rarity:"common",
+    stats:{ shields:1, armor:4, speed:3, sensorRange:1, kineticDmg:5, kineticRange:"short" },
+    cost:{minerals:12,energy:3}, special:"", flavor:"More gun than ship." },
+  { id:"shp_005", name:"Picket Ship", category:"ship", rarity:"common",
+    stats:{ shields:3, armor:2, speed:6, sensorRange:4, pointDefense:3, energyDmg:2, energyRange:"short" },
+    cost:{minerals:8,energy:6}, special:"", flavor:"The fleet's first line of defense." },
+
+  // ── Uncommon ──
+  // Better stats, some mixed weapons or special stats
+  { id:"shp_006", name:"Destroyer", category:"ship", rarity:"uncommon",
+    stats:{ shields:12, armor:15, speed:18, sensorRange:8, kineticDmg:20, kineticRange:"medium", pointDefense:6 },
+    cost:{minerals:40,energy:25,credits:80}, special:"", flavor:"Purpose-built for one thing: war." },
+  { id:"shp_007", name:"Shield Frigate", category:"ship", rarity:"uncommon",
+    stats:{ shields:25, armor:8, speed:14, sensorRange:6, energyDmg:10, energyRange:"short" },
+    cost:{minerals:35,energy:30,credits:70}, special:"", flavor:"Stand behind me." },
+  { id:"shp_008", name:"Missile Frigate", category:"ship", rarity:"uncommon",
+    stats:{ shields:10, armor:10, speed:16, sensorRange:10, missileDmg:18, missileRange:"long" },
+    cost:{minerals:35,energy:25,credits:80}, special:"", flavor:"Death delivered from a safe distance." },
+  { id:"shp_009", name:"Sensor Pinnace", category:"ship", rarity:"uncommon",
+    stats:{ shields:8, armor:5, speed:22, sensorRange:20, stealth:1, energyDmg:5, energyRange:"short" },
+    cost:{minerals:25,energy:30,credits:60}, special:"", flavor:"Watching, always watching." },
+  { id:"shp_010", name:"Assault Corvette", category:"ship", rarity:"uncommon",
+    stats:{ shields:10, armor:12, speed:20, sensorRange:5, energyDmg:15, energyRange:"short", kineticDmg:8, kineticRange:"short" },
+    cost:{minerals:40,energy:30,credits:90}, special:"", flavor:"Close fast, hit hard, don't stop." },
+
+  // ── Rare ──
+  // Strong combat ships, multi-weapon, stealth options
+  { id:"shp_011", name:"Stealth Interceptor", category:"ship", rarity:"rare",
+    stats:{ shields:20, armor:15, speed:60, sensorRange:12, stealth:2, energyDmg:50, energyRange:"short" },
+    cost:{minerals:120,energy:80,credits:350}, special:"", flavor:"A whisper in the dark between stars." },
+  { id:"shp_012", name:"Heavy Cruiser", category:"ship", rarity:"rare",
+    stats:{ shields:50, armor:60, speed:30, sensorRange:10, kineticDmg:45, kineticRange:"medium", missileDmg:25, missileRange:"long", pointDefense:15 },
+    cost:{minerals:160,energy:90,credits:400}, special:"", flavor:"The iron fist of the fleet." },
+  { id:"shp_013", name:"Torpedo Cruiser", category:"ship", rarity:"rare",
+    stats:{ shields:35, armor:40, speed:35, sensorRange:14, missileDmg:70, missileRange:"long" },
+    cost:{minerals:140,energy:100,credits:380}, special:"", flavor:"Salvos that darken the stars." },
+
+  // ── Epic ──
+  // Powerhouse multi-role ships
+  { id:"shp_014", name:"Battlecruiser", category:"ship", rarity:"epic",
+    stats:{ shields:200, armor:250, speed:25, sensorRange:16, energyDmg:120, energyRange:"medium", kineticDmg:100, kineticRange:"medium", missileDmg:60, missileRange:"long", pointDefense:40 },
+    cost:{minerals:600,energy:400,credits:2800}, special:"", flavor:"A fortress that sails the void." },
+  { id:"shp_015", name:"Fleet Carrier", category:"ship", rarity:"epic",
+    stats:{ shields:180, armor:300, speed:15, sensorRange:25, pointDefense:80, missileDmg:150, missileRange:"long" },
+    cost:{minerals:700,energy:450,credits:3200}, special:"", flavor:"Its squadrons swarm like angry stars." },
+
+  // ── Legendary ──
+  // Overwhelming firepower and durability
+  { id:"shp_016", name:"Dreadnought", category:"ship", rarity:"legendary",
+    stats:{ shields:800, armor:1000, speed:12, sensorRange:20, energyDmg:500, energyRange:"medium", kineticDmg:400, kineticRange:"medium", missileDmg:200, missileRange:"long", pointDefense:100 },
+    cost:{minerals:5000,energy:3000,credits:16000}, special:"", flavor:"When it appears, wars end." },
+  { id:"shp_017", name:"Titan", category:"ship", rarity:"legendary",
+    stats:{ shields:1200, armor:800, speed:10, sensorRange:30, energyDmg:600, energyRange:"short", kineticDmg:300, kineticRange:"medium", missileDmg:400, missileRange:"long", pointDefense:150, stealth:1 },
+    cost:{minerals:6000,energy:4000,credits:20000}, special:"", flavor:"A mobile world, bristling with purpose." },
 ];
 
 const CATEGORY_TEMPLATES = {
@@ -2302,7 +2397,57 @@ function render() {
 // ═══════════════════════════════════════════
 //  CARD PREVIEW RENDERER (shared)
 // ═══════════════════════════════════════════
-function buildCardHtml(card, watermark) {
+function buildShipStatsHtml(card) {
+  const s = card.stats;
+  const qc = (key, val) => card.statRanges && card.statRanges[key]
+    ? getStatQualityColor(val, card.statRanges[key][0], card.statRanges[key][1]) : "#fff";
+
+  // Defense row: shields + armor
+  let html = `<div class="ship-stat-row">`;
+  html += `<div class="card-stat"><span class="card-stat-icon">🔷</span><span class="card-stat-value" style="color:${qc('shields',s.shields)}">${formatResourceValue(s.shields)}</span></div>`;
+  html += `<div class="card-stat"><span class="card-stat-icon">🛡️</span><span class="card-stat-value" style="color:${qc('armor',s.armor)}">${formatResourceValue(s.armor)}</span></div>`;
+  html += `<div class="card-stat"><span class="card-stat-icon">💨</span><span class="card-stat-value" style="color:${qc('speed',s.speed)}">${formatResourceValue(s.speed)}</span></div>`;
+  html += `</div>`;
+
+  // Weapons section — only show non-zero damage types
+  const weapons = [
+    { key:"energyDmg", rangeKey:"energyRange", icon:"⚡", label:"Energy" },
+    { key:"kineticDmg", rangeKey:"kineticRange", icon:"💥", label:"Kinetic" },
+    { key:"missileDmg", rangeKey:"missileRange", icon:"🚀", label:"Missile" },
+  ];
+  const activeWeapons = weapons.filter(w => s[w.key] && s[w.key] > 0);
+  if (activeWeapons.length > 0) {
+    html += `<div class="ship-weapons">`;
+    for (const w of activeWeapons) {
+      const range = s[w.rangeKey] || "medium";
+      const rangeLabel = RANGE_LABELS[range];
+      const rangeColor = RANGE_COLORS[range];
+      html += `<div class="ship-weapon-row">`;
+      html += `<span class="card-stat-icon">${w.icon}</span>`;
+      html += `<span class="card-stat-value" style="color:${qc(w.key, s[w.key])}">${formatResourceValue(s[w.key])}</span>`;
+      html += `<span class="ship-range-badge" style="background:${rangeColor}20;color:${rangeColor};border:1px solid ${rangeColor}40">${rangeLabel}</span>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Utility row — sensor, stealth, PD (only if present)
+  const utils = [];
+  if (s.sensorRange) utils.push({ icon:"📡", key:"sensorRange", val:s.sensorRange });
+  if (s.pointDefense) utils.push({ icon:"🎯", key:"pointDefense", val:s.pointDefense });
+  if (s.stealth) utils.push({ icon:"👁️", key:"stealth", val:s.stealth });
+  if (utils.length > 0) {
+    html += `<div class="ship-stat-row ship-utils">`;
+    for (const u of utils) {
+      html += `<div class="card-stat"><span class="card-stat-icon">${u.icon}</span><span class="card-stat-value" style="color:${qc(u.key, u.val)}">${formatResourceValue(u.val)}</span></div>`;
+    }
+    html += `</div>`;
+  }
+
+  return html;
+}
+
+function buildGenericStatsHtml(card) {
   const statsHtml = Object.entries(card.stats)
     .map(([key, val]) => {
       const icon = STAT_ICONS[key] || "◆";
@@ -2311,18 +2456,24 @@ function buildCardHtml(card, watermark) {
         : "#fff";
       return `<div class="card-stat"><span class="card-stat-icon">${icon}</span><span class="card-stat-value" style="color:${color}">${formatResourceValue(val)}</span></div>`;
     }).join("");
-  // Upkeep display (shown as red consumption stats)
   const upkeepHtml = card.upkeep ? Object.entries(card.upkeep)
     .map(([key, val]) => {
       const icon = STAT_ICONS[key] || "◆";
       return `<div class="card-stat upkeep"><span class="card-stat-icon">${icon}</span><span class="card-stat-value" style="color:#e05050">-${formatResourceValue(val)}</span></div>`;
     }).join("") : "";
+  return statsHtml + upkeepHtml;
+}
+
+function buildCardHtml(card, watermark) {
+  const isShip = card.category === "ship";
+  const statsContent = isShip ? buildShipStatsHtml(card) : buildGenericStatsHtml(card);
+
   // Cost badge (top-right)
   const costHtml = card.cost ? Object.entries(card.cost)
     .map(([key, val]) => `${STAT_ICONS[key] || ""}${formatResourceValue(val)}`)
     .join(" ") : "";
   const hasSpecial = card.special && card.special.length > 0;
-  const expandedClass = !hasSpecial ? " expanded" : "";
+  const expandedClass = (!hasSpecial && !isShip) ? " expanded" : "";
   return `
     <div class="card-preview ${card.rarity}">
       <div class="card-bg"></div>
@@ -2334,7 +2485,7 @@ function buildCardHtml(card, watermark) {
       <div class="card-image">
         ${card.image ? `<img src="${card.image}">` : (watermark || "☀️")}
       </div>
-      <div class="card-stats${expandedClass}">${statsHtml}${upkeepHtml}</div>
+      <div class="card-stats${expandedClass}">${statsContent}</div>
       ${hasSpecial ? `<div class="card-special">${card.special}</div>` : ""}
       <div class="card-flavor">${card.flavor}</div>
       <div class="card-watermark">${watermark || "☀️"}</div>

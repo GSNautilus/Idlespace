@@ -261,6 +261,43 @@ body {
 .card-preview .card-stats.expanded .card-stat-icon { font-size: 15px; }
 .card-preview .card-stat-value { font-weight: 600; color: #fff; }
 .card-preview .card-stat-value.zero { color: #2a3460; }
+/* Ship card layout */
+.ship-stat-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  padding: 1px 0;
+}
+.ship-stat-row.ship-utils {
+  margin-top: 2px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(100,130,180,0.15);
+}
+.ship-weapons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px 8px;
+  margin-top: 2px;
+  border-top: 1px solid rgba(100,130,180,0.15);
+}
+.ship-weapon-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+.ship-weapon-row .card-stat-icon { font-size: 12px; }
+.ship-weapon-row .card-stat-value { font-weight: 600; }
+.ship-range-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 3px;
+  margin-left: auto;
+  letter-spacing: 0.5px;
+}
 
 /* Special ability */
 .card-preview .card-special {
@@ -814,12 +851,19 @@ const RARITY_COLORS = {
 
 const CATEGORY_DEFAULT_STATS = {
   building: [],
-  ship:     [],
-  captain:  [],
+  ship:     ["shields","armor","speed","sensorRange","energyDmg","energyRange","kineticDmg","kineticRange","missileDmg","missileRange","stealth","pointDefense"],
+  captain:  ["commandBonus","maxFleetSize"],
   leader:   [],
   admiral:  [],
   star:     [],
   planet:   [],
+};
+
+// Stats that use a dropdown instead of a number input
+const DROPDOWN_STATS = {
+  energyRange:  ["short","medium","long"],
+  kineticRange: ["short","medium","long"],
+  missileRange: ["short","medium","long"],
 };
 
 const STORAGE_KEY = "idlespace_cards";
@@ -850,7 +894,8 @@ function getEditorData() {
   const stats = {};
   document.querySelectorAll("#stat-rows .stat-row").forEach(row => {
     const key = row.querySelector(".stat-key").value.trim().toLowerCase().replace(/\s+/g, "_");
-    const val = parseFloat(row.querySelector(".stat-val").value) || 0;
+    const valEl = row.querySelector(".stat-val");
+    const val = DROPDOWN_STATS[key] ? valEl.value : (parseFloat(valEl.value) || 0);
     if (key) stats[key] = val;
   });
 
@@ -958,19 +1003,34 @@ function addStatRow(container, key, value, isDefault) {
   if (isDefault) keyInput.readOnly = true;
   keyInput.addEventListener("input", updatePreview);
 
-  const valInput = document.createElement("input");
-  valInput.className = "stat-val";
-  valInput.type = "number";
-  valInput.value = value;
-  valInput.placeholder = "0";
-  valInput.addEventListener("input", updatePreview);
+  let valEl;
+  if (DROPDOWN_STATS[key]) {
+    // Dropdown for range-type stats
+    valEl = document.createElement("select");
+    valEl.className = "stat-val";
+    for (const opt of DROPDOWN_STATS[key]) {
+      const option = document.createElement("option");
+      option.value = opt;
+      option.textContent = opt;
+      if (opt === value) option.selected = true;
+      valEl.appendChild(option);
+    }
+    valEl.addEventListener("change", updatePreview);
+  } else {
+    valEl = document.createElement("input");
+    valEl.className = "stat-val";
+    valEl.type = "number";
+    valEl.value = value;
+    valEl.placeholder = "0";
+    valEl.addEventListener("input", updatePreview);
+  }
 
   const removeBtn = document.createElement("button");
   removeBtn.className = "remove-btn";
   removeBtn.textContent = "×";
   removeBtn.addEventListener("click", () => { row.remove(); updatePreview(); });
 
-  row.append(keyInput, valInput, removeBtn);
+  row.append(keyInput, valEl, removeBtn);
   container.appendChild(row);
 }
 
@@ -1153,14 +1213,24 @@ const CATEGORY_ICONS = {
 
 // Icon lookup for known stat/cost keys
 const STAT_ICONS = {
-  energy: "⚡", minerals: "⛏️", research: "🔬", food: "🌾",
+  energy: "⚡", minerals: "⛏️", research: "🔬", food: "🌾", credits: "💰",
   attack: "⚔️", defense: "🛡️", speed: "💨", hull: "🔩",
   combat: "⚔️", navigation: "🧭", diplomacy: "🤝", engineering: "🔧",
   morale: "💪", efficiency: "⚙️", research_bonus: "🔬", growth: "📈",
   fleet_size: "🚀", tactics: "🎯", logistics: "📦", charisma: "✨",
   luminosity: "☀️", stability: "⚖️", planets_max: "🪐",
   ecology: "🌿", gravity: "🌀", atmosphere: "💨", size: "📐",
+  // Ship combat stats
+  shields: "🔷", armor: "🛡️", sensorRange: "📡",
+  stealth: "👁️", pointDefense: "🎯",
+  energyDmg: "⚡", kineticDmg: "💥", missileDmg: "🚀",
+  energyRange: "⚡", kineticRange: "💥", missileRange: "🚀",
+  // Captain stats
+  commandBonus: "⭐", maxFleetSize: "⚓",
 };
+
+const RANGE_LABELS = { short: "S", medium: "M", long: "L" };
+const RANGE_COLORS = { short: "#e0a040", medium: "#a0c0e0", long: "#60d060" };
 
 function getStatIcon(key) {
   return STAT_ICONS[key] || "◆";
@@ -1206,15 +1276,57 @@ function updatePreview() {
     specialEl.style.display = "none";
   }
 
-  // Stats — icon + value only, compact row. Expanded when no special text.
+  // Stats — ship cards get combat layout, others get generic
   const statsEl = document.getElementById("preview-stats");
   statsEl.innerHTML = "";
-  statsEl.className = `card-stats${hasSpecial ? "" : " expanded"}`;
-  for (const [key, val] of Object.entries(data.stats)) {
-    const div = document.createElement("div");
-    div.className = "card-stat";
-    div.innerHTML = `<span class="card-stat-icon">${getStatIcon(key)}</span><span class="card-stat-value ${val === 0 ? "zero" : ""}">${val}</span>`;
-    statsEl.appendChild(div);
+  const isShip = data.category === "ship";
+  statsEl.className = `card-stats${(!hasSpecial && !isShip) ? " expanded" : ""}`;
+
+  if (isShip) {
+    const s = data.stats;
+    // Defense row
+    let defHtml = `<div class="ship-stat-row">`;
+    defHtml += `<div class="card-stat"><span class="card-stat-icon">🔷</span><span class="card-stat-value">${s.shields || 0}</span></div>`;
+    defHtml += `<div class="card-stat"><span class="card-stat-icon">🛡️</span><span class="card-stat-value">${s.armor || 0}</span></div>`;
+    defHtml += `<div class="card-stat"><span class="card-stat-icon">💨</span><span class="card-stat-value">${s.speed || 0}</span></div>`;
+    defHtml += `</div>`;
+    // Weapons
+    const weapons = [
+      { key:"energyDmg", rangeKey:"energyRange", icon:"⚡" },
+      { key:"kineticDmg", rangeKey:"kineticRange", icon:"💥" },
+      { key:"missileDmg", rangeKey:"missileRange", icon:"🚀" },
+    ];
+    const active = weapons.filter(w => s[w.key] && s[w.key] > 0);
+    let weapHtml = "";
+    if (active.length > 0) {
+      weapHtml = `<div class="ship-weapons">`;
+      for (const w of active) {
+        const range = s[w.rangeKey] || "medium";
+        const rl = RANGE_LABELS[range];
+        const rc = RANGE_COLORS[range];
+        weapHtml += `<div class="ship-weapon-row"><span class="card-stat-icon">${w.icon}</span><span class="card-stat-value">${s[w.key]}</span><span class="ship-range-badge" style="background:${rc}20;color:${rc};border:1px solid ${rc}40">${rl}</span></div>`;
+      }
+      weapHtml += `</div>`;
+    }
+    // Utility row
+    const utils = [];
+    if (s.sensorRange) utils.push({ icon:"📡", val:s.sensorRange });
+    if (s.pointDefense) utils.push({ icon:"🎯", val:s.pointDefense });
+    if (s.stealth) utils.push({ icon:"👁️", val:s.stealth });
+    let utilHtml = "";
+    if (utils.length > 0) {
+      utilHtml = `<div class="ship-stat-row ship-utils">`;
+      for (const u of utils) utilHtml += `<div class="card-stat"><span class="card-stat-icon">${u.icon}</span><span class="card-stat-value">${u.val}</span></div>`;
+      utilHtml += `</div>`;
+    }
+    statsEl.innerHTML = defHtml + weapHtml + utilHtml;
+  } else {
+    for (const [key, val] of Object.entries(data.stats)) {
+      const div = document.createElement("div");
+      div.className = "card-stat";
+      div.innerHTML = `<span class="card-stat-icon">${getStatIcon(key)}</span><span class="card-stat-value ${val === 0 ? "zero" : ""}">${val}</span>`;
+      statsEl.appendChild(div);
+    }
   }
 
   // Flavor
@@ -1350,7 +1462,8 @@ document.getElementById("edit-category").addEventListener("change", () => {
   const oldDefaults = CATEGORY_DEFAULT_STATS[oldCat] || [];
   document.querySelectorAll("#stat-rows .stat-row").forEach(row => {
     const key = row.querySelector(".stat-key").value.trim().toLowerCase().replace(/\s+/g, "_");
-    const val = parseFloat(row.querySelector(".stat-val").value) || 0;
+    const valEl = row.querySelector(".stat-val");
+    const val = DROPDOWN_STATS[key] ? valEl.value : (parseFloat(valEl.value) || 0);
     if (key && !oldDefaults.includes(key)) {
       currentCustom[key] = val;
     }

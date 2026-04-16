@@ -1036,6 +1036,22 @@ body {
   background: #4a9b5a;
   transition: width 0.3s;
 }
+
+/* Research reveal animations */
+@keyframes revealFlip {
+  0% { transform: scale(0.3) rotateY(180deg); opacity: 0; }
+  50% { transform: scale(1.1) rotateY(90deg); opacity: 0.5; }
+  100% { transform: scale(1) rotateY(0deg); opacity: 1; }
+}
+@keyframes revealGlow {
+  0% { transform: scale(0.2); opacity: 0; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.6; }
+}
+@keyframes revealFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 </style>
 </head>
 <body>
@@ -1208,6 +1224,40 @@ const STAR_TEMPLATES = [
 const RARITY_WEIGHTS = { common:60, uncommon:25, rare:10, epic:4, legendary:1 };
 const RARITY_COLORS = { common:"#6a7a9b", uncommon:"#4a9b5a", rare:"#4a7ac0", epic:"#8a4ac0", legendary:"#c0a020" };
 
+// Stat rolling: ±25% variance around template value, higher rarity biases toward top of range
+const STAT_ROLL_VARIANCE = 0.25;
+const RARITY_ROLL_BIAS = { common:0.5, uncommon:0.55, rare:0.6, epic:0.7, legendary:0.8 };
+
+function biasedRandom(bias) {
+  // Returns 0-1 skewed toward 1 when bias > 0.5
+  // bias=0.5 → uniform, bias=0.8 → heavily top-weighted
+  return Math.pow(Math.random(), 1 / (bias * 2));
+}
+
+function rollStats(template) {
+  const rarity = template.rarity;
+  const bias = RARITY_ROLL_BIAS[rarity] || 0.5;
+  const rolled = {};
+  const ranges = {};
+  for (const [key, val] of Object.entries(template.stats)) {
+    const min = Math.max(1, Math.round(val * (1 - STAT_ROLL_VARIANCE)));
+    const max = Math.max(min + 1, Math.round(val * (1 + STAT_ROLL_VARIANCE)));
+    rolled[key] = min + Math.round((max - min) * biasedRandom(bias));
+    ranges[key] = [min, max];
+  }
+  return { stats: rolled, statRanges: ranges };
+}
+
+function getStatQualityColor(value, min, max) {
+  if (min >= max) return "#c0a020";
+  const pct = (value - min) / (max - min);
+  if (pct >= 0.8) return "#c0a020";  // gold (legendary)
+  if (pct >= 0.6) return "#8a4ac0";  // purple (epic)
+  if (pct >= 0.4) return "#4a7ac0";  // blue (rare)
+  if (pct >= 0.2) return "#4a9b5a";  // green (uncommon)
+  return "#6a7a9b";                   // gray (common)
+}
+
 // Visual properties per star name
 const STAR_VISUALS = {
   "Red Dwarf":                 { color:"#cc4444", glowColor:"rgba(204,68,68,0.4)", baseSize:3 },
@@ -1238,25 +1288,25 @@ const STAT_ICONS = {
 //  PLANET CARD TEMPLATES
 // ═══════════════════════════════════════════
 const PLANET_TEMPLATES = [
-  // Common (4)
+  // Common (4) — ~1x baseline
   { id:"pln_001", name:"Barren Rock", type:"planet", rarity:"common", stats:{size:3,gravity:2,minerals:3}, special:"", flavor:"Nothing grows here, but the ground is rich." },
   { id:"pln_002", name:"Arid Waste", type:"planet", rarity:"common", stats:{size:3,gravity:3,minerals:2,energy:1}, special:"", flavor:"Sun-blasted plains of cracked earth." },
   { id:"pln_003", name:"Frozen Moon", type:"planet", rarity:"common", stats:{size:2,gravity:1,research:2}, special:"", flavor:"Silent, cold, and full of secrets." },
   { id:"pln_004", name:"Desert Oasis", type:"planet", rarity:"common", stats:{size:3,gravity:3,food:2,minerals:1}, special:"", flavor:"Life clings to scattered water sources." },
-  // Uncommon (4)
-  { id:"pln_005", name:"Temperate World", type:"planet", rarity:"uncommon", stats:{size:4,gravity:3,ecology:4,food:3}, special:"", flavor:"A gentle world with room to breathe." },
-  { id:"pln_006", name:"Ocean World", type:"planet", rarity:"uncommon", stats:{size:4,gravity:3,ecology:3,food:4,research:1}, special:"", flavor:"Endless waves hide endless depth." },
-  { id:"pln_007", name:"Volcanic World", type:"planet", rarity:"uncommon", stats:{size:3,gravity:4,minerals:5,energy:3}, special:"", flavor:"The ground never stops shaking." },
-  { id:"pln_008", name:"Tidally Locked World", type:"planet", rarity:"uncommon", stats:{size:3,gravity:3,energy:3,minerals:2,ecology:1}, special:"", flavor:"One face burns, the other freezes." },
-  // Rare (2)
-  { id:"pln_009", name:"Gas Giant", type:"planet", rarity:"rare", stats:{size:8,gravity:7,energy:5,atmosphere:5}, special:"Cannot be colonized — orbital stations only.", flavor:"A world of storms with no ground to stand on." },
-  { id:"pln_010", name:"Jungle World", type:"planet", rarity:"rare", stats:{size:4,gravity:3,ecology:6,food:5,growth:3}, special:"", flavor:"Green devours everything. Even the sky." },
-  // Epic (2)
-  { id:"pln_011", name:"Crystalline World", type:"planet", rarity:"epic", stats:{size:3,gravity:2,minerals:8,research:5,energy:3}, special:"Yields rare crystalline resources.", flavor:"The surface refracts light into impossible colors." },
-  { id:"pln_012", name:"Gaia World", type:"planet", rarity:"epic", stats:{size:5,gravity:3,ecology:8,food:7,growth:4,morale:3}, special:"Perfect habitability — all output +20%.", flavor:"As if the planet was made for us." },
-  // Legendary (2)
-  { id:"pln_013", name:"Precursor Homeworld", type:"planet", rarity:"legendary", stats:{size:6,gravity:3,ecology:5,research:12,minerals:6,energy:5}, special:"Ancient ruins grant unique technologies.", flavor:"They were here long before us. Where did they go?" },
-  { id:"pln_014", name:"Ring World Fragment", type:"planet", rarity:"legendary", stats:{size:10,gravity:2,ecology:6,food:10,minerals:8,research:6}, special:"Massive habitable surface area.", flavor:"A broken circle that still dwarfs most worlds." },
+  // Uncommon (4) — ~5x
+  { id:"pln_005", name:"Temperate World", type:"planet", rarity:"uncommon", stats:{size:6,gravity:4,ecology:15,food:12}, special:"", flavor:"A gentle world with room to breathe." },
+  { id:"pln_006", name:"Ocean World", type:"planet", rarity:"uncommon", stats:{size:6,gravity:4,ecology:12,food:15,research:5}, special:"", flavor:"Endless waves hide endless depth." },
+  { id:"pln_007", name:"Volcanic World", type:"planet", rarity:"uncommon", stats:{size:5,gravity:6,minerals:18,energy:12}, special:"", flavor:"The ground never stops shaking." },
+  { id:"pln_008", name:"Tidally Locked World", type:"planet", rarity:"uncommon", stats:{size:5,gravity:4,energy:12,minerals:8,ecology:4}, special:"", flavor:"One face burns, the other freezes." },
+  // Rare (2) — ~25x
+  { id:"pln_009", name:"Gas Giant", type:"planet", rarity:"rare", stats:{size:15,gravity:12,energy:60,atmosphere:50}, special:"Cannot be colonized — orbital stations only.", flavor:"A world of storms with no ground to stand on." },
+  { id:"pln_010", name:"Jungle World", type:"planet", rarity:"rare", stats:{size:8,gravity:5,ecology:70,food:60,growth:30}, special:"", flavor:"Green devours everything. Even the sky." },
+  // Epic (2) — ~100x
+  { id:"pln_011", name:"Crystalline World", type:"planet", rarity:"epic", stats:{size:8,gravity:4,minerals:250,research:150,energy:80}, special:"Yields rare crystalline resources.", flavor:"The surface refracts light into impossible colors." },
+  { id:"pln_012", name:"Gaia World", type:"planet", rarity:"epic", stats:{size:12,gravity:5,ecology:300,food:250,growth:120,morale:80}, special:"Perfect habitability — all output +20%.", flavor:"As if the planet was made for us." },
+  // Legendary (2) — ~500x
+  { id:"pln_013", name:"Precursor Homeworld", type:"planet", rarity:"legendary", stats:{size:15,gravity:5,ecology:400,research:1500,minerals:600,energy:500}, special:"Ancient ruins grant unique technologies.", flavor:"They were here long before us. Where did they go?" },
+  { id:"pln_014", name:"Ring World Fragment", type:"planet", rarity:"legendary", stats:{size:20,gravity:3,ecology:500,food:1200,minerals:800,research:600}, special:"Massive habitable surface area.", flavor:"A broken circle that still dwarfs most worlds." },
 ];
 
 const PLANET_VISUALS = {
@@ -1280,83 +1330,98 @@ const PLANET_VISUALS = {
 //  BUILDING / LEADER / CAPTAIN / SHIP TEMPLATES
 // ═══════════════════════════════════════════
 const BUILDING_TEMPLATES = [
-  // Common — no upkeep, basic production, no research required
-  { id:"bld_001", name:"Solar Array", category:"building", rarity:"common", stats:{energy:3}, cost:{minerals:2}, special:"", flavor:"Harnessing the light of distant suns." },
-  { id:"bld_002", name:"Mining Outpost", category:"building", rarity:"common", stats:{minerals:3}, cost:{energy:2}, special:"", flavor:"Deep core extractors never rest." },
-  { id:"bld_003", name:"Research Lab", category:"building", rarity:"common", stats:{research:3}, cost:{energy:2,minerals:1}, special:"", flavor:"Knowledge is the ultimate resource." },
-  { id:"bld_004", name:"Hydroponics Bay", category:"building", rarity:"common", stats:{food:3}, cost:{energy:1,minerals:1}, special:"", flavor:"Life finds a way, even in the void." },
-  { id:"bld_016", name:"Colony Hub", category:"building", rarity:"common", stats:{food:2,credits:5}, cost:{minerals:3}, special:"", flavor:"Where settlers first call home." },
-  { id:"bld_019", name:"Spaceport", category:"building", rarity:"common", stats:{credits:8}, cost:{minerals:3,energy:1}, special:"", flavor:"The gateway between ground and sky." },
-  // Uncommon — some upkeep, better efficiency
-  { id:"bld_005", name:"Fusion Reactor", category:"building", rarity:"uncommon", stats:{energy:6}, upkeep:{minerals:1}, cost:{minerals:4,research:1}, special:"", flavor:"Atoms split, power flows." },
-  { id:"bld_006", name:"Ore Refinery", category:"building", rarity:"uncommon", stats:{minerals:5}, upkeep:{energy:1}, cost:{energy:3}, special:"", flavor:"Raw stone becomes refined wealth." },
-  { id:"bld_007", name:"Data Archive", category:"building", rarity:"uncommon", stats:{research:5}, upkeep:{energy:1}, cost:{energy:3,minerals:2}, special:"", flavor:"Every discovery preserved for eternity." },
-  { id:"bld_008", name:"Bio Dome", category:"building", rarity:"uncommon", stats:{food:5}, cost:{energy:2,minerals:2}, special:"", flavor:"A garden among the stars." },
-  { id:"bld_017", name:"Shield Generator", category:"building", rarity:"uncommon", stats:{defense:4}, upkeep:{energy:2}, cost:{energy:4,minerals:2}, special:"", flavor:"An invisible dome of safety." },
-  // Rare — meaningful upkeep, strong production, specials
-  { id:"bld_009", name:"Quantum Computer", category:"building", rarity:"rare", stats:{research:8}, upkeep:{energy:3}, cost:{energy:5,minerals:4}, special:"Boosts all research output by 10%.", flavor:"Processing power beyond mortal comprehension." },
-  { id:"bld_010", name:"Stellar Foundry", category:"building", rarity:"rare", stats:{minerals:8}, upkeep:{energy:3,food:1}, cost:{energy:6,food:2}, special:"", flavor:"Forged in the heat of captured stars." },
-  { id:"bld_013", name:"Orbital Farm Ring", category:"building", rarity:"rare", stats:{food:8}, upkeep:{energy:2}, cost:{energy:4,minerals:3}, special:"", flavor:"Endless fields circling the world below." },
-  { id:"bld_020", name:"Dark Matter Lab", category:"building", rarity:"rare", stats:{research:7}, upkeep:{energy:3,credits:10}, cost:{energy:6,minerals:3,research:2}, special:"Chance to discover exotic tech.", flavor:"Probing the invisible scaffolding of reality." },
-  // Epic — heavy upkeep, powerful effects
-  { id:"bld_011", name:"Antimatter Plant", category:"building", rarity:"epic", stats:{energy:15}, upkeep:{minerals:3,credits:15}, cost:{minerals:8,research:4}, special:"Powers adjacent buildings for free.", flavor:"The annihilation of matter feeds the empire." },
-  { id:"bld_012", name:"Megastructure Scaffold", category:"building", rarity:"epic", stats:{minerals:12,energy:4}, upkeep:{energy:4,credits:20}, cost:{energy:10,research:5}, special:"Unlocks tier-3 buildings.", flavor:"The skeleton of something immense takes shape." },
-  { id:"bld_015", name:"Nanite Assembler", category:"building", rarity:"epic", stats:{minerals:10}, upkeep:{energy:4,research:2}, cost:{energy:7,research:5}, special:"Reduces all building costs by 15%.", flavor:"Molecule by molecule, a world remade." },
-  // Legendary — game-changing, expensive upkeep
-  { id:"bld_014", name:"Dyson Collector", category:"building", rarity:"legendary", stats:{energy:20,research:5}, upkeep:{minerals:5,credits:30}, cost:{minerals:15,research:8}, special:"Energy output scales with star luminosity.", flavor:"To harness a star is to hold infinity." },
-  { id:"bld_018", name:"Terraform Engine", category:"building", rarity:"legendary", stats:{food:15}, upkeep:{energy:6,minerals:3,credits:25}, cost:{energy:12,minerals:10,research:6}, special:"Gradually improves planet habitability.", flavor:"Rewriting the laws of a world." },
+  // Common — no upkeep, basic production (~1x baseline)
+  { id:"bld_001", name:"Solar Array", category:"building", rarity:"common", stats:{energy:3}, cost:{minerals:5}, special:"", flavor:"Harnessing the light of distant suns." },
+  { id:"bld_002", name:"Mining Outpost", category:"building", rarity:"common", stats:{minerals:3}, cost:{energy:5}, special:"", flavor:"Deep core extractors never rest." },
+  { id:"bld_003", name:"Research Lab", category:"building", rarity:"common", stats:{research:3}, cost:{energy:4,minerals:3}, special:"", flavor:"Knowledge is the ultimate resource." },
+  { id:"bld_004", name:"Hydroponics Bay", category:"building", rarity:"common", stats:{food:3}, cost:{energy:3,minerals:3}, special:"", flavor:"Life finds a way, even in the void." },
+  { id:"bld_016", name:"Colony Hub", category:"building", rarity:"common", stats:{food:2,credits:5}, cost:{minerals:8}, special:"", flavor:"Where settlers first call home." },
+  { id:"bld_019", name:"Spaceport", category:"building", rarity:"common", stats:{credits:8}, cost:{minerals:8,energy:4}, special:"", flavor:"The gateway between ground and sky." },
+  // Uncommon — some upkeep, ~5x production
+  { id:"bld_005", name:"Fusion Reactor", category:"building", rarity:"uncommon", stats:{energy:15}, upkeep:{minerals:3}, cost:{minerals:25,research:8}, special:"", flavor:"Atoms split, power flows." },
+  { id:"bld_006", name:"Ore Refinery", category:"building", rarity:"uncommon", stats:{minerals:15}, upkeep:{energy:3}, cost:{energy:20,credits:50}, special:"", flavor:"Raw stone becomes refined wealth." },
+  { id:"bld_007", name:"Data Archive", category:"building", rarity:"uncommon", stats:{research:15}, upkeep:{energy:3}, cost:{energy:20,minerals:15}, special:"", flavor:"Every discovery preserved for eternity." },
+  { id:"bld_008", name:"Bio Dome", category:"building", rarity:"uncommon", stats:{food:15}, upkeep:{energy:2}, cost:{energy:15,minerals:15}, special:"", flavor:"A garden among the stars." },
+  { id:"bld_017", name:"Shield Generator", category:"building", rarity:"uncommon", stats:{defense:20}, upkeep:{energy:5}, cost:{energy:25,minerals:15,credits:50}, special:"", flavor:"An invisible dome of safety." },
+  // Rare — meaningful upkeep, ~25x production
+  { id:"bld_009", name:"Quantum Computer", category:"building", rarity:"rare", stats:{research:75}, upkeep:{energy:15}, cost:{energy:120,minerals:80,credits:250}, special:"Boosts all research output by 10%.", flavor:"Processing power beyond mortal comprehension." },
+  { id:"bld_010", name:"Stellar Foundry", category:"building", rarity:"rare", stats:{minerals:75}, upkeep:{energy:15,food:5}, cost:{energy:150,food:50,credits:200}, special:"", flavor:"Forged in the heat of captured stars." },
+  { id:"bld_013", name:"Orbital Farm Ring", category:"building", rarity:"rare", stats:{food:75}, upkeep:{energy:10}, cost:{energy:100,minerals:80,credits:200}, special:"", flavor:"Endless fields circling the world below." },
+  { id:"bld_020", name:"Dark Matter Lab", category:"building", rarity:"rare", stats:{research:60}, upkeep:{energy:15,credits:100}, cost:{energy:150,minerals:80,research:30}, special:"Chance to discover exotic tech.", flavor:"Probing the invisible scaffolding of reality." },
+  // Epic — heavy upkeep, ~100x production
+  { id:"bld_011", name:"Antimatter Plant", category:"building", rarity:"epic", stats:{energy:300}, upkeep:{minerals:40,credits:200}, cost:{minerals:500,research:150,credits:1500}, special:"Powers adjacent buildings for free.", flavor:"The annihilation of matter feeds the empire." },
+  { id:"bld_012", name:"Megastructure Scaffold", category:"building", rarity:"epic", stats:{minerals:250,energy:80}, upkeep:{energy:50,credits:300}, cost:{energy:600,research:200,credits:2000}, special:"Unlocks tier-3 buildings.", flavor:"The skeleton of something immense takes shape." },
+  { id:"bld_015", name:"Nanite Assembler", category:"building", rarity:"epic", stats:{minerals:200}, upkeep:{energy:50,research:20}, cost:{energy:400,research:200,credits:1500}, special:"Reduces all building costs by 15%.", flavor:"Molecule by molecule, a world remade." },
+  // Legendary — game-changing, ~500x production
+  { id:"bld_014", name:"Dyson Collector", category:"building", rarity:"legendary", stats:{energy:1500,research:300}, upkeep:{minerals:200,credits:2000}, cost:{minerals:5000,research:1500,credits:15000}, special:"Energy output scales with star luminosity.", flavor:"To harness a star is to hold infinity." },
+  { id:"bld_018", name:"Terraform Engine", category:"building", rarity:"legendary", stats:{food:1200}, upkeep:{energy:300,minerals:100,credits:1500}, cost:{energy:4000,minerals:3000,research:1000,credits:12000}, special:"Gradually improves planet habitability.", flavor:"Rewriting the laws of a world." },
 ];
 
 const LEADER_TEMPLATES = [
-  { id:"ldr_001", name:"Colony Overseer", category:"leader", rarity:"common", stats:{efficiency:2,morale:1}, cost:{food:3}, special:"", flavor:"Keeping the gears turning." },
-  { id:"ldr_002", name:"Frontier Preacher", category:"leader", rarity:"common", stats:{morale:3}, cost:{food:2}, special:"", flavor:"Faith holds where bulkheads fail." },
-  { id:"ldr_003", name:"Supply Coordinator", category:"leader", rarity:"common", stats:{logistics:3,efficiency:1}, cost:{food:2,energy:1}, special:"", flavor:"Every crate accounted for." },
-  { id:"ldr_004", name:"Chief Engineer", category:"leader", rarity:"uncommon", stats:{engineering:4,efficiency:2}, cost:{food:3,minerals:2}, special:"", flavor:"If it's broken, she'll fix it." },
-  { id:"ldr_005", name:"Propaganda Minister", category:"leader", rarity:"uncommon", stats:{morale:4,charisma:3}, cost:{food:4,energy:1}, special:"Boosts colony growth by 10%.", flavor:"The truth is whatever keeps them working." },
-  { id:"ldr_006", name:"Research Director", category:"leader", rarity:"uncommon", stats:{research_bonus:4,research:2}, cost:{food:4,research:2}, special:"", flavor:"Funding the questions no one else asks." },
-  { id:"ldr_007", name:"Trade Magnate", category:"leader", rarity:"rare", stats:{logistics:5,diplomacy:4,charisma:2}, cost:{food:5,energy:3}, special:"Trade routes yield 20% more.", flavor:"Credits are just a way of keeping score." },
-  { id:"ldr_008", name:"War Marshal", category:"leader", rarity:"rare", stats:{tactics:5,morale:3,attack:2}, cost:{food:6,energy:3}, special:"All ships gain +1 attack.", flavor:"Strategy wins battles. Logistics wins wars." },
-  { id:"ldr_009", name:"Visionary Architect", category:"leader", rarity:"epic", stats:{engineering:7,efficiency:5,research:3}, cost:{food:7,minerals:5,research:3}, special:"Buildings cost 20% less.", flavor:"She sees the city that will stand in a thousand years." },
-  { id:"ldr_010", name:"Galactic Diplomat", category:"leader", rarity:"epic", stats:{diplomacy:8,charisma:5,morale:3}, cost:{food:8,energy:4}, special:"Prevents war declarations for 10 ticks.", flavor:"Peace is not weakness. It is the hardest victory." },
-  { id:"ldr_011", name:"Eternal Chancellor", category:"leader", rarity:"legendary", stats:{efficiency:10,morale:6,charisma:5,growth:4}, cost:{food:10,energy:6,research:4}, special:"All colony output +15%.", flavor:"Under her rule, empires flourish." },
-  { id:"ldr_012", name:"Spymaster", category:"leader", rarity:"rare", stats:{tactics:4,charisma:4,efficiency:3}, cost:{food:5,energy:4}, special:"Reveals enemy fleet composition.", flavor:"Information is the only currency that never devalues." },
-  { id:"ldr_013", name:"Labor Organizer", category:"leader", rarity:"common", stats:{efficiency:3,morale:1}, cost:{food:2}, special:"", flavor:"Together we build." },
+  // Common — ~1x baseline
+  { id:"ldr_001", name:"Colony Overseer", category:"leader", rarity:"common", stats:{efficiency:2,morale:1}, cost:{food:5}, special:"", flavor:"Keeping the gears turning." },
+  { id:"ldr_002", name:"Frontier Preacher", category:"leader", rarity:"common", stats:{morale:3}, cost:{food:4}, special:"", flavor:"Faith holds where bulkheads fail." },
+  { id:"ldr_003", name:"Supply Coordinator", category:"leader", rarity:"common", stats:{logistics:3,efficiency:1}, cost:{food:4,energy:3}, special:"", flavor:"Every crate accounted for." },
+  { id:"ldr_013", name:"Labor Organizer", category:"leader", rarity:"common", stats:{efficiency:3,morale:1}, cost:{food:4}, special:"", flavor:"Together we build." },
+  // Uncommon — ~5x
+  { id:"ldr_004", name:"Chief Engineer", category:"leader", rarity:"uncommon", stats:{engineering:15,efficiency:8}, cost:{food:20,minerals:15,credits:50}, special:"", flavor:"If it's broken, she'll fix it." },
+  { id:"ldr_005", name:"Propaganda Minister", category:"leader", rarity:"uncommon", stats:{morale:15,charisma:10}, cost:{food:25,energy:10,credits:60}, special:"Boosts colony growth by 10%.", flavor:"The truth is whatever keeps them working." },
+  { id:"ldr_006", name:"Research Director", category:"leader", rarity:"uncommon", stats:{research_bonus:15,research:10}, cost:{food:25,research:15,credits:50}, special:"", flavor:"Funding the questions no one else asks." },
+  // Rare — ~25x
+  { id:"ldr_007", name:"Trade Magnate", category:"leader", rarity:"rare", stats:{logistics:50,diplomacy:40,charisma:25}, cost:{food:80,energy:50,credits:300}, special:"Trade routes yield 20% more.", flavor:"Credits are just a way of keeping score." },
+  { id:"ldr_008", name:"War Marshal", category:"leader", rarity:"rare", stats:{tactics:60,morale:30,attack:25}, cost:{food:100,energy:50,credits:400}, special:"All ships gain +1 attack.", flavor:"Strategy wins battles. Logistics wins wars." },
+  { id:"ldr_012", name:"Spymaster", category:"leader", rarity:"rare", stats:{tactics:40,charisma:40,efficiency:30}, cost:{food:80,energy:60,credits:350}, special:"Reveals enemy fleet composition.", flavor:"Information is the only currency that never devalues." },
+  // Epic — ~100x
+  { id:"ldr_009", name:"Visionary Architect", category:"leader", rarity:"epic", stats:{engineering:200,efficiency:150,research:80}, cost:{food:300,minerals:200,research:100,credits:2000}, special:"Buildings cost 20% less.", flavor:"She sees the city that will stand in a thousand years." },
+  { id:"ldr_010", name:"Galactic Diplomat", category:"leader", rarity:"epic", stats:{diplomacy:250,charisma:150,morale:80}, cost:{food:350,energy:200,credits:2500}, special:"Prevents war declarations for 10 ticks.", flavor:"Peace is not weakness. It is the hardest victory." },
+  // Legendary — ~500x
+  { id:"ldr_011", name:"Eternal Chancellor", category:"leader", rarity:"legendary", stats:{efficiency:1000,morale:500,charisma:400,growth:300}, cost:{food:2000,energy:1500,research:800,credits:15000}, special:"All colony output +15%.", flavor:"Under her rule, empires flourish." },
 ];
 
 const CAPTAIN_TEMPLATES = [
-  { id:"cpt_001", name:"Rookie Pilot", category:"captain", rarity:"common", stats:{navigation:2,speed:1}, cost:{food:2}, special:"", flavor:"Everyone starts somewhere." },
-  { id:"cpt_002", name:"Veteran Navigator", category:"captain", rarity:"common", stats:{navigation:3,tactics:1}, cost:{food:3}, special:"", flavor:"A thousand jumps and counting." },
-  { id:"cpt_003", name:"Trade Captain", category:"captain", rarity:"common", stats:{logistics:3,diplomacy:1}, cost:{food:2,energy:1}, special:"", flavor:"Profit flows where connections grow." },
-  { id:"cpt_004", name:"Combat Ace", category:"captain", rarity:"uncommon", stats:{tactics:4,attack:2,speed:2}, cost:{food:3,energy:2}, special:"", flavor:"Five kills before breakfast." },
-  { id:"cpt_005", name:"Fleet Surgeon", category:"captain", rarity:"uncommon", stats:{morale:3,hull:3}, cost:{food:4,research:1}, special:"Repairs 1 hull per tick in combat.", flavor:"Mending ships and spirits alike." },
-  { id:"cpt_006", name:"Astrocartographer", category:"captain", rarity:"uncommon", stats:{navigation:5,research:2}, cost:{food:3,research:2}, special:"", flavor:"She names the stars no one has seen." },
-  { id:"cpt_007", name:"Corsair Queen", category:"captain", rarity:"rare", stats:{attack:5,speed:4,charisma:3}, cost:{food:5,energy:3}, special:"Chance to capture enemy ships.", flavor:"The void bows to no law but hers." },
-  { id:"cpt_008", name:"Xenolinguist", category:"captain", rarity:"rare", stats:{diplomacy:6,research:3}, cost:{food:4,research:3}, special:"Unlocks alien trade routes.", flavor:"Every species speaks the language of need." },
-  { id:"cpt_009", name:"Ghost Runner", category:"captain", rarity:"epic", stats:{speed:8,navigation:5,tactics:4}, cost:{food:6,energy:4,research:2}, special:"Ship cannot be targeted for 1 round.", flavor:"You can't hit what you can't find." },
-  { id:"cpt_010", name:"Admiral-Errant", category:"captain", rarity:"epic", stats:{tactics:7,attack:4,charisma:4,morale:3}, cost:{food:7,energy:5}, special:"Inspires nearby ships: +1 morale.", flavor:"Rank means nothing. Results mean everything." },
-  { id:"cpt_011", name:"The Pathfinder", category:"captain", rarity:"legendary", stats:{navigation:10,speed:6,research:5,diplomacy:4}, cost:{food:8,energy:5,research:4}, special:"Discovers anomalies twice as fast.", flavor:"Where others see emptiness, she sees roads." },
-  { id:"cpt_012", name:"War Sage", category:"captain", rarity:"rare", stats:{tactics:5,defense:3,morale:3}, cost:{food:5,research:2}, special:"Reduces damage taken by 15%.", flavor:"Every battle is a lesson." },
-  { id:"cpt_013", name:"Smuggler", category:"captain", rarity:"common", stats:{speed:3,logistics:2}, cost:{food:2}, special:"", flavor:"No questions asked, no cargo refused." },
+  // Common — ~1x baseline
+  { id:"cpt_001", name:"Rookie Pilot", category:"captain", rarity:"common", stats:{navigation:2,speed:1}, cost:{food:4}, special:"", flavor:"Everyone starts somewhere." },
+  { id:"cpt_002", name:"Veteran Navigator", category:"captain", rarity:"common", stats:{navigation:3,tactics:1}, cost:{food:5}, special:"", flavor:"A thousand jumps and counting." },
+  { id:"cpt_003", name:"Trade Captain", category:"captain", rarity:"common", stats:{logistics:3,diplomacy:1}, cost:{food:4,energy:3}, special:"", flavor:"Profit flows where connections grow." },
+  { id:"cpt_013", name:"Smuggler", category:"captain", rarity:"common", stats:{speed:3,logistics:2}, cost:{food:4}, special:"", flavor:"No questions asked, no cargo refused." },
+  // Uncommon — ~5x
+  { id:"cpt_004", name:"Combat Ace", category:"captain", rarity:"uncommon", stats:{tactics:15,attack:10,speed:8}, cost:{food:20,energy:15,credits:50}, special:"", flavor:"Five kills before breakfast." },
+  { id:"cpt_005", name:"Fleet Surgeon", category:"captain", rarity:"uncommon", stats:{morale:12,hull:12}, cost:{food:25,research:8,credits:40}, special:"Repairs 1 hull per tick in combat.", flavor:"Mending ships and spirits alike." },
+  { id:"cpt_006", name:"Astrocartographer", category:"captain", rarity:"uncommon", stats:{navigation:18,research:8}, cost:{food:20,research:12,credits:50}, special:"", flavor:"She names the stars no one has seen." },
+  // Rare — ~25x
+  { id:"cpt_007", name:"Corsair Queen", category:"captain", rarity:"rare", stats:{attack:60,speed:45,charisma:30}, cost:{food:80,energy:50,credits:300}, special:"Chance to capture enemy ships.", flavor:"The void bows to no law but hers." },
+  { id:"cpt_008", name:"Xenolinguist", category:"captain", rarity:"rare", stats:{diplomacy:70,research:35}, cost:{food:60,research:40,credits:250}, special:"Unlocks alien trade routes.", flavor:"Every species speaks the language of need." },
+  { id:"cpt_012", name:"War Sage", category:"captain", rarity:"rare", stats:{tactics:55,defense:35,morale:30}, cost:{food:80,research:30,credits:300}, special:"Reduces damage taken by 15%.", flavor:"Every battle is a lesson." },
+  // Epic — ~100x
+  { id:"cpt_009", name:"Ghost Runner", category:"captain", rarity:"epic", stats:{speed:200,navigation:150,tactics:100}, cost:{food:300,energy:200,research:80,credits:2000}, special:"Ship cannot be targeted for 1 round.", flavor:"You can't hit what you can't find." },
+  { id:"cpt_010", name:"Admiral-Errant", category:"captain", rarity:"epic", stats:{tactics:200,attack:120,charisma:100,morale:80}, cost:{food:350,energy:250,credits:2500}, special:"Inspires nearby ships: +1 morale.", flavor:"Rank means nothing. Results mean everything." },
+  // Legendary — ~500x
+  { id:"cpt_011", name:"The Pathfinder", category:"captain", rarity:"legendary", stats:{navigation:1000,speed:600,research:400,diplomacy:300}, cost:{food:2000,energy:1200,research:600,credits:12000}, special:"Discovers anomalies twice as fast.", flavor:"Where others see emptiness, she sees roads." },
 ];
 
 const SHIP_TEMPLATES = [
-  { id:"shp_001", name:"Scout Corvette", category:"ship", rarity:"common", stats:{speed:4,hull:2}, cost:{minerals:3}, special:"", flavor:"First to see, last to be seen." },
-  { id:"shp_002", name:"Cargo Hauler", category:"ship", rarity:"common", stats:{hull:3,logistics:3}, cost:{minerals:3,energy:1}, special:"", flavor:"The backbone of interstellar commerce." },
-  { id:"shp_003", name:"Patrol Frigate", category:"ship", rarity:"common", stats:{attack:3,defense:2,speed:2}, cost:{minerals:4,energy:2}, special:"", flavor:"Keeping the lanes safe." },
-  { id:"shp_004", name:"Mining Barge", category:"ship", rarity:"common", stats:{hull:4,minerals:2}, cost:{minerals:4}, special:"", flavor:"Slow and steady fills the holds." },
-  { id:"shp_005", name:"Destroyer", category:"ship", rarity:"uncommon", stats:{attack:5,defense:3,speed:3}, cost:{minerals:6,energy:3}, special:"", flavor:"Purpose-built for one thing: war." },
-  { id:"shp_006", name:"Research Vessel", category:"ship", rarity:"uncommon", stats:{research:4,speed:3,hull:2}, cost:{minerals:4,energy:3}, special:"Gains bonus research from anomalies.", flavor:"Charting the unknown, one system at a time." },
-  { id:"shp_007", name:"Stealth Interceptor", category:"ship", rarity:"rare", stats:{attack:6,speed:6}, cost:{minerals:7,energy:4,research:2}, special:"First strike: attacks before enemy response.", flavor:"A whisper in the dark between stars." },
-  { id:"shp_008", name:"Heavy Cruiser", category:"ship", rarity:"rare", stats:{attack:5,defense:5,hull:5}, cost:{minerals:8,energy:5}, special:"", flavor:"The iron fist of the fleet." },
-  { id:"shp_009", name:"Colony Ship", category:"ship", rarity:"uncommon", stats:{hull:5,logistics:4}, cost:{minerals:8,food:4,energy:3}, special:"Can establish a new colony on arrival.", flavor:"Hope, packed into every cargo bay." },
-  { id:"shp_010", name:"Battlecruiser", category:"ship", rarity:"epic", stats:{attack:10,defense:7,hull:8,speed:3}, cost:{minerals:12,energy:8,research:3}, special:"", flavor:"A fortress that sails the void." },
-  { id:"shp_011", name:"Carrier", category:"ship", rarity:"epic", stats:{fleet_size:5,defense:6,hull:10}, cost:{minerals:14,energy:6}, special:"Deploys fighter squadrons in combat.", flavor:"Its children swarm like angry stars." },
-  { id:"shp_012", name:"Dreadnought", category:"ship", rarity:"legendary", stats:{attack:18,defense:12,hull:15,speed:2}, cost:{minerals:20,energy:12,research:5}, special:"Suppresses enemy morale on arrival.", flavor:"When it appears, wars end." },
-  { id:"shp_013", name:"Exploration Cruiser", category:"ship", rarity:"rare", stats:{speed:5,research:4,hull:4,navigation:3}, cost:{minerals:6,energy:5,research:2}, special:"Reveals hidden star map features.", flavor:"Beyond the edge of every chart." },
-  { id:"shp_014", name:"Warp Clipper", category:"ship", rarity:"uncommon", stats:{speed:6,hull:2}, cost:{energy:5,minerals:3}, special:"", flavor:"Bending spacetime for the morning commute." },
-  { id:"shp_015", name:"Titan", category:"ship", rarity:"legendary", stats:{attack:15,defense:15,hull:20,fleet_size:3}, cost:{minerals:25,energy:15,research:8}, special:"Flagship aura: +2 attack to all allied ships.", flavor:"A mobile world, bristling with purpose." },
-  { id:"shp_016", name:"Torpedo Bomber", category:"ship", rarity:"common", stats:{attack:4,speed:3}, cost:{minerals:4,energy:2}, special:"", flavor:"One shot, one kill." },
-  { id:"shp_017", name:"Shield Frigate", category:"ship", rarity:"uncommon", stats:{defense:5,hull:3}, cost:{minerals:5,energy:3}, special:"Extends shield to adjacent ships.", flavor:"Stand behind me." },
+  // Common — ~1x baseline
+  { id:"shp_001", name:"Scout Corvette", category:"ship", rarity:"common", stats:{speed:4,hull:2}, cost:{minerals:6}, special:"", flavor:"First to see, last to be seen." },
+  { id:"shp_002", name:"Cargo Hauler", category:"ship", rarity:"common", stats:{hull:3,logistics:3}, cost:{minerals:6,energy:3}, special:"", flavor:"The backbone of interstellar commerce." },
+  { id:"shp_003", name:"Patrol Frigate", category:"ship", rarity:"common", stats:{attack:3,defense:2,speed:2}, cost:{minerals:8,energy:4}, special:"", flavor:"Keeping the lanes safe." },
+  { id:"shp_004", name:"Mining Barge", category:"ship", rarity:"common", stats:{hull:4,minerals:2}, cost:{minerals:8}, special:"", flavor:"Slow and steady fills the holds." },
+  { id:"shp_016", name:"Torpedo Bomber", category:"ship", rarity:"common", stats:{attack:4,speed:3}, cost:{minerals:8,energy:4}, special:"", flavor:"One shot, one kill." },
+  // Uncommon — ~5x
+  { id:"shp_005", name:"Destroyer", category:"ship", rarity:"uncommon", stats:{attack:20,defense:12,speed:12}, cost:{minerals:30,energy:20,credits:60}, special:"", flavor:"Purpose-built for one thing: war." },
+  { id:"shp_006", name:"Research Vessel", category:"ship", rarity:"uncommon", stats:{research:15,speed:12,hull:8}, cost:{minerals:25,energy:20,credits:50}, special:"Gains bonus research from anomalies.", flavor:"Charting the unknown, one system at a time." },
+  { id:"shp_009", name:"Colony Ship", category:"ship", rarity:"uncommon", stats:{hull:20,logistics:15}, cost:{minerals:40,food:25,energy:20,credits:80}, special:"Can establish a new colony on arrival.", flavor:"Hope, packed into every cargo bay." },
+  { id:"shp_014", name:"Warp Clipper", category:"ship", rarity:"uncommon", stats:{speed:25,hull:8}, cost:{energy:30,minerals:20,credits:50}, special:"", flavor:"Bending spacetime for the morning commute." },
+  { id:"shp_017", name:"Shield Frigate", category:"ship", rarity:"uncommon", stats:{defense:20,hull:12}, cost:{minerals:30,energy:20,credits:60}, special:"Extends shield to adjacent ships.", flavor:"Stand behind me." },
+  // Rare — ~25x
+  { id:"shp_007", name:"Stealth Interceptor", category:"ship", rarity:"rare", stats:{attack:75,speed:70}, cost:{minerals:120,energy:80,research:30,credits:300}, special:"First strike: attacks before enemy response.", flavor:"A whisper in the dark between stars." },
+  { id:"shp_008", name:"Heavy Cruiser", category:"ship", rarity:"rare", stats:{attack:60,defense:60,hull:60}, cost:{minerals:150,energy:80,credits:350}, special:"", flavor:"The iron fist of the fleet." },
+  { id:"shp_013", name:"Exploration Cruiser", category:"ship", rarity:"rare", stats:{speed:55,research:50,hull:40,navigation:35}, cost:{minerals:100,energy:80,research:30,credits:300}, special:"Reveals hidden star map features.", flavor:"Beyond the edge of every chart." },
+  // Epic — ~100x
+  { id:"shp_010", name:"Battlecruiser", category:"ship", rarity:"epic", stats:{attack:300,defense:200,hull:250,speed:80}, cost:{minerals:600,energy:400,research:120,credits:2500}, special:"", flavor:"A fortress that sails the void." },
+  { id:"shp_011", name:"Carrier", category:"ship", rarity:"epic", stats:{fleet_size:150,defense:180,hull:300}, cost:{minerals:700,energy:350,credits:3000}, special:"Deploys fighter squadrons in combat.", flavor:"Its children swarm like angry stars." },
+  // Legendary — ~500x
+  { id:"shp_012", name:"Dreadnought", category:"ship", rarity:"legendary", stats:{attack:1500,defense:1000,hull:1200,speed:150}, cost:{minerals:5000,energy:3000,research:800,credits:15000}, special:"Suppresses enemy morale on arrival.", flavor:"When it appears, wars end." },
+  { id:"shp_015", name:"Titan", category:"ship", rarity:"legendary", stats:{attack:1200,defense:1200,hull:1800,fleet_size:400}, cost:{minerals:6000,energy:4000,research:1200,credits:18000}, special:"Flagship aura: +2 attack to all allied ships.", flavor:"A mobile world, bristling with purpose." },
 ];
 
 const CATEGORY_TEMPLATES = {
@@ -1380,7 +1445,9 @@ function rollCardFromCategory(category) {
   const matches = available.filter(t => t.rarity === rarity);
   const fallback = matches.length > 0 ? matches : available;
   const template = fallback[Math.floor(Math.random() * fallback.length)];
-  return { ...template, stats: { ...template.stats }, cost: { ...(template.cost || {}) }, upkeep: { ...(template.upkeep || {}) } };
+  // Roll stats within ±25% range, biased by rarity
+  const { stats: rolledStats, statRanges } = rollStats(template);
+  return { ...template, stats: rolledStats, statRanges, cost: { ...(template.cost || {}) }, upkeep: { ...(template.upkeep || {}) } };
 }
 
 // ═══════════════════════════════════════════
@@ -1449,9 +1516,10 @@ const DETECTED_VISUAL = { color:"#384868", glowColor:"rgba(56,72,104,0.2)", base
 // ═══════════════════════════════════════════
 //  RARITY ROLLER
 // ═══════════════════════════════════════════
-function rollRarity() {
+function rollRarity(rng) {
+  const rand = rng || Math.random;
   const total = Object.values(RARITY_WEIGHTS).reduce((s,w) => s+w, 0);
-  let roll = Math.random() * total;
+  let roll = rand() * total;
   for (const [rarity, weight] of Object.entries(RARITY_WEIGHTS)) {
     roll -= weight;
     if (roll <= 0) return rarity;
@@ -1479,10 +1547,11 @@ function rollRarityWithBonus(bonus) {
   return "common";
 }
 
-function rollStarCard() {
-  const rarity = rollRarity();
+function rollStarCard(rng) {
+  const rand = rng || Math.random;
+  const rarity = rollRarity(rng);
   const pool = STAR_TEMPLATES.filter(t => t.rarity === rarity);
-  const template = pool[Math.floor(Math.random() * pool.length)];
+  const template = pool[Math.floor(rand() * pool.length)];
   // Deep copy — assign a unique proper name, keep template name as `type`
   return { ...template, stats: { ...template.stats }, type: template.name, name: drawStarName() };
 }
@@ -1492,7 +1561,9 @@ function rollPlanetCard(rarityBonus) {
   const pool = PLANET_TEMPLATES.filter(t => t.rarity === rarity);
   const fallback = pool.length > 0 ? pool : PLANET_TEMPLATES;
   const template = fallback[Math.floor(Math.random() * fallback.length)];
-  return { ...template, stats: { ...template.stats } };
+  // Roll planet stats within ±25% range, biased by rarity
+  const { stats: rolledStats, statRanges } = rollStats(template);
+  return { ...template, stats: rolledStats, statRanges };
 }
 
 const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X"];
@@ -1521,102 +1592,307 @@ function generatePlanets(star) {
 }
 
 // ═══════════════════════════════════════════
-//  STAR NETWORK
+//  SEEDED PRNG & NOISE
 // ═══════════════════════════════════════════
+const GALAXY_SEED = Math.floor(Math.random() * 2147483647);
+
+// Mulberry32 — fast seeded 32-bit PRNG
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// Hash a chunk coordinate pair to a deterministic seed
+function chunkSeed(cx, cy) {
+  let h = GALAXY_SEED;
+  h = Math.imul(h ^ cx, 0x9E3779B9);
+  h = Math.imul(h ^ cy, 0x517CC1B7);
+  h = h ^ (h >>> 16);
+  return h;
+}
+
+// Simple 2D value noise using seeded hashing (no gradient table needed)
+function noiseHash(ix, iy) {
+  let h = GALAXY_SEED;
+  h = Math.imul(h ^ (ix * 374761393), 0x85EBCA6B);
+  h = Math.imul(h ^ (iy * 668265263), 0xC2B2AE35);
+  h = h ^ (h >>> 13);
+  h = Math.imul(h, 0x27D4EB2D);
+  return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+}
+
+// Smooth 2D noise with bilinear interpolation
+function smoothNoise(x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  // Smoothstep
+  const sx = fx * fx * (3 - 2 * fx);
+  const sy = fy * fy * (3 - 2 * fy);
+  const n00 = noiseHash(ix, iy);
+  const n10 = noiseHash(ix + 1, iy);
+  const n01 = noiseHash(ix, iy + 1);
+  const n11 = noiseHash(ix + 1, iy + 1);
+  return n00 * (1 - sx) * (1 - sy) + n10 * sx * (1 - sy) +
+         n01 * (1 - sx) * sy + n11 * sx * sy;
+}
+
+// Multi-octave fractal noise for richer density maps
+function fractalNoise(x, y, octaves = 3) {
+  let val = 0, amp = 1, freq = 1, max = 0;
+  for (let i = 0; i < octaves; i++) {
+    val += smoothNoise(x * freq, y * freq) * amp;
+    max += amp;
+    amp *= 0.5;
+    freq *= 2;
+  }
+  return val / max;
+}
+
+// ═══════════════════════════════════════════
+//  PROCEDURAL STAR GENERATION (chunk-based)
+// ═══════════════════════════════════════════
+const CHUNK_SIZE = 400;             // world units per chunk
+const NOISE_SCALE = 0.0015;         // controls cluster size (lower = bigger clusters)
+const MIN_STAR_SEPARATION = 120;    // minimum distance between stars
+const DENSITY_THRESHOLD = 0.25;     // noise below this = empty void
+const MAX_STARS_PER_CHUNK = 4;      // at peak density
+
+const generatedChunks = new Map();  // "cx,cy" -> true (already processed)
 let nextStarId = 1;
-const stars = new Map(); // id -> star node
+const stars = new Map();            // id -> star node
 
 function createStar(x, y, visibility, card) {
   const id = `star_${nextStarId++}`;
-  const star = { id, x, y, visibility, lanes: [], card };
+  const star = { id, x, y, visibility, card };
   stars.set(id, star);
   return star;
-}
-
-function addLane(starA, starB) {
-  if (!starA.lanes.includes(starB.id)) starA.lanes.push(starB.id);
-  if (!starB.lanes.includes(starA.id)) starB.lanes.push(starA.id);
 }
 
 function distanceBetween(a, b) {
   return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 }
 
-function isPositionValid(x, y, minDist) {
-  for (const s of stars.values()) {
-    if (distanceBetween({ x, y }, s) < minDist) return false;
-  }
-  return true;
-}
+// Generate stars for a single chunk (deterministic)
+function generateChunk(cx, cy) {
+  const key = `${cx},${cy}`;
+  if (generatedChunks.has(key)) return;
+  generatedChunks.set(key, true);
 
-// Generate new stars around a parent star (called when exploring)
-function generateFrontierStars(parent) {
-  const count = 1 + Math.floor(Math.random() * 3); // 1-3 new stars
-  const newStars = [];
-  for (let i = 0; i < count; i++) {
-    let placed = false;
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 150 + Math.random() * 150; // 150-300 world units
-      const x = parent.x + Math.cos(angle) * dist;
-      const y = parent.y + Math.sin(angle) * dist;
-      if (isPositionValid(x, y, 80)) {
-        const card = rollStarCard();
-        const star = createStar(x, y, "detected", card);
-        addLane(parent, star);
-        // Maybe connect to a nearby existing star too
-        for (const other of stars.values()) {
-          if (other.id === star.id || other.id === parent.id) continue;
-          if (distanceBetween(star, other) < 200 && Math.random() < 0.3) {
-            addLane(star, other);
-            break;
-          }
-        }
-        newStars.push(star);
-        placed = true;
-        break;
+  const rng = mulberry32(chunkSeed(cx, cy));
+
+  // Sample density at chunk center
+  const centerX = (cx + 0.5) * CHUNK_SIZE;
+  const centerY = (cy + 0.5) * CHUNK_SIZE;
+  const density = fractalNoise(centerX * NOISE_SCALE, centerY * NOISE_SCALE);
+
+  if (density < DENSITY_THRESHOLD) return; // void — no stars here
+
+  // Number of stars scales with density
+  const normalizedDensity = (density - DENSITY_THRESHOLD) / (1 - DENSITY_THRESHOLD);
+  const starCount = Math.round(normalizedDensity * MAX_STARS_PER_CHUNK);
+  if (starCount <= 0) return;
+
+  const chunkStars = [];
+  for (let i = 0; i < starCount; i++) {
+    for (let attempt = 0; attempt < 15; attempt++) {
+      const x = cx * CHUNK_SIZE + rng() * CHUNK_SIZE;
+      const y = cy * CHUNK_SIZE + rng() * CHUNK_SIZE;
+
+      // Check separation within this chunk's new stars
+      let tooClose = false;
+      for (const s of chunkStars) {
+        if (distanceBetween({ x, y }, s) < MIN_STAR_SEPARATION) { tooClose = true; break; }
       }
+      if (tooClose) { rng(); continue; } // burn a roll to stay deterministic
+
+      // Check against existing stars near this position
+      for (const s of stars.values()) {
+        if (distanceBetween({ x, y }, s) < MIN_STAR_SEPARATION) { tooClose = true; break; }
+      }
+      if (tooClose) continue;
+
+      const card = rollStarCard(rng);
+      const star = createStar(x, y, "unknown", card);
+      chunkStars.push(star);
+      break;
     }
   }
-  return newStars;
 }
 
-// Create initial seed cluster
-function generateSeedCluster() {
-  // Home star — always Yellow Main Sequence
+// Reveal all chunks within a radius of a world point
+function revealChunksInRadius(wx, wy, radius) {
+  const minCx = Math.floor((wx - radius) / CHUNK_SIZE);
+  const maxCx = Math.floor((wx + radius) / CHUNK_SIZE);
+  const minCy = Math.floor((wy - radius) / CHUNK_SIZE);
+  const maxCy = Math.floor((wy + radius) / CHUNK_SIZE);
+  for (let cx = minCx; cx <= maxCx; cx++) {
+    for (let cy = minCy; cy <= maxCy; cy++) {
+      generateChunk(cx, cy);
+    }
+  }
+}
+
+// Detect stars within sensor range — unknown → detected
+const BASE_SENSOR_RANGE = 500;  // default reveal radius for colonies / exploration
+
+function detectStarsInRange(wx, wy, sensorRange) {
+  revealChunksInRadius(wx, wy, sensorRange);
+  for (const star of stars.values()) {
+    if (star.visibility !== "unknown") continue;
+    if (distanceBetween({ x: wx, y: wy }, star) <= sensorRange) {
+      star.visibility = "detected";
+    }
+  }
+}
+
+// Initialize galaxy — home star at origin + detect neighbors
+function generateGalaxy() {
+  // Home star — always Yellow Main Sequence, placed at origin
   const homeCard = { ...STAR_TEMPLATES[1], stats: { ...STAR_TEMPLATES[1].stats }, type: STAR_TEMPLATES[1].name, name: drawStarName() };
+
+  // Force-generate the home chunk and place home star at origin
+  const homeCx = Math.floor(0 / CHUNK_SIZE);
+  const homeCy = Math.floor(0 / CHUNK_SIZE);
+  generatedChunks.set(`${homeCx},${homeCy}`, true);
   const home = createStar(0, 0, "explored", homeCard);
 
-  // Generate 4-6 neighbors
-  const neighborCount = 4 + Math.floor(Math.random() * 3);
-  const neighbors = [];
-  for (let i = 0; i < neighborCount; i++) {
-    let placed = false;
-    for (let attempt = 0; attempt < 30; attempt++) {
-      const angle = (i / neighborCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
-      const dist = 160 + Math.random() * 120;
-      const x = Math.cos(angle) * dist;
-      const y = Math.sin(angle) * dist;
-      if (isPositionValid(x, y, 80)) {
-        const card = rollStarCard();
-        const star = createStar(x, y, "detected", card);
-        addLane(home, star);
-        neighbors.push(star);
-        placed = true;
-        break;
-      }
-    }
-  }
-  // Add a few cross-lanes between neighbors for interesting topology
-  for (let i = 0; i < neighbors.length; i++) {
-    for (let j = i + 1; j < neighbors.length; j++) {
-      if (distanceBetween(neighbors[i], neighbors[j]) < 250 && Math.random() < 0.35) {
-        addLane(neighbors[i], neighbors[j]);
-      }
-    }
-  }
+  // Detect nearby stars around home
+  detectStarsInRange(0, 0, BASE_SENSOR_RANGE);
 
   return home;
+}
+
+// ═══════════════════════════════════════════
+//  PROBES / FLEETS (movable map entities)
+// ═══════════════════════════════════════════
+const mapEntities = [];  // array of probes/fleets on the starmap
+let selectedEntityIdx = null;  // index into mapEntities, or null
+
+function createProbe(x, y) {
+  const probe = {
+    type: "probe",
+    x, y,
+    destX: null, destY: null,
+    speed: 60,           // world units per game-second
+    sensorRange: 300,    // reveal radius while traveling
+    label: "Scout Probe",
+  };
+  mapEntities.push(probe);
+  return probe;
+}
+
+function tickEntities(dt) {
+  for (const ent of mapEntities) {
+    if (ent.destX === null || ent.destY === null) continue;
+
+    const dx = ent.destX - ent.x;
+    const dy = ent.destY - ent.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const move = ent.speed * dt;
+
+    if (move >= dist) {
+      // Arrived
+      ent.x = ent.destX;
+      ent.y = ent.destY;
+      ent.destX = null;
+      ent.destY = null;
+    } else {
+      ent.x += (dx / dist) * move;
+      ent.y += (dy / dist) * move;
+    }
+
+    // Continuous fog reveal along travel path
+    detectStarsInRange(ent.x, ent.y, ent.sensorRange);
+  }
+}
+
+function drawEntities(ctx, time) {
+  for (let i = 0; i < mapEntities.length; i++) {
+    const ent = mapEntities[i];
+    const pos = worldToScreen(ent.x, ent.y);
+    const isSelected = selectedEntityIdx === i;
+
+    // Draw travel line to destination
+    if (ent.destX !== null && ent.destY !== null) {
+      const destPos = worldToScreen(ent.destX, ent.destY);
+      ctx.save();
+      ctx.strokeStyle = "rgba(74, 122, 192, 0.4)";
+      ctx.lineWidth = 1.5 * camera.zoom;
+      ctx.setLineDash([8 * camera.zoom, 5 * camera.zoom]);
+      // Animate dash in movement direction
+      ctx.lineDashOffset = -time * 40;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      ctx.lineTo(destPos.x, destPos.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // Small dot at destination
+      ctx.fillStyle = "rgba(74, 122, 192, 0.3)";
+      ctx.beginPath();
+      ctx.arc(destPos.x, destPos.y, 3 * camera.zoom, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Probe icon — small diamond shape
+    const size = 6 * camera.zoom;
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+
+    // Selection highlight
+    if (isSelected) {
+      ctx.strokeStyle = "#4a7ac0";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3 * camera.zoom, 2 * camera.zoom]);
+      ctx.lineDashOffset = -time * 20;
+      ctx.beginPath();
+      ctx.arc(0, 0, size + 4 * camera.zoom, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Diamond body
+    ctx.fillStyle = isSelected ? "#6a9ae0" : "#4a7ac0";
+    ctx.beginPath();
+    ctx.moveTo(0, -size);
+    ctx.lineTo(size * 0.7, 0);
+    ctx.lineTo(0, size);
+    ctx.lineTo(-size * 0.7, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bright core
+    ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // Label
+    if (camera.zoom > 0.5) {
+      ctx.fillStyle = isSelected ? "rgba(200,210,230,0.9)" : "rgba(200,210,230,0.6)";
+      ctx.font = `${Math.max(8, 10 * camera.zoom)}px 'Segoe UI', system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText(ent.label, pos.x, pos.y + size + 12 * camera.zoom);
+    }
+  }
+}
+
+function getEntityAtScreen(sx, sy) {
+  const world = screenToWorld(sx, sy);
+  const hitRadius = 15 / camera.zoom;  // generous click target
+  for (let i = 0; i < mapEntities.length; i++) {
+    const ent = mapEntities[i];
+    const d = Math.sqrt((world.x - ent.x) ** 2 + (world.y - ent.y) ** 2);
+    if (d < hitRadius) return i;
+  }
+  return null;
 }
 
 // ═══════════════════════════════════════════
@@ -1693,38 +1969,6 @@ function drawBgStars(ctx) {
   }
 }
 
-function drawLanes(ctx) {
-  const drawn = new Set();
-  for (const star of stars.values()) {
-    if (star.visibility === "unknown") continue;
-    for (const neighborId of star.lanes) {
-      const key = [star.id, neighborId].sort().join("-");
-      if (drawn.has(key)) continue;
-      drawn.add(key);
-      const neighbor = stars.get(neighborId);
-      if (!neighbor || neighbor.visibility === "unknown") continue;
-
-      const a = worldToScreen(star.x, star.y);
-      const b = worldToScreen(neighbor.x, neighbor.y);
-
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-
-      if (star.visibility === "explored" && neighbor.visibility === "explored") {
-        ctx.strokeStyle = "rgba(42,58,96,0.7)";
-        ctx.lineWidth = 1.5 * camera.zoom;
-        ctx.setLineDash([]);
-      } else {
-        ctx.strokeStyle = "rgba(26,37,48,0.5)";
-        ctx.lineWidth = 1 * camera.zoom;
-        ctx.setLineDash([6 * camera.zoom, 4 * camera.zoom]);
-      }
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  }
-}
 
 function drawStar(ctx, star, time) {
   const isExplored = star.visibility === "explored";
@@ -1969,6 +2213,62 @@ function drawSmoothCurve(ctx, points) {
   ctx.closePath();
 }
 
+// Offscreen canvas for fog — created once, resized as needed
+let fogCanvas = null;
+let fogCtx = null;
+
+function drawFogOfWar(ctx) {
+  const w = ctx.canvas.width, h = ctx.canvas.height;
+
+  // Create or resize offscreen fog canvas
+  if (!fogCanvas || fogCanvas.width !== w || fogCanvas.height !== h) {
+    fogCanvas = document.createElement("canvas");
+    fogCanvas.width = w;
+    fogCanvas.height = h;
+    fogCtx = fogCanvas.getContext("2d");
+  }
+
+  // Fill fog canvas fully opaque black
+  fogCtx.clearRect(0, 0, w, h);
+  fogCtx.fillStyle = "#000";
+  fogCtx.fillRect(0, 0, w, h);
+
+  // Collect all reveal zones — explored stars + entities with sensor range
+  const revealZones = [];
+  for (const star of stars.values()) {
+    if (star.visibility !== "explored") continue;
+    revealZones.push({ wx: star.x, wy: star.y, range: BASE_SENSOR_RANGE });
+  }
+  for (const ent of mapEntities) {
+    revealZones.push({ wx: ent.x, wy: ent.y, range: ent.sensorRange });
+  }
+
+  // Punch soft circular holes using destination-out on the opaque surface
+  fogCtx.globalCompositeOperation = "destination-out";
+  for (const zone of revealZones) {
+    const pos = worldToScreen(zone.wx, zone.wy);
+    const radius = zone.range * camera.zoom;
+
+    const grad = fogCtx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius);
+    grad.addColorStop(0, "rgba(0, 0, 0, 1)");
+    grad.addColorStop(0.7, "rgba(0, 0, 0, 1)");
+    grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+    fogCtx.fillStyle = grad;
+    fogCtx.beginPath();
+    fogCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+    fogCtx.fill();
+  }
+  fogCtx.globalCompositeOperation = "source-over";
+
+  // Draw fog onto main canvas with reduced opacity
+  ctx.save();
+  ctx.globalAlpha = 0.88;
+  ctx.drawImage(fogCanvas, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 function render() {
   const canvas = document.getElementById("starmap");
   const ctx = canvas.getContext("2d");
@@ -1980,7 +2280,6 @@ function render() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   drawBgStars(ctx);
-  drawLanes(ctx);
   drawTerritoryContour(ctx);
 
   // Draw stars (detected first, then explored so they're on top)
@@ -1992,6 +2291,12 @@ function render() {
   }
   for (const star of detectedStars) drawStar(ctx, star, animTime);
   for (const star of exploredStars) drawStar(ctx, star, animTime);
+
+  // Probes/fleets drawn above stars but below fog
+  drawEntities(ctx, animTime);
+
+  // Fog of war on top — covers unexplored areas, detected stars peek through
+  drawFogOfWar(ctx);
 }
 
 // ═══════════════════════════════════════════
@@ -2001,17 +2306,20 @@ function buildCardHtml(card, watermark) {
   const statsHtml = Object.entries(card.stats)
     .map(([key, val]) => {
       const icon = STAT_ICONS[key] || "◆";
-      return `<div class="card-stat"><span class="card-stat-icon">${icon}</span><span class="card-stat-value">${val}</span></div>`;
+      const color = card.statRanges && card.statRanges[key]
+        ? getStatQualityColor(val, card.statRanges[key][0], card.statRanges[key][1])
+        : "#fff";
+      return `<div class="card-stat"><span class="card-stat-icon">${icon}</span><span class="card-stat-value" style="color:${color}">${formatResourceValue(val)}</span></div>`;
     }).join("");
   // Upkeep display (shown as red consumption stats)
   const upkeepHtml = card.upkeep ? Object.entries(card.upkeep)
     .map(([key, val]) => {
       const icon = STAT_ICONS[key] || "◆";
-      return `<div class="card-stat upkeep"><span class="card-stat-icon">${icon}</span><span class="card-stat-value" style="color:#e05050">-${val}</span></div>`;
+      return `<div class="card-stat upkeep"><span class="card-stat-icon">${icon}</span><span class="card-stat-value" style="color:#e05050">-${formatResourceValue(val)}</span></div>`;
     }).join("") : "";
   // Cost badge (top-right)
   const costHtml = card.cost ? Object.entries(card.cost)
-    .map(([key, val]) => `${STAT_ICONS[key] || ""}${val}`)
+    .map(([key, val]) => `${STAT_ICONS[key] || ""}${formatResourceValue(val)}`)
     .join(" ") : "";
   const hasSpecial = card.special && card.special.length > 0;
   const expandedClass = !hasSpecial ? " expanded" : "";
@@ -2406,14 +2714,8 @@ function exploreSelectedStar() {
 
   star.visibility = "explored";
 
-  for (const neighborId of star.lanes) {
-    const neighbor = stars.get(neighborId);
-    if (neighbor && neighbor.visibility === "unknown") {
-      neighbor.visibility = "detected";
-    }
-  }
-
-  generateFrontierStars(star);
+  // Detect nearby stars within sensor range
+  detectStarsInRange(star.x, star.y, BASE_SENSOR_RANGE);
 
   // Transition to system view within overlay
   document.getElementById("system-detected").classList.remove("visible");
@@ -2479,13 +2781,7 @@ function exploreFromPanel() {
   const star = stars.get(selectedStarId);
   if (!star || star.visibility !== "detected") return;
   star.visibility = "explored";
-  for (const neighborId of star.lanes) {
-    const neighbor = stars.get(neighborId);
-    if (neighbor && neighbor.visibility === "unknown") {
-      neighbor.visibility = "detected";
-    }
-  }
-  generateFrontierStars(star);
+  detectStarsInRange(star.x, star.y, BASE_SENSOR_RANGE);
   showSelectPanel(star); // refresh panel with explored state
 }
 
@@ -2549,9 +2845,31 @@ window.addEventListener("mousemove", (e) => {
   const rect = canvasEl.getBoundingClientRect();
   const sx = e.clientX - rect.left;
   const sy = e.clientY - rect.top;
+
+  // Check entities first
+  const entIdx = getEntityAtScreen(sx, sy);
   const star = getStarAtScreen(sx, sy);
 
-  if (star) {
+  if (entIdx !== null) {
+    hoveredStarId = null;
+    tooltip.textContent = mapEntities[entIdx].label;
+    tooltip.style.left = (e.clientX - rect.left + 12) + "px";
+    tooltip.style.top = (e.clientY - rect.top - 8) + "px";
+    tooltip.style.display = "block";
+    canvasEl.style.cursor = "pointer";
+  } else if (selectedEntityIdx !== null) {
+    // Entity selected — cursor indicates "set destination"
+    hoveredStarId = star ? star.id : null;
+    if (star) {
+      tooltip.textContent = star.visibility === "explored" ? star.card.name : "Unknown Star";
+      tooltip.style.left = (e.clientX - rect.left + 12) + "px";
+      tooltip.style.top = (e.clientY - rect.top - 8) + "px";
+      tooltip.style.display = "block";
+    } else {
+      tooltip.style.display = "none";
+    }
+    canvasEl.style.cursor = "crosshair";
+  } else if (star) {
     hoveredStarId = star.id;
     const label = star.visibility === "explored" ? star.card.name : "Unknown Star";
     tooltip.textContent = label;
@@ -2571,18 +2889,43 @@ window.addEventListener("mouseup", (e) => {
     isDragging = false;
     container.classList.remove("dragging");
 
-    if (!dragMoved) {
-      // Single click — select star or deselect
+    if (!dragMoved && e.button === 0) {
       const rect = canvasEl.getBoundingClientRect();
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
-      const star = getStarAtScreen(sx, sy);
-      if (star) {
-        showSelectPanel(star);
-      } else {
+
+      // Check if clicking an entity (probe/fleet)
+      const entIdx = getEntityAtScreen(sx, sy);
+
+      if (selectedEntityIdx !== null && entIdx !== selectedEntityIdx) {
+        // Entity is selected — click sets destination
+        const world = screenToWorld(sx, sy);
+        mapEntities[selectedEntityIdx].destX = world.x;
+        mapEntities[selectedEntityIdx].destY = world.y;
+      } else if (entIdx !== null) {
+        // Clicking an entity — select it
+        selectedEntityIdx = entIdx;
         hideSelectPanel();
+      } else {
+        // No entity involved — normal star selection
+        selectedEntityIdx = null;
+        const star = getStarAtScreen(sx, sy);
+        if (star) {
+          showSelectPanel(star);
+        } else {
+          hideSelectPanel();
+        }
       }
     }
+  }
+});
+
+// Suppress context menu on the map entirely
+container.addEventListener("contextmenu", (e) => {
+  if (e.target.closest("#system-overlay") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay")) return;
+  e.preventDefault();
+  if (selectedEntityIdx !== null) {
+    selectedEntityIdx = null;
   }
 });
 
@@ -2706,8 +3049,8 @@ let drawCostMultiplier = 1;
 const DRAW_COST_DECAY_HALF_LIFE = 60; // seconds to halve multiplier back toward 1
 
 // Colony upkeep
-const COLONY_UPKEEP_BASE = 10;
-const COLONY_UPKEEP_EXPONENT = 1.5;
+const COLONY_UPKEEP_BASE = 25;
+const COLONY_UPKEEP_EXPONENT = 2.2;
 
 // Population system
 const POP_LEVELS = [
@@ -2734,11 +3077,14 @@ function getFoodMaintenance(pop) {
 }
 
 function getGrowthThreshold(nextLevel) {
-  return 100 * nextLevel * nextLevel;
+  return Math.ceil(150 * Math.pow(2.5, nextLevel - 1));
 }
 
 function getPopGrowthCost(nextLevel) {
-  return { credits: 100 * nextLevel * nextLevel, food: 50 * nextLevel * nextLevel };
+  return {
+    credits: Math.ceil(200 * Math.pow(3.5, nextLevel - 1)),
+    food:    Math.ceil(100 * Math.pow(3.0, nextLevel - 1)),
+  };
 }
 
 function buyPopulation() {
@@ -2757,29 +3103,64 @@ function buyPopulation() {
   refreshColonyScreen();
 }
 
-// Research system
-const RESEARCH_COSTS_BY_RARITY = {
-  common: 0,
-  uncommon: 100,
-  rare: 350,
-  epic: 1000,
-  legendary: 3000,
-};
+// Research system — category-based with escalating cost and random card reveal
+const RESEARCH_BASE_COST = 50;
+const RESEARCH_COST_MULTIPLIER = 2.8;
+const RESEARCH_SPEND_RATE = 5; // max points consumed per game-second
+const researchCounts = { building: 0, ship: 0, captain: 0, leader: 0 };
 const researchedCards = new Set(); // card IDs that have been researched
-let activeResearch = null;         // { cardId, templateRef, cost, progress }
+let activeResearch = null;         // { category, cost, progress }
 
-// Categories that require research to draw
-const RESEARCH_GATED_CATEGORIES = ["building", "ship"];
+// All 4 card categories require research (stars/planets discovered via exploration)
+const RESEARCH_GATED_CATEGORIES = ["building", "ship", "captain", "leader"];
+
+function getResearchCost(category) {
+  const count = researchCounts[category] || 0;
+  return Math.ceil(RESEARCH_BASE_COST * Math.pow(RESEARCH_COST_MULTIPLIER, count));
+}
+
+function startResearch(category) {
+  if (activeResearch) return;
+  const cost = getResearchCost(category);
+  activeResearch = { category, cost, progress: 0 };
+  refreshResearchPanel();
+}
+
+function rollResearchResult(category) {
+  const pool = CATEGORY_TEMPLATES[category];
+  if (!pool) return null;
+  const candidates = pool.filter(t => !researchedCards.has(t.id) && t.rarity !== "common");
+  if (candidates.length === 0) return null;
+  // Legendaries astronomically rare
+  const weights = { uncommon:50, rare:25, epic:8, legendary:1 };
+  let totalWeight = 0;
+  const weighted = candidates.map(t => {
+    const w = weights[t.rarity] || 10;
+    totalWeight += w;
+    return { template: t, weight: w };
+  });
+  let roll = Math.random() * totalWeight;
+  for (const entry of weighted) {
+    roll -= entry.weight;
+    if (roll <= 0) return entry.template;
+  }
+  return candidates[candidates.length - 1];
+}
 
 function initResearch() {
-  // Auto-unlock all common building/ship cards + all non-gated categories
-  for (const [catName, templates] of Object.entries(CATEGORY_TEMPLATES)) {
+  // Auto-unlock all common cards across all gated categories
+  for (const catName of RESEARCH_GATED_CATEGORIES) {
+    const templates = CATEGORY_TEMPLATES[catName];
+    if (!templates) continue;
     for (const t of templates) {
-      if (!RESEARCH_GATED_CATEGORIES.includes(catName) || t.rarity === "common") {
+      if (t.rarity === "common") {
         researchedCards.add(t.id);
       }
     }
   }
+  // Stars and planets are never gated
+  for (const t of (CATEGORY_TEMPLATES["star"] || [])) researchedCards.add(t.id);
+  for (const t of (CATEGORY_TEMPLATES["planet"] || [])) researchedCards.add(t.id);
 }
 
 function getDrawCost() {
@@ -2895,14 +3276,20 @@ function tickEconomy(dt) {
     resources.credits -= getColonyUpkeep();
 
     // Research spending — capped rate per game-second so research takes real time
-    const RESEARCH_SPEND_RATE = 5; // max points consumed per game-second
     if (activeResearch && resources.research > 0) {
       const spend = Math.min(RESEARCH_SPEND_RATE, resources.research, activeResearch.cost - activeResearch.progress);
       if (spend > 0) {
         resources.research -= spend;
         activeResearch.progress += spend;
         if (activeResearch.progress >= activeResearch.cost) {
-          researchedCards.add(activeResearch.cardId);
+          // Roll a random card from the researched category — the "card pack opening" moment
+          const cat = activeResearch.category;
+          const result = rollResearchResult(cat);
+          if (result) {
+            researchedCards.add(result.id);
+            researchCounts[cat] = (researchCounts[cat] || 0) + 1;
+            showResearchReveal(result, cat);
+          }
           activeResearch = null;
           // Refresh research panel if visible
           if (document.getElementById("research-overlay").classList.contains("visible")) {
@@ -2934,7 +3321,8 @@ function updateResourceDisplay() {
     if (valEl) valEl.textContent = formatResourceValue(resources[id]);
     if (rateEl) {
       const rate = totalOut[id];
-      rateEl.textContent = `${rate >= 0 ? "+" : ""}${rate}/s`;
+      const rateStr = rate < 0 ? "-" + formatResourceValue(Math.abs(rate)) : "+" + formatResourceValue(rate);
+      rateEl.textContent = `${rateStr}/s`;
       rateEl.style.color = rate < 0 ? "#e05050" : "";
     }
   }
@@ -2997,9 +3385,10 @@ function updateColonyResourceDisplay(out) {
     const valEl = document.getElementById(`col-${id}`);
     const rateEl = document.getElementById(`col-rate-${id}`);
     const rate = out[id] || 0;
-    if (valEl) valEl.textContent = rate;
+    if (valEl) valEl.textContent = formatResourceValue(Math.abs(rate));
     if (rateEl) {
-      rateEl.textContent = `${rate >= 0 ? "+" : ""}${rate}/t`;
+      const rateStr = rate < 0 ? "-" + formatResourceValue(Math.abs(rate)) : "+" + formatResourceValue(rate);
+      rateEl.textContent = `${rateStr}/s`;
       rateEl.style.color = rate < 0 ? "#e05050" : "";
     }
   }
@@ -3007,6 +3396,7 @@ function updateColonyResourceDisplay(out) {
 
 function formatResourceValue(val) {
   const v = Math.floor(val);
+  if (v >= 1e12) return (v / 1e12).toFixed(1) + "T";
   if (v >= 1e9) return (v / 1e9).toFixed(1) + "B";
   if (v >= 1e6) return (v / 1e6).toFixed(1) + "M";
   if (v >= 1e4) return (v / 1e3).toFixed(1) + "K";
@@ -3015,9 +3405,25 @@ function formatResourceValue(val) {
 
 const colonies = []; // array of { starId, planetIdx, planet } references
 
+function getColonizationCost(colonyCount) {
+  if (colonyCount === 0) return {}; // first colony is free
+  return {
+    credits:  Math.ceil(500 * Math.pow(4, colonyCount)),
+    minerals: Math.ceil(200 * Math.pow(3, colonyCount)),
+    food:     Math.ceil(100 * Math.pow(3, colonyCount)),
+  };
+}
+
 function colonizePlanet(star, planetIdx) {
   const planet = star.planets[planetIdx];
   if (planet.colony) return; // already colonized
+  const cost = getColonizationCost(colonies.length);
+  if (!canAfford(cost)) {
+    const btn = document.getElementById("planet-action-btn");
+    if (btn) showCostTooltip(btn, cost);
+    return;
+  }
+  if (Object.keys(cost).length > 0) deductCost(cost);
   planet.colony = {
     population: 1,                        // starts at pop 1 (100K people, 1 building slot)
     maxPopulation: 10,
@@ -3048,7 +3454,17 @@ function showPlanetCard(planet) {
     btn.textContent = "Manage Colony";
     btn.onclick = () => openColonyFromSystem();
   } else {
-    btn.textContent = "Colonize";
+    const cost = getColonizationCost(colonies.length);
+    const costKeys = Object.keys(cost);
+    if (costKeys.length > 0) {
+      const costStr = Object.entries(cost).map(([k,v]) => {
+        const icon = STAT_ICONS[k] || "";
+        return `${icon}${formatResourceValue(v)}`;
+      }).join(" ");
+      btn.textContent = `Colonize (${costStr})`;
+    } else {
+      btn.textContent = "Colonize";
+    }
     btn.onclick = () => colonizeFromSystem();
   }
   const container = document.getElementById("system-planet-card");
@@ -3585,6 +4001,7 @@ function gameLoop(timestamp) {
   lastTickTime = now;
   animTime = now;
   tickEconomy(dt);
+  tickEntities(dt * gameSpeed);
   // Lightweight updates when colony screen is open (no full DOM rebuild)
   if (colonyViewStar && colonyViewPlanetIdx != null) {
     const col = getActiveColony();
@@ -3623,66 +4040,121 @@ function refreshResearchPanel() {
   const activeEl = document.getElementById("research-active");
   if (activeResearch) {
     const pct = Math.floor((activeResearch.progress / activeResearch.cost) * 100);
+    const catLabel = activeResearch.category.charAt(0).toUpperCase() + activeResearch.category.slice(1);
     activeEl.innerHTML = `
       <div style="color:#c0d0e0;font-size:14px;margin-bottom:6px">
-        Researching: <strong>${activeResearch.templateRef.name}</strong>
-        <span style="color:#6a7a9b">(${activeResearch.templateRef.category})</span>
+        Researching: <strong>${catLabel}s</strong>
+        <span style="color:#6a7a9b">(${CATEGORY_WATERMARKS[activeResearch.category] || ""})</span>
       </div>
-      <div style="color:#a4e4a4;font-size:12px">${Math.floor(activeResearch.progress)} / ${activeResearch.cost} 🔬 (${pct}%)</div>
+      <div style="color:#a4e4a4;font-size:12px">${formatResourceValue(Math.floor(activeResearch.progress))} / ${formatResourceValue(activeResearch.cost)} 🔬 (${pct}%)</div>
       <div class="research-progress"><div class="research-progress-bar" style="width:${pct}%"></div></div>
       <button onclick="activeResearch=null;refreshResearchPanel()" style="margin-top:8px;background:#1a2040;border:1px solid #2a3460;color:#8090b0;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:11px">Cancel</button>
     `;
   } else {
-    activeEl.innerHTML = `<div style="color:#6a7a9b;font-size:13px">No active research. Select a card below to begin.</div>`;
+    activeEl.innerHTML = `<div style="color:#6a7a9b;font-size:13px">Choose a category to research. A random card will be revealed!</div>`;
   }
 
-  // Research list — show all gated cards
+  // Research categories — show 4 category buttons with costs
   const listEl = document.getElementById("research-list");
   listEl.innerHTML = "";
 
-  const rarityOrder = ["common", "uncommon", "rare", "epic", "legendary"];
+  const researchableCategories = ["building", "ship", "captain", "leader"];
+  for (const cat of researchableCategories) {
+    const pool = CATEGORY_TEMPLATES[cat];
+    if (!pool) continue;
+    const researchedCount = pool.filter(t => researchedCards.has(t.id)).length;
+    const remaining = pool.filter(t => !researchedCards.has(t.id) && t.rarity !== "common");
+    const count = researchCounts[cat] || 0;
+    const cost = getResearchCost(cat);
+    const allDone = remaining.length === 0;
+    const catLabel = cat.charAt(0).toUpperCase() + cat.slice(1) + "s";
+    const icon = CATEGORY_WATERMARKS[cat] || "";
+    const isActive = activeResearch && activeResearch.category === cat;
 
-  for (const catName of RESEARCH_GATED_CATEGORIES) {
-    const templates = CATEGORY_TEMPLATES[catName];
-    if (!templates) continue;
+    const item = document.createElement("div");
+    item.className = "research-item" + (allDone ? " researched" : "") + (isActive ? " active" : "");
+    item.style.cssText = "cursor:" + (allDone || activeResearch ? "default" : "pointer") + ";padding:10px 12px;";
 
-    const header = document.createElement("h3");
-    header.textContent = catName.charAt(0).toUpperCase() + catName.slice(1) + "s";
-    header.style.cssText = "color:#6a7a9b;font-size:13px;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;";
-    listEl.appendChild(header);
+    item.innerHTML = `
+      <span class="ri-category" style="font-size:18px">${icon}</span>
+      <span class="ri-name" style="flex:1">${catLabel}</span>
+      <span class="ri-rarity" style="background:rgba(100,130,180,0.15);color:#8090b0;border:1px solid rgba(100,130,180,0.3);font-size:10px;padding:2px 6px;border-radius:3px">${researchedCount}/${pool.length} unlocked</span>
+      <span class="ri-cost" style="min-width:80px;text-align:right">${allDone ? "✓ Complete" : `🔬 ${formatResourceValue(cost)}`}</span>
+    `;
 
-    // Sort by rarity
-    const sorted = [...templates].sort((a, b) => rarityOrder.indexOf(a.rarity) - rarityOrder.indexOf(b.rarity));
-    for (const t of sorted) {
-      const isResearched = researchedCards.has(t.id);
-      const isActive = activeResearch && activeResearch.cardId === t.id;
-      const cost = RESEARCH_COSTS_BY_RARITY[t.rarity] || 0;
-      if (cost === 0 && isResearched) continue; // don't show free/already-researched commons
+    if (!allDone && !activeResearch) {
+      item.addEventListener("click", () => startResearch(cat));
+      item.addEventListener("mouseenter", () => { item.style.background = "rgba(100,130,180,0.1)"; });
+      item.addEventListener("mouseleave", () => { item.style.background = ""; });
+    }
+    listEl.appendChild(item);
 
-      const item = document.createElement("div");
-      item.className = "research-item" + (isResearched ? " researched" : "") + (isActive ? " active" : "");
-
-      const rarityColor = { common: "#6a7a9b", uncommon: "#4a9b5a", rare: "#4a7ac0", epic: "#8a4ac0", legendary: "#c0a020" }[t.rarity] || "#6a7a9b";
-
-      // Hide names of un-researched future cards (show name only if researched or actively being researched)
-      const displayName = (isResearched || isActive) ? t.name : "???";
-
-      item.innerHTML = `
-        <span class="ri-category">${CATEGORY_WATERMARKS[catName] || ""}</span>
-        <span class="ri-name">${displayName}</span>
-        <span class="ri-rarity" style="background:${rarityColor}20;color:${rarityColor};border:1px solid ${rarityColor}40">${t.rarity}</span>
-        <span class="ri-cost">${isResearched ? "✓ Researched" : `🔬 ${cost}`}</span>
-      `;
-
-      if (!isResearched && !isActive) {
-        item.addEventListener("click", () => {
-          activeResearch = { cardId: t.id, templateRef: t, cost, progress: 0 };
-          refreshResearchPanel();
-        });
+    // Show researched cards as sub-list
+    const researched = pool.filter(t => researchedCards.has(t.id));
+    if (researched.length > 0) {
+      const subList = document.createElement("div");
+      subList.style.cssText = "padding:2px 0 6px 32px;";
+      for (const t of researched) {
+        const rarityColor = RARITY_COLORS[t.rarity] || "#6a7a9b";
+        const pill = document.createElement("span");
+        pill.style.cssText = `display:inline-block;margin:2px 4px;padding:1px 8px;border-radius:10px;font-size:10px;background:${rarityColor}20;color:${rarityColor};border:1px solid ${rarityColor}40;`;
+        pill.textContent = t.name;
+        subList.appendChild(pill);
       }
-      listEl.appendChild(item);
+      listEl.appendChild(subList);
     }
   }
+}
+
+// Research reveal — "card pack opening" moment
+function showResearchReveal(template, category) {
+  // Remove existing reveal if any
+  let existing = document.getElementById("research-reveal-backdrop");
+  if (existing) existing.remove();
+
+  const rarityColor = RARITY_COLORS[template.rarity] || "#6a7a9b";
+  const catLabel = category.charAt(0).toUpperCase() + category.slice(1);
+  const icon = CATEGORY_WATERMARKS[category] || "";
+
+  const backdrop = document.createElement("div");
+  backdrop.id = "research-reveal-backdrop";
+  backdrop.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;`;
+
+  // Rarity glow
+  const glow = document.createElement("div");
+  glow.style.cssText = `position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(ellipse,${rarityColor}30 0%,transparent 70%);pointer-events:none;animation:revealGlow 2s ease-out;`;
+
+  // Card container with flip animation
+  const cardSlot = document.createElement("div");
+  cardSlot.style.cssText = "animation:revealFlip 0.8s ease-out forwards;transform-origin:center;";
+  cardSlot.innerHTML = buildCardHtml(template, icon);
+
+  // Label
+  const label = document.createElement("div");
+  label.style.cssText = `margin-top:20px;font-size:18px;font-weight:bold;color:${rarityColor};text-transform:uppercase;letter-spacing:2px;animation:revealFadeIn 0.5s ease-out 0.6s both;`;
+  label.textContent = `New ${template.rarity} ${catLabel} discovered!`;
+
+  // Dismiss button
+  const btn = document.createElement("button");
+  btn.style.cssText = "margin-top:16px;padding:8px 24px;background:#1a2040;border:1px solid #2a3460;color:#c0d0e0;border-radius:6px;cursor:pointer;font-size:14px;animation:revealFadeIn 0.5s ease-out 0.8s both;";
+  btn.textContent = "Continue";
+  btn.onclick = () => {
+    backdrop.remove();
+    if (document.getElementById("research-overlay").classList.contains("visible")) {
+      refreshResearchPanel();
+    }
+  };
+
+  backdrop.appendChild(glow);
+  backdrop.appendChild(cardSlot);
+  backdrop.appendChild(label);
+  backdrop.appendChild(btn);
+  document.body.appendChild(backdrop);
+
+  // Click backdrop outside card to dismiss
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) btn.click();
+  });
 }
 
 // ═══════════════════════════════════════════
@@ -3691,7 +4163,9 @@ function refreshResearchPanel() {
 initResearch();
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
-const homeStar = generateSeedCluster();
+const homeStar = generateGalaxy();
+createProbe(homeStar.x + 25, homeStar.y - 20);
+createProbe(homeStar.x - 25, homeStar.y + 20);
 camera.x = homeStar.x;
 camera.y = homeStar.y;
 updateResourceDisplay();

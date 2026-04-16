@@ -702,7 +702,6 @@ select.editor-input { cursor: pointer; }
         <select id="filter-category">
           <option value="all">All Categories</option>
           <option value="building">Building</option>
-          <option value="captain">Captain</option>
           <option value="leader">Leader</option>
           <option value="ship">Ship</option>
           <option value="admiral">Admiral</option>
@@ -760,7 +759,6 @@ select.editor-input { cursor: pointer; }
       <label class="editor-label">Category</label>
       <select class="editor-input" id="edit-category">
         <option value="building">Building</option>
-        <option value="captain">Captain</option>
         <option value="leader">Leader</option>
         <option value="ship">Ship</option>
         <option value="admiral">Admiral</option>
@@ -852,9 +850,8 @@ const RARITY_COLORS = {
 const CATEGORY_DEFAULT_STATS = {
   building: [],
   ship:     ["shields","armor","speed","sensorRange","energyDmg","energyRange","kineticDmg","kineticRange","missileDmg","missileRange","stealth","pointDefense"],
-  captain:  ["commandBonus","maxFleetSize"],
   leader:   [],
-  admiral:  [],
+  admiral:  ["commandBonus","maxFleetSize"],
   star:     [],
   planet:   [],
 };
@@ -1204,7 +1201,6 @@ document.getElementById("tag-input").addEventListener("keydown", (e) => {
 const CATEGORY_ICONS = {
   building: "🏗️",
   ship: "🚀",
-  captain: "👨‍✈️",
   leader: "👑",
   admiral: "⭐",
   star: "☀️",
@@ -1225,7 +1221,7 @@ const STAT_ICONS = {
   stealth: "👁️", pointDefense: "🎯",
   energyDmg: "⚡", kineticDmg: "💥", missileDmg: "🚀",
   energyRange: "⚡", kineticRange: "💥", missileRange: "🚀",
-  // Captain stats
+  // Admiral stats
   commandBonus: "⭐", maxFleetSize: "⚓",
 };
 
@@ -1280,9 +1276,27 @@ function updatePreview() {
   const statsEl = document.getElementById("preview-stats");
   statsEl.innerHTML = "";
   const isShip = data.category === "ship";
-  statsEl.className = `card-stats${(!hasSpecial && !isShip) ? " expanded" : ""}`;
+  const isAdmiral = data.category === "admiral";
+  statsEl.className = `card-stats${(!hasSpecial && !isShip && !isAdmiral) ? " expanded" : ""}`;
 
-  if (isShip) {
+  if (isAdmiral) {
+    const s = data.stats;
+    // Command row: command bonus + fleet size
+    let html = `<div class="ship-stat-row">`;
+    html += `<div class="card-stat"><span class="card-stat-icon">⭐</span><span class="card-stat-value" style="color:#f0d060">+${s.commandBonus || 0}%</span></div>`;
+    html += `<div class="card-stat"><span class="card-stat-icon">⚓</span><span class="card-stat-value">${s.maxFleetSize || 0}</span></div>`;
+    html += `</div>`;
+    // Stat bonuses
+    const bonusKeys = Object.keys(s).filter(k => k !== "commandBonus" && k !== "maxFleetSize");
+    if (bonusKeys.length > 0) {
+      html += `<div class="ship-stat-row ship-utils">`;
+      for (const key of bonusKeys) {
+        html += `<div class="card-stat"><span class="card-stat-icon">${getStatIcon(key)}</span><span class="card-stat-value" style="color:#8ac0ff">+${s[key]}%</span></div>`;
+      }
+      html += `</div>`;
+    }
+    statsEl.innerHTML = html;
+  } else if (isShip) {
     const s = data.stats;
     // Defense row
     let defHtml = `<div class="ship-stat-row">`;

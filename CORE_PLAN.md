@@ -1,5 +1,11 @@
 # Core Branch — Design Decisions & Implementation Plan
 
+## Pacing Note
+
+Current game speed is tuned fast for dev/testing. The long-term vision is **persistent real-time play**: full fleet combat takes days, star-to-star travel takes hours, card acquisition is ~1–2 per colony per day. All systems should be designed with time-scaling in mind.
+
+---
+
 ## Design Decisions
 
 ### D1: Combat Triangle (LOCKED)
@@ -17,11 +23,12 @@
 
 ---
 
-### D2: Weapon Range (LOCKED)
+### D2: Weapon Range as Distance (LOCKED — REVISED)
 
-- **Weapon range is distinct from sensor range.** Sensor range = starmap detection. Weapon range = combat effectiveness.
-- Short-range weapons in the **backline deal reduced damage** (not zero). This encourages good fleet composition without completely punishing misplacement.
-- No combat phase system for now. The long-range opening volley concept is shelved but could return later as ship card special abilities.
+- **Weapon range is distinct from sensor range.** Sensor range = starmap detection. Weapon range = combat engagement distance.
+- Range values (short/medium/long) map to **literal distances** in combat. As two entities close on each other, weapons begin firing when their target enters that weapon's range.
+- Long-range weapons fire first during approach, then medium, then short. Short-range weapons have **less total firing time** before ships are on top of each other — this is their natural disadvantage (no backline penalty needed).
+- This means fleet composition still matters: all-short-range fleets take unanswered damage while closing. Mixed-range fleets get sustained DPS across the full approach.
 
 ---
 
@@ -31,59 +38,54 @@
 - Detection formula: `effectiveDetectionRange = sensorRange - (stealth * penalty)`
 - Fleet stealth = **lowest** stealth ship in fleet (one clunky ship blows cover).
 - Fleet sensor range = **highest** sensor ship in fleet.
+- Solo ship uses its own stats directly.
 - Colonies have a base sensor range.
-- **Stealth breaks on attack** — fleet becomes visible to nearby sensors when it fires. Stealth is for choosing engagements, not permanent invisibility.
+- **Stealth breaks on attack** — entity becomes visible to nearby sensors when it fires. Stealth is for choosing engagements, not permanent invisibility.
 
 ---
 
-### D4: Mixed Range in Fleets / Frontline & Backline (LOCKED)
+### D4: Stance System (LOCKED — REPLACES FRONTLINE/BACKLINE)
 
-Fleet has two positions: Frontline and Backline.
+Every starmap entity (solo ship or fleet) has a **stance**: Aggressive or Evasive.
 
-- Frontline absorbs all incoming damage first.
-- Backline only takes damage after frontline is destroyed.
-- Short-range weapons in backline fire at reduced damage.
-- **No limits on frontline/backline ratio.** Player distributes ships however they want. Natural consequences punish bad composition (all-backline = no tank = instant damage to everyone).
+**Engagement rules when two entities enter detection range:**
+
+| Attacker Stance | Defender Stance | Result |
+|----------------|----------------|--------|
+| Aggressive | Aggressive | Both alter heading toward each other. Combat begins. |
+| Aggressive | Evasive | Speed check — evasive entity has a chance to slip past based on speed difference. If failed, combat begins. |
+| Evasive | Aggressive | Same as above (symmetric). |
+| Evasive | Evasive | Both continue on their current heading. No engagement. |
+
+**Evasion formula (starting point):** `evasionChance = clamp((mySpeed - theirSpeed) / mySpeed, 0, 1)`
+
+**Disengagement:** An entity in combat can switch to evasive stance to attempt to break away. Same speed-based check applies — if you're slower, you're stuck. This makes **speed both strategic and defensive**: fast fleets pick their fights.
 
 ---
 
-### D5: Captain Stat Multipliers (LOCKED)
+### D5: Admiral Stat Multipliers (LOCKED — RENAMED FROM CAPTAIN)
 
-Captains always have a **Command Bonus** — a single rolled % applied to all fleet stats:
+Admirals always have a **Command Bonus** — a single rolled % applied to all fleet stats:
 
 | Rarity | Command Bonus Range |
 |--------|-------------------|
-| Common | +5–10% |
-| Uncommon | +10–20% |
-| Rare | +20–35% |
-| Epic | +35–50% |
-| Legendary | +50–75% |
+| Common | +1–2% |
+| Uncommon | +2–4% |
+| Rare | +4–7% |
+| Epic | +7–10% |
+| Legendary | +10–15% |
 
-In addition, captains can have **individual stat % bonuses** to any ship stat (shields, armor, speed, etc.). These are separate from the command bonus and stack with it. Combined with special abilities (D6), this gives captains three layers of differentiation: universal command bonus + specific stat bonuses + special ability.
-
----
-
-### D6: Captain Special Abilities (LOCKED)
-
-- **One special ability per captain** (max), from a pool of unique mechanics.
-- Captains can have **multiple stat bonuses** (space permitting on the card).
-- Start simple — not every captain needs a special ability. Many can just have command bonus + stat bonuses.
-- Special abilities are reserved for things that can't be expressed as % bonuses:
-
-| Ability | Effect |
-|---------|--------|
-| Ghost Admiral | +1 Stealth to entire fleet |
-| Rally | Backline short-range weapons fire at full effectiveness |
-| Shield Overcharge | Shields absorb first hit at 2x value |
-| Missile Screen | Point Defense applies fleet-wide instead of per-ship |
-| First Strike | Fleet gets a free opening volley before combat begins |
-| Sensor Net | Detects stealthed fleets (ignores 1 stealth level) |
-
-This pool can grow over time. Initial captain cards will be simple (command bonus + maybe a stat bonus or two).
+In addition, admirals can have **individual stat % bonuses** to any ship stat (shields, armor, speed, etc.). These are separate from the command bonus and stack with it.
 
 ---
 
-### D7: Captain Rarity → Fleet Size (LOCKED)
+### D6: Admiral Special Abilities (SHELVED)
+
+Special abilities are deferred until core systems (ships, fleets, combat) are functional. The ability pool will be redesigned to fit the stance/range combat model. For now, admirals differentiate through command bonus + stat bonuses only.
+
+---
+
+### D7: Admiral Rarity → Fleet Size (LOCKED — RENAMED)
 
 Fleet size rolled within rarity-based range on card creation. Value is permanent once rolled.
 
@@ -97,56 +99,81 @@ Fleet size rolled within rarity-based range on card creation. Value is permanent
 
 Overlap between tiers is intentional (lucky Common can beat unlucky Uncommon, etc.).
 
+**Fleets without an admiral are capped at 3 ships.** An admiral card is required for larger fleets.
+
 ---
 
-### D8: Fleet Entity Model & Combat Resolution (LOCKED)
+### D8: Starmap Entities & Combat Resolution (LOCKED — REVISED)
 
-- **Starmap:** Fleet moves as a **single entity** — one icon, one speed, one position. Stats are aggregated from component ships for movement/detection purposes (speed = slowest ship, stealth = lowest, sensor = highest).
-- **Combat:** Zooms into **individual ship resolution**. Each ship has its own shields, armor, and weapons. Ships take damage and die individually over time.
-- Combat runs in **real-time** alongside the rest of the game (idle-style). A small combat window shows the fight progressing — damage ticks, casualties, ship losses.
-- **Multiple fights can happen simultaneously.** Each is its own independent combat instance running in parallel.
-- Player can watch a combat window while managing colonies, moving other fleets, etc.
-- When combat ends, surviving ships reform the fleet (potentially weakened).
+**Two entity types on the starmap:**
+
+1. **Solo Ship** — A single ship card, no admiral. Uses its own stats directly (speed, stealth, sensor range). Ideal for scouts, colony ships, transports, or any utility role.
+2. **Fleet** — Multiple ship cards (up to 3 without admiral, admiral's fleet size with one). Optionally one admiral card. Stats aggregated: speed = slowest ship, stealth = lowest, sensor = highest. Admiral command bonus + stat bonuses applied to all ships.
+
+**Combat resolution:**
+- When engagement triggers (per D4 stance rules), both entities alter heading toward each other and begin closing distance.
+- Weapons fire individually per ship as targets enter each weapon's range threshold (long → medium → short).
+- Damage resolves per-tick using the combat triangle (D1). Each ship has its own shields, armor, weapons. Ships die individually (shields → armor → dead).
+- Combat runs in **real-time** alongside the rest of the game (idle-style).
+- **Multiple fights can happen simultaneously.** Each is its own independent combat instance.
+- Player can watch a combat window while managing colonies, moving other entities, etc.
+- When combat ends, surviving ships reform the entity (potentially weakened).
+- Entities can attempt **disengagement** mid-combat by switching to evasive (D4).
 
 ---
 
 ## Implementation Plan
 
-### Phase 0: Branch Setup
+### Phase 0: Branch Setup ✅
 - Create `core-overhaul` branch off `master`.
 
-### Phase 1: Starmap Overhaul
-1. **Star Clustering** — Replace uniform random positioning with multi-cluster galaxy layout (3-8 cluster centers, Gaussian falloff, sparse field stars between).
-2. **Remove Node System** — Delete `star.lanes`, lane rendering, lane-based navigation.
-3. **Free Travel** — Entities move freely between stars with distance-based travel time (`distance / speed`). Interpolated position rendering on canvas.
-4. **Fog of War** — Render dark overlay with circular cutouts around explored areas. Reveal radius tied to sensor range.
+### Phase 1: Starmap Overhaul ✅
+1. ✅ **Star Clustering** — Replaced uniform positioning with chunk-based procedural generation using seeded fractal noise. Deterministic density map creates natural clustering — dense regions have more stars, sparse regions are void. Infinite and procedural.
+2. ✅ **Remove Node System** — Deleted `star.lanes`, `addLane()`, `drawLanes()`, lane-based navigation. Stars are now independent points in space.
+3. ✅ **Free Travel** — Implemented movable scout probes as map entities. Select entity → click destination → animated dashed travel line → continuous movement. Right-click deselects. Multiple entities supported simultaneously.
+4. ✅ **Fog of War** — Dark overlay rendered via offscreen canvas with `destination-out` composite. Smooth radial gradient cutouts around explored stars and moving entities. Entities reveal fog continuously as they travel.
 
-### Phase 2: Ship Card Redesign
-1. Define new stat schema: `{ shields, armor, speed, sensorRange, weapons: [{type, damage, range}], stealth, pointDefense }`
-2. Redesign 220x320 card layout for combat stats.
-3. Replace 17 existing ship templates with combat-oriented designs.
-4. Update card-builder.html with ship-specific fields.
+**Key constants tuned:**
+- `CHUNK_SIZE = 400`, `MIN_STAR_SEPARATION = 240`, `NOISE_SCALE = 0.0015`
+- `DENSITY_THRESHOLD = 0.45`, `MAX_STARS_PER_CHUNK = 1` (sparse map, ~20% of original density)
+- `BASE_SENSOR_RANGE = 500` (colony fog reveal radius)
+- Entity fog reveal = `sensorRange * 50` (ship stat-driven, not base range)
+- Detected stars keep a small permanent fog hole (30 units) so they stay visible once found
 
-### Phase 3: Captain Card Redesign
-1. Define captain schema: `{ commandBonus, maxFleetSize, specialAbility }`
-2. Redesign captain card layout.
-3. Replace 13 existing captain templates.
-4. Update card designer.
+### Phase 2: Ship Card Redesign ✅
+1. ✅ **New stat schema** — Flat stats: `shields, armor, speed, sensorRange, stealth, pointDefense, energyDmg, energyRange, kineticDmg, kineticRange, missileDmg, missileRange`. Ranges are strings ("short"/"medium"/"long"). Only non-zero weapon types displayed.
+2. ✅ **Card layout** — Ship cards show: defense row (shields/armor/speed), weapon rows (icon + damage + range badge with color coding S/M/L), utility row (sensor/PD/stealth, only if non-zero).
+3. ✅ **17 new ship templates** — Common (single weapon), Uncommon (better stats, some mixed), Rare (multi-weapon, stealth options), Epic (powerhouse multi-role), Legendary (overwhelming firepower).
+4. ✅ **Card designer updated** — Ship default stats pre-populated, dropdown selects for weapon range fields, ship-specific preview rendering.
 
-### Phase 4: Fleet System
-1. Fleet data model: `{ captain, frontline[], backline[], derivedStats, position, destination }`
-2. Fleet stat calculation (speed=min, damage=sum, stealth=min, captain bonus applied).
-3. Fleet creation UI (overlay with drag-drop, reuses colony screen patterns).
-4. Fleet icon on starmap (captain portrait).
-5. Fleet selection, movement orders, ETA display.
-6. Fleet movement tick in game loop.
+### Phase 3: Admiral Card Redesign ✅
+1. ✅ Define admiral schema: `{ commandBonus, maxFleetSize, statBonuses }` (no special abilities for now).
+2. ✅ Redesign admiral card layout to show command bonus, fleet size, stat bonuses.
+3. ✅ Replace 13 existing captain templates with new admiral designs.
+4. ✅ Update card designer with admiral-specific fields.
+5. ✅ Rename all "captain" references to "admiral" across the codebase.
 
-### Phase 5: Combat
-1. Combat instance model: each fight is an independent object tracking two fleets' individual ships, running in real-time.
-2. Combat engine: per-tick individual ship damage — weapons fire at targets based on frontline/backline rules, combat triangle multipliers, PD vs missiles. Ships die individually (shields → armor → dead).
-3. Combat window UI: small overlay showing live fight — ship counts, damage ticks, casualties. Non-blocking (player can do other things). Multiple combat windows can exist simultaneously.
-4. Combat resolution: surviving ships reform fleet, destroyed ships are removed from fleet. Notification on combat end with summary.
+### Phase 4: Starmap Entities & Fleet System ✅
+1. ✅ **Entity model** — Two types: solo ship `{ card, stance, position, destination }` and fleet `{ admiral?, ships[], stance, derivedStats, position, destination }`. Replaced probe system entirely. Two starter Scout Corvettes at home star.
+2. ✅ **Fleet stat calculation** — `recalcFleetStats()`: speed=min, sensor=max, stealth=min, damage=sum, admiral command bonus applied. Solo ships use own card stats.
+3. ✅ **Colony tab system** — Buildings/Fleet tabs in colony screen. Shared queue at bottom. Fleet tab: admiral as first grid slot (gold-styled, optional), ship slots grid, stance toggle, deploy fleet / deploy solo buttons. Drag-drop from queue to fleet slots and back.
+4. ✅ **Entity rendering** — Triangles for solo ships (rarity-colored), chevrons for fleets with ship count badge. Stance indicator (A/E). Dashed travel lines, selection highlight, labels.
+5. ✅ **Entity selection & info panel** — Click entity to show stats, stance toggle, disband button (at colony only returns cards to queue). Movement orders via click destination.
+6. ✅ **Entity movement & game loop** — `tickEntities(dt)` handles movement, fog-of-war reveal via `detectStarsInRange()`. Replaces old probe system entirely.
+7. ✅ **ETA display** — `formatETA()` helper converts game-seconds to human-readable time. Shown in entity info panel and as a canvas label below traveling entities on the starmap.
+
+### Phase 4.5: Pacing & Time Controls ✅
+1. ✅ **Master clock** — Single `scaledDt = dt * BASE_GAME_SPEED * gameSpeed` computed once in game loop, passed to both `tickEconomy()` and `tickEntities()`. No separate speed scaling inside subsystems.
+2. ✅ **BASE_GAME_SPEED = 0.1** — Baseline pacing constant. 1x is 10% of real-time. One knob to tune overall game feel.
+3. ✅ **Speed controls** — Pause / 1x / 10x / 50x. Idle-appropriate (not RTS fractions).
+
+### Phase 5: Combat ⬅️ NEXT
+1. **Detection & engagement:** Per-tick scan for entities in detection range. Stance rules (D4) determine if combat triggers.
+2. **Combat instance model:** Independent object tracking two entities' individual ships, closing distance, per-ship HP/weapons state.
+3. **Combat engine:** Per-tick distance closing → weapons fire as range thresholds are crossed → combat triangle damage → ships die individually. Evasion/disengagement checks.
+4. **Combat window UI:** Small overlay showing live fight — ship counts, damage ticks, closing distance, casualties. Non-blocking. Multiple simultaneous windows.
+5. **Combat resolution:** Surviving ships reform entity. Destroyed ships removed. Notification + summary on end.
 
 ### Phase 6: Fleet Management
-1. Fleet management panel (list, status, stats).
+1. Fleet management panel (list, status, stats, stance).
 2. Repair/resupply at friendly colonies.

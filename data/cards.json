@@ -881,7 +881,7 @@
   {
     "id": "cpt_001",
     "name": "Rookie Pilot",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "common",
     "stats": {
       "navigation": 2,
@@ -905,7 +905,7 @@
   {
     "id": "cpt_002",
     "name": "Veteran Navigator",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "common",
     "stats": {
       "navigation": 3,
@@ -928,7 +928,7 @@
   {
     "id": "cpt_003",
     "name": "Trade Captain",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "common",
     "stats": {
       "logistics": 3,
@@ -953,7 +953,7 @@
   {
     "id": "cpt_004",
     "name": "Combat Ace",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "uncommon",
     "stats": {
       "tactics": 4,
@@ -979,7 +979,7 @@
   {
     "id": "cpt_005",
     "name": "Fleet Surgeon",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "uncommon",
     "stats": {
       "morale": 3,
@@ -1004,7 +1004,7 @@
   {
     "id": "cpt_006",
     "name": "Astrocartographer",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "uncommon",
     "stats": {
       "navigation": 5,
@@ -1029,7 +1029,7 @@
   {
     "id": "cpt_007",
     "name": "Corsair Queen",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "rare",
     "stats": {
       "attack": 5,
@@ -1055,7 +1055,7 @@
   {
     "id": "cpt_008",
     "name": "Xenolinguist",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "rare",
     "stats": {
       "diplomacy": 6,
@@ -1080,7 +1080,7 @@
   {
     "id": "cpt_009",
     "name": "Ghost Runner",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "epic",
     "stats": {
       "speed": 8,
@@ -1108,7 +1108,7 @@
   {
     "id": "cpt_010",
     "name": "Admiral-Errant",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "epic",
     "stats": {
       "tactics": 7,
@@ -1135,7 +1135,7 @@
   {
     "id": "cpt_011",
     "name": "The Pathfinder",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "legendary",
     "stats": {
       "navigation": 10,
@@ -1165,7 +1165,7 @@
   {
     "id": "cpt_012",
     "name": "War Sage",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "rare",
     "stats": {
       "tactics": 5,
@@ -2445,7 +2445,7 @@
   {
     "id": "cpt_013",
     "name": "Smuggler",
-    "category": "captain",
+    "category": "admiral",
     "rarity": "common",
     "stats": {
       "speed": 3,

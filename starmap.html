@@ -743,7 +743,7 @@ body {
 #colony-right {
   flex: 1;
   padding: 14px;
-  overflow: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
@@ -757,13 +757,13 @@ body {
 #building-slots {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  grid-template-rows: repeat(2, 1fr);
+  grid-template-rows: 1fr 1fr;
   gap: 10px;
   flex: 1;
 }
 .building-slot {
   width: 100%;
-  height: 100%;
+  min-height: 0;
   border: 2px dashed #1e2744;
   border-radius: 8px;
   display: flex;
@@ -780,9 +780,9 @@ body {
 .building-slot.occupied { border-style: solid; border-color: #1e2744; cursor: grab; overflow: hidden; padding: 0; position: relative; }
 .building-slot .card-preview {
   position: absolute;
-  top: 0; left: 0;
+  top: 0; left: 50%;
   width: 220px; height: 320px;
-  transform-origin: top left;
+  transform-origin: top center;
   pointer-events: none;
   border-radius: 6px;
 }
@@ -961,6 +961,140 @@ body {
 }
 .magnify-close-btn:hover { background: linear-gradient(135deg, #243060, #2e4080); color: #c0d0f0; }
 
+/* ── Colony Tabs ── */
+#colony-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+.colony-tab {
+  flex: 1;
+  padding: 6px 12px;
+  background: rgba(10,12,20,0.5);
+  border: 1px solid #1e2744;
+  color: #4a5a7b;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.colony-tab:first-child { border-radius: 6px 0 0 6px; }
+.colony-tab:last-child { border-radius: 0 6px 6px 0; }
+.colony-tab.active {
+  background: rgba(30,40,70,0.6);
+  color: #c8d0e0;
+  border-color: #2a3a60;
+}
+.colony-tab:hover:not(.active) { background: rgba(20,25,40,0.5); color: #6a7a9b; }
+.colony-tab-content { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; }
+.colony-tab-content:not(.active) { display: none !important; }
+
+/* ── Fleet Tab ── */
+#fleet-ship-slots {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.fleet-ship-slot {
+  width: 100%;
+  aspect-ratio: 220/320;
+  border: 2px dashed #1e2744;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2a3460;
+  font-size: 16px;
+  background: rgba(10,12,20,0.5);
+  transition: all 0.15s;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.fleet-ship-slot:hover { border-color: #2a3a60; background: rgba(15,18,30,0.6); }
+.fleet-ship-slot.drag-over { border-color: #4a7ac0; background: rgba(30,40,80,0.5); }
+.fleet-ship-slot.occupied { border-style: solid; border-color: #1e2744; cursor: grab; padding: 0; }
+.fleet-ship-slot .card-preview {
+  position: absolute;
+  top: 0; left: 0;
+  width: 220px; height: 320px;
+  transform-origin: top left;
+  pointer-events: none;
+  border-radius: 6px;
+}
+/* Admiral slot is first fleet slot — stylized border */
+.fleet-ship-slot.admiral-slot {
+  border-color: #c0a02060;
+  border-width: 2px;
+}
+.fleet-ship-slot.admiral-slot:hover { border-color: #c0a020; }
+.fleet-ship-slot.admiral-slot.drag-over { border-color: #c0a020; background: rgba(60,50,20,0.3); }
+.fleet-ship-slot.admiral-slot .admiral-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #c0a02080;
+  font-size: 11px;
+  text-align: center;
+}
+.fleet-ship-slot.admiral-slot .admiral-placeholder span:first-child { font-size: 20px; }
+#fleet-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  padding-top: 6px;
+  border-top: 1px solid #111828;
+}
+#fleet-stance-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: rgba(224, 80, 80, 0.15);
+  border: 1px solid rgba(224, 80, 80, 0.4);
+  border-radius: 4px;
+  color: #e05050;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#fleet-stance-toggle.evasive {
+  background: rgba(80, 160, 224, 0.15);
+  border-color: rgba(80, 160, 224, 0.4);
+  color: #50a0e0;
+}
+#fleet-info {
+  font-size: 10px;
+  color: #4a5a7b;
+  flex: 1;
+}
+#fleet-deploy-buttons { display: flex; gap: 4px; }
+#deploy-btn, #deploy-solo-btn {
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid #2a3a60;
+  background: linear-gradient(135deg, #1a2540, #243060);
+  color: #8090b0;
+}
+#deploy-btn:not(:disabled):hover, #deploy-solo-btn:not(:disabled):hover {
+  background: linear-gradient(135deg, #243060, #2e4080);
+  color: #c0d0f0;
+}
+#deploy-btn:disabled, #deploy-solo-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ── Card Selection Modal ── */
 #card-select-backdrop {
   position: absolute;
@@ -1122,11 +1256,9 @@ body {
   </script>
   <div id="speed-controls">
     <button data-speed="0">⏸</button>
-    <button data-speed="0.25">¼×</button>
-    <button data-speed="0.5">½×</button>
     <button data-speed="1" class="active">1×</button>
-    <button data-speed="2">2×</button>
-    <button data-speed="4">4×</button>
+    <button data-speed="10">10×</button>
+    <button data-speed="50">50×</button>
   </div>
 </div>
 
@@ -1199,7 +1331,7 @@ body {
         <div id="colony-actions">
           <button class="colony-action-btn" data-action="trade">Trade</button>
           <button class="colony-action-btn" data-action="buildings">Build Buildings</button>
-          <button class="colony-action-btn" data-action="captains">Recruit Captains</button>
+          <button class="colony-action-btn" data-action="admirals">Recruit Admirals</button>
           <button class="colony-action-btn" data-action="leaders">Elect Leaders</button>
           <button class="colony-action-btn" data-action="ships">Build Ships</button>
           <button class="colony-action-btn" data-action="terraform">Terraform</button>
@@ -1208,8 +1340,26 @@ body {
         <div id="colony-deck"></div>
       </div>
       <div id="colony-right">
-        <h3>Buildings</h3>
-        <div id="building-slots"></div>
+        <div id="colony-tabs">
+          <button class="colony-tab active" data-tab="buildings">Buildings</button>
+          <button class="colony-tab" data-tab="fleet">Fleet</button>
+        </div>
+        <div id="tab-buildings" class="colony-tab-content active">
+          <div id="building-slots"></div>
+        </div>
+        <div id="tab-fleet" class="colony-tab-content" style="display:none">
+          <div id="fleet-ship-slots"></div>
+          <div id="fleet-controls">
+            <div id="fleet-stance-toggle" title="Toggle stance">
+              <span id="fleet-stance-label">Aggressive</span>
+            </div>
+            <div id="fleet-info"></div>
+            <div id="fleet-deploy-buttons">
+              <button id="deploy-btn" disabled>Deploy Fleet</button>
+              <button id="deploy-solo-btn" disabled>Deploy Solo</button>
+            </div>
+          </div>
+        </div>
         <div id="colony-queue-section">
           <h3>Queue</h3>
           <div id="colony-queue"></div>
@@ -1325,7 +1475,7 @@ const STAT_ICONS = {
   shields:"🔷", armor:"🛡️", speed:"💨", sensorRange:"📡",
   stealth:"👁️", pointDefense:"🎯",
   energyDmg:"⚡", kineticDmg:"💥", missileDmg:"🚀",
-  // Captain stats
+  // Admiral stats
   commandBonus:"⭐", maxFleetSize:"⚓",
   // Legacy
   attack:"⚔️", hull:"🛸", navigation:"🧭",
@@ -1379,7 +1529,7 @@ const PLANET_VISUALS = {
 };
 
 // ═══════════════════════════════════════════
-//  BUILDING / LEADER / CAPTAIN / SHIP TEMPLATES
+//  BUILDING / LEADER / ADMIRAL / SHIP TEMPLATES
 // ═══════════════════════════════════════════
 const BUILDING_TEMPLATES = [
   // Common — no upkeep, basic production (~1x baseline)
@@ -1430,25 +1580,51 @@ const LEADER_TEMPLATES = [
   { id:"ldr_011", name:"Eternal Chancellor", category:"leader", rarity:"legendary", stats:{efficiency:1000,morale:500,charisma:400,growth:300}, cost:{food:2000,energy:1500,research:800,credits:15000}, special:"All colony output +15%.", flavor:"Under her rule, empires flourish." },
 ];
 
-const CAPTAIN_TEMPLATES = [
-  // Common — ~1x baseline
-  { id:"cpt_001", name:"Rookie Pilot", category:"captain", rarity:"common", stats:{navigation:2,speed:1}, cost:{food:4}, special:"", flavor:"Everyone starts somewhere." },
-  { id:"cpt_002", name:"Veteran Navigator", category:"captain", rarity:"common", stats:{navigation:3,tactics:1}, cost:{food:5}, special:"", flavor:"A thousand jumps and counting." },
-  { id:"cpt_003", name:"Trade Captain", category:"captain", rarity:"common", stats:{logistics:3,diplomacy:1}, cost:{food:4,energy:3}, special:"", flavor:"Profit flows where connections grow." },
-  { id:"cpt_013", name:"Smuggler", category:"captain", rarity:"common", stats:{speed:3,logistics:2}, cost:{food:4}, special:"", flavor:"No questions asked, no cargo refused." },
-  // Uncommon — ~5x
-  { id:"cpt_004", name:"Combat Ace", category:"captain", rarity:"uncommon", stats:{tactics:15,attack:10,speed:8}, cost:{food:20,energy:15,credits:50}, special:"", flavor:"Five kills before breakfast." },
-  { id:"cpt_005", name:"Fleet Surgeon", category:"captain", rarity:"uncommon", stats:{morale:12,hull:12}, cost:{food:25,research:8,credits:40}, special:"Repairs 1 hull per tick in combat.", flavor:"Mending ships and spirits alike." },
-  { id:"cpt_006", name:"Astrocartographer", category:"captain", rarity:"uncommon", stats:{navigation:18,research:8}, cost:{food:20,research:12,credits:50}, special:"", flavor:"She names the stars no one has seen." },
-  // Rare — ~25x
-  { id:"cpt_007", name:"Corsair Queen", category:"captain", rarity:"rare", stats:{attack:60,speed:45,charisma:30}, cost:{food:80,energy:50,credits:300}, special:"Chance to capture enemy ships.", flavor:"The void bows to no law but hers." },
-  { id:"cpt_008", name:"Xenolinguist", category:"captain", rarity:"rare", stats:{diplomacy:70,research:35}, cost:{food:60,research:40,credits:250}, special:"Unlocks alien trade routes.", flavor:"Every species speaks the language of need." },
-  { id:"cpt_012", name:"War Sage", category:"captain", rarity:"rare", stats:{tactics:55,defense:35,morale:30}, cost:{food:80,research:30,credits:300}, special:"Reduces damage taken by 15%.", flavor:"Every battle is a lesson." },
-  // Epic — ~100x
-  { id:"cpt_009", name:"Ghost Runner", category:"captain", rarity:"epic", stats:{speed:200,navigation:150,tactics:100}, cost:{food:300,energy:200,research:80,credits:2000}, special:"Ship cannot be targeted for 1 round.", flavor:"You can't hit what you can't find." },
-  { id:"cpt_010", name:"Admiral-Errant", category:"captain", rarity:"epic", stats:{tactics:200,attack:120,charisma:100,morale:80}, cost:{food:350,energy:250,credits:2500}, special:"Inspires nearby ships: +1 morale.", flavor:"Rank means nothing. Results mean everything." },
-  // Legendary — ~500x
-  { id:"cpt_011", name:"The Pathfinder", category:"captain", rarity:"legendary", stats:{navigation:1000,speed:600,research:400,diplomacy:300}, cost:{food:2000,energy:1200,research:600,credits:12000}, special:"Discovers anomalies twice as fast.", flavor:"Where others see emptiness, she sees roads." },
+const ADMIRAL_TEMPLATES = [
+  // ── Common — commandBonus 1-2%, fleet 4-7 ──
+  { id:"adm_001", name:"Ensign Hale", category:"admiral", rarity:"common",
+    stats:{ commandBonus:1, maxFleetSize:5 },
+    cost:{food:4,credits:5}, special:"", flavor:"Freshly commissioned and eager to prove it." },
+  { id:"adm_002", name:"Patrol Commander", category:"admiral", rarity:"common",
+    stats:{ commandBonus:2, maxFleetSize:4 },
+    cost:{food:5,credits:8}, special:"", flavor:"Every sector deserves a watchful eye." },
+  { id:"adm_003", name:"Convoy Leader", category:"admiral", rarity:"common",
+    stats:{ commandBonus:1, maxFleetSize:7 },
+    cost:{food:4,energy:3,credits:5}, special:"", flavor:"Safety in numbers, profit in punctuality." },
+  { id:"adm_004", name:"Privateer", category:"admiral", rarity:"common",
+    stats:{ commandBonus:2, maxFleetSize:4, speed:3 },
+    cost:{food:5,credits:10}, special:"", flavor:"A letter of marque and a fast ship." },
+  // ── Uncommon — commandBonus 2-4%, fleet 6-12 ──
+  { id:"adm_005", name:"Tactical Officer", category:"admiral", rarity:"uncommon",
+    stats:{ commandBonus:3, maxFleetSize:8, kineticDmg:5 },
+    cost:{food:20,energy:15,credits:50}, special:"", flavor:"Precision wins battles. Instinct wins wars." },
+  { id:"adm_006", name:"Shield Warden", category:"admiral", rarity:"uncommon",
+    stats:{ commandBonus:2, maxFleetSize:10, shields:8 },
+    cost:{food:20,energy:20,credits:60}, special:"", flavor:"Nothing gets through on my watch." },
+  { id:"adm_007", name:"Scout Master", category:"admiral", rarity:"uncommon",
+    stats:{ commandBonus:4, maxFleetSize:6, sensorRange:10, speed:5 },
+    cost:{food:25,research:12,credits:50}, special:"", flavor:"Know the void before the void knows you." },
+  // ── Rare — commandBonus 4-7%, fleet 11-24 ──
+  { id:"adm_008", name:"Corsair Queen", category:"admiral", rarity:"rare",
+    stats:{ commandBonus:5, maxFleetSize:16, speed:10, armor:8 },
+    cost:{food:80,energy:50,credits:300}, special:"", flavor:"The void bows to no law but hers." },
+  { id:"adm_009", name:"War Sage", category:"admiral", rarity:"rare",
+    stats:{ commandBonus:6, maxFleetSize:14, shields:12, kineticDmg:10 },
+    cost:{food:80,research:30,credits:300}, special:"", flavor:"Every battle is a lesson." },
+  { id:"adm_010", name:"Ghost Commodore", category:"admiral", rarity:"rare",
+    stats:{ commandBonus:7, maxFleetSize:11, stealth:15, speed:8 },
+    cost:{food:60,energy:40,credits:350}, special:"", flavor:"They never see the blade that cuts deepest." },
+  // ── Epic — commandBonus 7-10%, fleet 20-36 ──
+  { id:"adm_011", name:"Iron Admiral", category:"admiral", rarity:"epic",
+    stats:{ commandBonus:9, maxFleetSize:28, armor:20, shields:15, kineticDmg:12 },
+    cost:{food:300,energy:200,research:80,credits:2000}, special:"", flavor:"Fleets break against her formations like waves on steel." },
+  { id:"adm_012", name:"Void Marshal", category:"admiral", rarity:"epic",
+    stats:{ commandBonus:10, maxFleetSize:24, speed:18, sensorRange:20, missileDmg:15 },
+    cost:{food:350,energy:250,credits:2500}, special:"", flavor:"Rank means nothing. Results mean everything." },
+  // ── Legendary — commandBonus 10-15%, fleet 30-50 ──
+  { id:"adm_013", name:"The Sovereign", category:"admiral", rarity:"legendary",
+    stats:{ commandBonus:14, maxFleetSize:45, shields:25, armor:25, speed:15, kineticDmg:18 },
+    cost:{food:2000,energy:1200,research:600,credits:12000}, special:"", flavor:"Where she commands, stars kneel." },
 ];
 
 const SHIP_TEMPLATES = [
@@ -1522,11 +1698,11 @@ const SHIP_TEMPLATES = [
 const CATEGORY_TEMPLATES = {
   building: BUILDING_TEMPLATES,
   leader: LEADER_TEMPLATES,
-  captain: CAPTAIN_TEMPLATES,
+  admiral: ADMIRAL_TEMPLATES,
   ship: SHIP_TEMPLATES,
 };
-const CATEGORY_WATERMARKS = { building:"🏗️", leader:"👑", captain:"👨‍✈️", ship:"🚀" };
-const ACTION_TO_CATEGORY = { buildings:"building", captains:"captain", leaders:"leader", ships:"ship" };
+const CATEGORY_WATERMARKS = { building:"🏗️", leader:"👑", admiral:"⭐", ship:"🚀" };
+const ACTION_TO_CATEGORY = { buildings:"building", admirals:"admiral", leaders:"leader", ships:"ship" };
 
 function rollCardFromCategory(category) {
   const pool = CATEGORY_TEMPLATES[category];
@@ -1752,9 +1928,9 @@ function fractalNoise(x, y, octaves = 3) {
 // ═══════════════════════════════════════════
 const CHUNK_SIZE = 400;             // world units per chunk
 const NOISE_SCALE = 0.0015;         // controls cluster size (lower = bigger clusters)
-const MIN_STAR_SEPARATION = 120;    // minimum distance between stars
-const DENSITY_THRESHOLD = 0.25;     // noise below this = empty void
-const MAX_STARS_PER_CHUNK = 4;      // at peak density
+const MIN_STAR_SEPARATION = 240;    // minimum distance between stars
+const DENSITY_THRESHOLD = 0.45;     // noise below this = empty void
+const MAX_STARS_PER_CHUNK = 1;      // at peak density
 
 const generatedChunks = new Map();  // "cx,cy" -> true (already processed)
 let nextStarId = 1;
@@ -1862,22 +2038,105 @@ function generateGalaxy() {
 }
 
 // ═══════════════════════════════════════════
-//  PROBES / FLEETS (movable map entities)
+//  SHIPS / FLEETS (movable map entities)
 // ═══════════════════════════════════════════
-const mapEntities = [];  // array of probes/fleets on the starmap
+function lightenColor(hex, amt) {
+  let r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
+  r = Math.min(255, r + amt); g = Math.min(255, g + amt); b = Math.min(255, b + amt);
+  return `rgb(${r},${g},${b})`;
+}
+function formatETA(gameSec) {
+  if (gameSec < 60) return `${Math.ceil(gameSec)}s`;
+  if (gameSec < 3600) return `${Math.floor(gameSec / 60)}m ${Math.ceil(gameSec % 60)}s`;
+  const h = Math.floor(gameSec / 3600);
+  const m = Math.ceil((gameSec % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+const mapEntities = [];  // array of ships/fleets on the starmap
 let selectedEntityIdx = null;  // index into mapEntities, or null
 
-function createProbe(x, y) {
-  const probe = {
-    type: "probe",
+function createSoloShip(card, x, y) {
+  const ent = {
+    type: "ship",
+    card,
+    stance: "aggressive",
     x, y,
     destX: null, destY: null,
-    speed: 60,           // world units per game-second
-    sensorRange: 300,    // reveal radius while traveling
-    label: "Scout Probe",
+    speed: card.stats.speed || 1,
+    sensorRange: card.stats.sensorRange || 0,
+    stealth: card.stats.stealth || 0,
+    label: card.name,
   };
-  mapEntities.push(probe);
-  return probe;
+  mapEntities.push(ent);
+  return ent;
+}
+
+function createFleet(admiral, ships, x, y) {
+  const ent = {
+    type: "fleet",
+    admiral,   // admiral card or null
+    ships,     // array of ship cards
+    stance: "aggressive",
+    x, y,
+    destX: null, destY: null,
+    speed: 1, sensorRange: 0, stealth: 0,
+    label: admiral ? admiral.name : "Fleet",
+  };
+  recalcFleetStats(ent);
+  mapEntities.push(ent);
+  return ent;
+}
+
+function recalcFleetStats(ent) {
+  if (ent.type !== "fleet" || ent.ships.length === 0) return;
+  let minSpeed = Infinity, maxSensor = 0, minStealth = Infinity;
+  for (const s of ent.ships) {
+    minSpeed = Math.min(minSpeed, s.stats.speed || 1);
+    maxSensor = Math.max(maxSensor, s.stats.sensorRange || 0);
+    minStealth = Math.min(minStealth, s.stats.stealth || 0);
+  }
+  ent.speed = minSpeed;
+  ent.sensorRange = maxSensor;
+  ent.stealth = minStealth;
+  // Apply admiral command bonus
+  if (ent.admiral && ent.admiral.stats.commandBonus) {
+    const bonus = 1 + ent.admiral.stats.commandBonus / 100;
+    ent.speed = Math.round(ent.speed * bonus);
+    ent.sensorRange = Math.round(ent.sensorRange * bonus);
+  }
+}
+
+function getMaxFleetShips(admiral) {
+  return admiral ? (admiral.stats.maxFleetSize || 4) : 3;
+}
+
+// Check if entity is at a colony star (within snap distance)
+function getEntityColony(ent) {
+  const snapDist = 30;
+  for (const c of colonies) {
+    const star = stars.get(c.starId);
+    if (!star) continue;
+    const d = Math.sqrt((ent.x - star.x) ** 2 + (ent.y - star.y) ** 2);
+    if (d < snapDist) return c;
+  }
+  return null;
+}
+
+function disbandEntity(idx) {
+  const ent = mapEntities[idx];
+  if (!ent) return;
+  const col = getEntityColony(ent);
+  if (!col) return; // can only disband at a colony
+  const colony = col.planet.colony;
+  if (ent.type === "ship") {
+    colony.queue.push(ent.card);
+  } else if (ent.type === "fleet") {
+    for (const s of ent.ships) colony.queue.push(s);
+    if (ent.admiral) colony.queue.push(ent.admiral);
+  }
+  mapEntities.splice(idx, 1);
+  if (selectedEntityIdx === idx) selectedEntityIdx = null;
+  else if (selectedEntityIdx > idx) selectedEntityIdx--;
 }
 
 function tickEntities(dt) {
@@ -1901,7 +2160,7 @@ function tickEntities(dt) {
     }
 
     // Continuous fog reveal along travel path
-    detectStarsInRange(ent.x, ent.y, ent.sensorRange);
+    detectStarsInRange(ent.x, ent.y, ent.sensorRange * 50);
   }
 }
 
@@ -1934,14 +2193,18 @@ function drawEntities(ctx, time) {
       ctx.fill();
     }
 
-    // Probe icon — small diamond shape
-    const size = 6 * camera.zoom;
+    // Entity icon
+    const isFleet = ent.type === "fleet";
+    const size = (isFleet ? 8 : 6) * camera.zoom;
+    const rarityColor = ent.type === "ship"
+      ? (RARITY_COLORS[ent.card.rarity] || "#4a7ac0")
+      : (ent.admiral ? (RARITY_COLORS[ent.admiral.rarity] || "#4a7ac0") : "#6a7a9b");
     ctx.save();
     ctx.translate(pos.x, pos.y);
 
     // Selection highlight
     if (isSelected) {
-      ctx.strokeStyle = "#4a7ac0";
+      ctx.strokeStyle = rarityColor;
       ctx.lineWidth = 2;
       ctx.setLineDash([3 * camera.zoom, 2 * camera.zoom]);
       ctx.lineDashOffset = -time * 20;
@@ -1951,21 +2214,56 @@ function drawEntities(ctx, time) {
       ctx.setLineDash([]);
     }
 
-    // Diamond body
-    ctx.fillStyle = isSelected ? "#6a9ae0" : "#4a7ac0";
-    ctx.beginPath();
-    ctx.moveTo(0, -size);
-    ctx.lineTo(size * 0.7, 0);
-    ctx.lineTo(0, size);
-    ctx.lineTo(-size * 0.7, 0);
-    ctx.closePath();
-    ctx.fill();
+    if (isFleet) {
+      // Fleet icon — chevron/shield shape
+      ctx.fillStyle = isSelected ? lightenColor(rarityColor, 30) : rarityColor;
+      ctx.beginPath();
+      ctx.moveTo(0, -size);
+      ctx.lineTo(size * 0.8, -size * 0.2);
+      ctx.lineTo(size * 0.8, size * 0.5);
+      ctx.lineTo(0, size);
+      ctx.lineTo(-size * 0.8, size * 0.5);
+      ctx.lineTo(-size * 0.8, -size * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      // Ship count badge
+      if (camera.zoom > 0.4) {
+        const countText = `${ent.ships.length}`;
+        ctx.font = `bold ${Math.max(7, 8 * camera.zoom)}px 'Segoe UI', system-ui, sans-serif`;
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(countText, 0, 0);
+      }
+    } else {
+      // Solo ship icon — triangle pointing up-right (movement direction feel)
+      ctx.fillStyle = isSelected ? lightenColor(rarityColor, 30) : rarityColor;
+      ctx.beginPath();
+      ctx.moveTo(0, -size);
+      ctx.lineTo(size * 0.7, size * 0.6);
+      ctx.lineTo(-size * 0.7, size * 0.6);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     // Bright core
-    ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-    ctx.beginPath();
-    ctx.arc(0, 0, size * 0.25, 0, Math.PI * 2);
-    ctx.fill();
+    if (!isFleet) {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Stance indicator badge
+    if (camera.zoom > 0.5) {
+      const stanceChar = ent.stance === "aggressive" ? "A" : "E";
+      const stanceColor = ent.stance === "aggressive" ? "#e05050" : "#50a0e0";
+      ctx.font = `bold ${Math.max(6, 7 * camera.zoom)}px 'Segoe UI', system-ui, sans-serif`;
+      ctx.fillStyle = stanceColor;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(stanceChar, size + 2 * camera.zoom, 0);
+    }
 
     ctx.restore();
 
@@ -1975,6 +2273,13 @@ function drawEntities(ctx, time) {
       ctx.font = `${Math.max(8, 10 * camera.zoom)}px 'Segoe UI', system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.fillText(ent.label, pos.x, pos.y + size + 12 * camera.zoom);
+      // ETA below label for traveling entities
+      if (ent.destX !== null && ent.destY !== null && ent.speed > 0) {
+        const dist = Math.sqrt((ent.destX - ent.x) ** 2 + (ent.destY - ent.y) ** 2);
+        ctx.fillStyle = "rgba(160,160,210,0.5)";
+        ctx.font = `${Math.max(7, 9 * camera.zoom)}px 'Segoe UI', system-ui, sans-serif`;
+        ctx.fillText(formatETA(dist / ent.speed), pos.x, pos.y + size + 22 * camera.zoom);
+      }
     }
   }
 }
@@ -2328,14 +2633,17 @@ function drawFogOfWar(ctx) {
   fogCtx.fillStyle = "#000";
   fogCtx.fillRect(0, 0, w, h);
 
-  // Collect all reveal zones — explored stars + entities with sensor range
+  // Collect all reveal zones — known stars + entities with sensor range
   const revealZones = [];
   for (const star of stars.values()) {
-    if (star.visibility !== "explored") continue;
-    revealZones.push({ wx: star.x, wy: star.y, range: BASE_SENSOR_RANGE });
+    if (star.visibility === "explored") {
+      revealZones.push({ wx: star.x, wy: star.y, range: BASE_SENSOR_RANGE });
+    } else if (star.visibility === "detected") {
+      revealZones.push({ wx: star.x, wy: star.y, range: 30 });  // small peek to keep star visible
+    }
   }
   for (const ent of mapEntities) {
-    revealZones.push({ wx: ent.x, wy: ent.y, range: ent.sensorRange });
+    revealZones.push({ wx: ent.x, wy: ent.y, range: ent.sensorRange * 50 });
   }
 
   // Punch soft circular holes using destination-out on the opaque surface
@@ -2447,6 +2755,26 @@ function buildShipStatsHtml(card) {
   return html;
 }
 
+function buildAdmiralStatsHtml(card) {
+  const s = card.stats;
+  // Command row: command bonus + fleet size
+  let html = `<div class="ship-stat-row">`;
+  html += `<div class="card-stat"><span class="card-stat-icon">⭐</span><span class="card-stat-value" style="color:#f0d060">+${s.commandBonus}%</span></div>`;
+  html += `<div class="card-stat"><span class="card-stat-icon">⚓</span><span class="card-stat-value">${s.maxFleetSize}</span></div>`;
+  html += `</div>`;
+  // Stat bonuses row — show any stats beyond commandBonus/maxFleetSize as +N%
+  const bonusKeys = Object.keys(s).filter(k => k !== "commandBonus" && k !== "maxFleetSize");
+  if (bonusKeys.length > 0) {
+    html += `<div class="ship-stat-row ship-utils">`;
+    for (const key of bonusKeys) {
+      const icon = STAT_ICONS[key] || "◆";
+      html += `<div class="card-stat"><span class="card-stat-icon">${icon}</span><span class="card-stat-value" style="color:#8ac0ff">+${s[key]}%</span></div>`;
+    }
+    html += `</div>`;
+  }
+  return html;
+}
+
 function buildGenericStatsHtml(card) {
   const statsHtml = Object.entries(card.stats)
     .map(([key, val]) => {
@@ -2466,14 +2794,15 @@ function buildGenericStatsHtml(card) {
 
 function buildCardHtml(card, watermark) {
   const isShip = card.category === "ship";
-  const statsContent = isShip ? buildShipStatsHtml(card) : buildGenericStatsHtml(card);
+  const isAdmiral = card.category === "admiral";
+  const statsContent = isShip ? buildShipStatsHtml(card) : isAdmiral ? buildAdmiralStatsHtml(card) : buildGenericStatsHtml(card);
 
   // Cost badge (top-right)
   const costHtml = card.cost ? Object.entries(card.cost)
     .map(([key, val]) => `${STAT_ICONS[key] || ""}${formatResourceValue(val)}`)
     .join(" ") : "";
   const hasSpecial = card.special && card.special.length > 0;
-  const expandedClass = (!hasSpecial && !isShip) ? " expanded" : "";
+  const expandedClass = (!hasSpecial && !isShip && !isAdmiral) ? " expanded" : "";
   return `
     <div class="card-preview ${card.rarity}">
       <div class="card-bg"></div>
@@ -2831,7 +3160,7 @@ function showSystemOverlay(star) {
       </div>`;
     document.getElementById("detected-actions").innerHTML =
       `<button class="card-action-btn" onclick="exploreSelectedStar()">Explore</button>`;
-    document.getElementById("detected-info").textContent = "Send a probe to discover this star.";
+    document.getElementById("detected-info").textContent = "Send a ship to explore this star.";
     // No system canvas
     if (systemAnimFrame) { cancelAnimationFrame(systemAnimFrame); systemAnimFrame = null; }
   } else {
@@ -2906,7 +3235,7 @@ function showSelectPanel(star) {
         </div>
       </div>`;
     actions.innerHTML = `<button class="card-action-btn" onclick="exploreFromPanel()">Explore</button>`;
-    info.textContent = "Send a probe to discover this star.";
+    info.textContent = "Send a ship to explore this star.";
   } else {
     slot.innerHTML = buildCardHtml(star.card, "☀️");
     // Generate planets to know count (but don't open system view)
@@ -2921,6 +3250,64 @@ function showSelectPanel(star) {
         <span>planet${pCount !== 1 ? 's' : ''}</span>
       </div>`;
   }
+}
+
+function showEntityPanel(idx) {
+  const ent = mapEntities[idx];
+  if (!ent) return;
+  selectedStarId = null;
+  const panel = document.getElementById("select-panel");
+  const slot = document.getElementById("select-card-slot");
+  const actions = document.getElementById("select-actions");
+  const info = document.getElementById("select-panel-info");
+  panel.classList.add("visible");
+
+  // Show the primary card
+  if (ent.type === "ship") {
+    slot.innerHTML = buildCardHtml(ent.card, "🚀");
+  } else if (ent.type === "fleet" && ent.admiral) {
+    slot.innerHTML = buildCardHtml(ent.admiral, "⭐");
+  } else {
+    slot.innerHTML = `<div style="padding:20px;text-align:center;color:#6a7a9b">Fleet (${ent.ships.length} ships)</div>`;
+  }
+
+  // Stance toggle + disband
+  const stanceColor = ent.stance === "aggressive" ? "#e05050" : "#50a0e0";
+  const stanceText = ent.stance === "aggressive" ? "Aggressive" : "Evasive";
+  const atColony = getEntityColony(ent);
+  let actionsHtml = `<button class="card-action-btn" onclick="toggleEntityStance(${idx})" style="color:${stanceColor}">${stanceText}</button>`;
+  if (atColony) {
+    actionsHtml += `<button class="card-action-btn" onclick="disbandEntityFromPanel(${idx})">Disband</button>`;
+  }
+  actions.innerHTML = actionsHtml;
+
+  // Info summary
+  let infoHtml = "";
+  if (ent.type === "fleet") {
+    infoHtml += `<div>🚀 ${ent.ships.length} ship${ent.ships.length !== 1 ? "s" : ""}</div>`;
+  }
+  infoHtml += `<div>💨 Speed: ${ent.speed} &nbsp; 📡 Sensor: ${ent.sensorRange}</div>`;
+  if (ent.stealth > 0) infoHtml += `<div>👁️ Stealth: ${ent.stealth}</div>`;
+  if (ent.destX !== null && ent.destY !== null && ent.speed > 0) {
+    const dist = Math.sqrt((ent.destX - ent.x) ** 2 + (ent.destY - ent.y) ** 2);
+    const etaSec = dist / ent.speed;
+    infoHtml += `<div style="color:#a0a0d0;margin-top:4px">⏱ ETA: ${formatETA(etaSec)}</div>`;
+  } else if (atColony) {
+    infoHtml += `<div style="color:#4a9b5a;margin-top:4px">At colony</div>`;
+  }
+  info.innerHTML = infoHtml;
+}
+
+function toggleEntityStance(idx) {
+  const ent = mapEntities[idx];
+  if (!ent) return;
+  ent.stance = ent.stance === "aggressive" ? "evasive" : "aggressive";
+  showEntityPanel(idx);
+}
+
+function disbandEntityFromPanel(idx) {
+  disbandEntity(idx);
+  hideSelectPanel();
 }
 
 function hideSelectPanel() {
@@ -3003,7 +3390,10 @@ window.addEventListener("mousemove", (e) => {
 
   if (entIdx !== null) {
     hoveredStarId = null;
-    tooltip.textContent = mapEntities[entIdx].label;
+    const hEnt = mapEntities[entIdx];
+    const stanceLabel = hEnt.stance === "aggressive" ? "Aggressive" : "Evasive";
+    const shipCount = hEnt.type === "fleet" ? ` (${hEnt.ships.length} ships)` : "";
+    tooltip.textContent = `${hEnt.label}${shipCount} — ${stanceLabel}`;
     tooltip.style.left = (e.clientX - rect.left + 12) + "px";
     tooltip.style.top = (e.clientY - rect.top - 8) + "px";
     tooltip.style.display = "block";
@@ -3045,7 +3435,7 @@ window.addEventListener("mouseup", (e) => {
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
 
-      // Check if clicking an entity (probe/fleet)
+      // Check if clicking an entity (ship/fleet)
       const entIdx = getEntityAtScreen(sx, sy);
 
       if (selectedEntityIdx !== null && entIdx !== selectedEntityIdx) {
@@ -3054,9 +3444,9 @@ window.addEventListener("mouseup", (e) => {
         mapEntities[selectedEntityIdx].destX = world.x;
         mapEntities[selectedEntityIdx].destY = world.y;
       } else if (entIdx !== null) {
-        // Clicking an entity — select it
+        // Clicking an entity — select it and show info
         selectedEntityIdx = entIdx;
-        hideSelectPanel();
+        showEntityPanel(entIdx);
       } else {
         // No entity involved — normal star selection
         selectedEntityIdx = null;
@@ -3077,6 +3467,7 @@ container.addEventListener("contextmenu", (e) => {
   e.preventDefault();
   if (selectedEntityIdx !== null) {
     selectedEntityIdx = null;
+    hideSelectPanel();
   }
 });
 
@@ -3190,7 +3581,8 @@ const RESOURCE_DEFS = [
 const RESOURCE_IDS = RESOURCE_DEFS.map(r => r.id);
 const resources = {};
 for (const r of RESOURCE_DEFS) resources[r.id] = r.id === "credits" ? 500 : 5000;
-let gameSpeed = 1;
+const BASE_GAME_SPEED = 0.1;  // 1x = 10% of real-time; tweak this to tune overall pacing
+let gameSpeed = 1;             // player-facing multiplier (1x, 10x, 50x)
 let lastTickTime = 0;
 let tickAccumulator = 0;
 
@@ -3258,12 +3650,12 @@ function buyPopulation() {
 const RESEARCH_BASE_COST = 50;
 const RESEARCH_COST_MULTIPLIER = 2.8;
 const RESEARCH_SPEND_RATE = 5; // max points consumed per game-second
-const researchCounts = { building: 0, ship: 0, captain: 0, leader: 0 };
+const researchCounts = { building: 0, ship: 0, admiral: 0, leader: 0 };
 const researchedCards = new Set(); // card IDs that have been researched
 let activeResearch = null;         // { category, cost, progress }
 
 // All 4 card categories require research (stars/planets discovered via exploration)
-const RESEARCH_GATED_CATEGORIES = ["building", "ship", "captain", "leader"];
+const RESEARCH_GATED_CATEGORIES = ["building", "ship", "admiral", "leader"];
 
 function getResearchCost(category) {
   const count = researchCounts[category] || 0;
@@ -3359,14 +3751,13 @@ function getColonyOutput(colony) {
 }
 
 function tickEconomy(dt) {
-  if (gameSpeed === 0) return;
-  const scaledDt = dt * gameSpeed;
-  tickAccumulator += scaledDt;
+  if (dt === 0) return;
+  tickAccumulator += dt;
 
   // Draw cost multiplier decay (halves every DRAW_COST_DECAY_HALF_LIFE seconds)
   if (drawCostMultiplier > 1.01) {
     const decayRate = Math.log(2) / DRAW_COST_DECAY_HALF_LIFE;
-    drawCostMultiplier = 1 + (drawCostMultiplier - 1) * Math.exp(-decayRate * scaledDt);
+    drawCostMultiplier = 1 + (drawCostMultiplier - 1) * Math.exp(-decayRate * dt);
     if (drawCostMultiplier < 1.01) drawCostMultiplier = 1;
   }
 
@@ -3377,7 +3768,7 @@ function tickEconomy(dt) {
     if (col.activeAction === "trade") continue; // Trade generates credits, not cards
     const deckSize = col.deck.length;
     const genInterval = 10 * Math.pow(3, deckSize); // exponential: 10s, 30s, 90s, 270s...
-    col.genTimer += scaledDt;
+    col.genTimer += dt;
     if (col.genTimer >= genInterval) {
       col.genTimer -= genInterval;
       const cat = ACTION_TO_CATEGORY[col.activeAction];
@@ -3582,7 +3973,7 @@ function colonizePlanet(star, planetIdx) {
     leaders: [],                          // leader slot (max 1)
     deck: [],                             // face-down cards awaiting selection
     queue: [],                            // face-up selected cards awaiting placement
-    activeAction: null,                   // "trade"|"buildings"|"captains"|"leaders"|"ships"
+    activeAction: null,                   // "trade"|"buildings"|"admirals"|"leaders"|"ships"
     genTimer: 0,                          // seconds toward next card
     growthProgress: 0,                    // food accumulated toward next pop level
     starvationTimer: 0,                   // seconds of sustained food deficit
@@ -3681,7 +4072,28 @@ document.getElementById("colonies-backdrop").addEventListener("click", hideColon
 // ── Colony Screen ──
 let colonyViewStar = null;
 let colonyViewPlanetIdx = null;
-let draggedCard = null; // { source:"queue"|"building"|"leader", index, card }
+let activeColonyTab = "buildings"; // "buildings" | "fleet"
+let draggedCard = null; // { source:"queue"|"building"|"leader"|"fleet-ship"|"fleet-admiral", index, card }
+
+// ── Fleet assembly state ──
+let deployStance = "aggressive";
+let deployAdmiral = null;   // admiral card or null
+let deployShips = [];       // array of ship cards staged for deployment
+
+function switchColonyTab(tab) {
+  activeColonyTab = tab;
+  document.querySelectorAll(".colony-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
+  document.getElementById("tab-buildings").classList.toggle("active", tab === "buildings");
+  document.getElementById("tab-buildings").style.display = tab === "buildings" ? "" : "none";
+  document.getElementById("tab-fleet").classList.toggle("active", tab === "fleet");
+  document.getElementById("tab-fleet").style.display = tab === "fleet" ? "" : "none";
+  refreshColonyScreen();
+}
+
+// Wire up tab clicks
+document.querySelectorAll(".colony-tab").forEach(t => {
+  t.addEventListener("click", () => switchColonyTab(t.dataset.tab));
+});
 let colonyDirty = false; // set true when colony state changes, cleared after refresh
 let lastDeckCount = -1; // track deck size changes for minimal refresh
 
@@ -3690,11 +4102,27 @@ function getActiveColony() {
   return colonyViewStar.planets[colonyViewPlanetIdx].colony;
 }
 
+function returnDeployCardsToQueue() {
+  const col = getActiveColony();
+  if (!col) return;
+  if (deployAdmiral) { col.queue.push(deployAdmiral); deployAdmiral = null; }
+  while (deployShips.length > 0) col.queue.push(deployShips.pop());
+}
+
 function showColonyScreen(star, planetIdx) {
   const planet = star.planets[planetIdx];
   if (!planet.colony) return;
   colonyViewStar = star;
   colonyViewPlanetIdx = planetIdx;
+  // Reset deploy state for this colony
+  returnDeployCardsToQueue();
+  deployStance = "aggressive";
+  activeColonyTab = "buildings";
+  document.querySelectorAll(".colony-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === "buildings"));
+  document.getElementById("tab-buildings").style.display = "";
+  document.getElementById("tab-buildings").classList.add("active");
+  document.getElementById("tab-fleet").style.display = "none";
+  document.getElementById("tab-fleet").classList.remove("active");
 
   // Set active action button state
   document.querySelectorAll(".colony-action-btn").forEach(b => {
@@ -3717,6 +4145,7 @@ function showColonyScreen(star, planetIdx) {
 
 function hideColonyScreen() {
   dismissMagnifiedCard();
+  returnDeployCardsToQueue();
   colonyViewStar = null;
   colonyViewPlanetIdx = null;
   const overlay = document.getElementById("colony-overlay");
@@ -3919,7 +4348,7 @@ function refreshColonyScreen() {
   // Queue as drop target (return cards here)
   queueEl.addEventListener("dragover", (e) => {
     if (!draggedCard) return;
-    if (draggedCard.source === "building" || draggedCard.source === "leader") {
+    if (["building", "leader", "fleet-ship"].includes(draggedCard.source)) {
       e.preventDefault();
       queueEl.classList.add("drag-over");
     }
@@ -3935,10 +4364,16 @@ function refreshColonyScreen() {
     } else if (draggedCard.source === "leader") {
       col.queue.push(draggedCard.card);
       col.leaders.splice(draggedCard.index, 1);
+    } else if (draggedCard.source === "fleet-ship") {
+      col.queue.push(draggedCard.card);
+      deployShips.splice(draggedCard.index, 1);
     }
     draggedCard = null;
     refreshColonyScreen();
   });
+
+  // ── Fleet tab ──
+  if (activeColonyTab === "fleet") refreshFleetTab(col);
 
   // Scale cards to fill their slots after layout
   requestAnimationFrame(() => {
@@ -3946,7 +4381,7 @@ function refreshColonyScreen() {
       const slot = cp.closest(".building-slot");
       if (!slot) return;
       const s = Math.min(slot.clientWidth / 220, slot.clientHeight / 320);
-      cp.style.transform = `scale(${s})`;
+      cp.style.transform = `translateX(-50%) scale(${s})`;
     });
     const leaderCP = document.querySelector("#leader-slot.occupied .card-preview");
     if (leaderCP) {
@@ -3954,6 +4389,173 @@ function refreshColonyScreen() {
       const s = Math.min(ls.clientWidth / 220, ls.clientHeight / 320);
       leaderCP.style.transform = `scale(${s})`;
     }
+  });
+}
+
+function refreshFleetTab(col) {
+  const maxShips = getMaxFleetShips(deployAdmiral);
+  const slotsEl = document.getElementById("fleet-ship-slots");
+  slotsEl.innerHTML = "";
+
+  // ── Slot 0: Admiral slot (first in grid) ──
+  const admSlot = document.createElement("div");
+  if (deployAdmiral) {
+    admSlot.className = "fleet-ship-slot admiral-slot occupied";
+    admSlot.innerHTML = buildCardHtml(deployAdmiral, "⭐");
+    admSlot.addEventListener("click", (e) => {
+      e.stopPropagation();
+      col.queue.push(deployAdmiral);
+      deployAdmiral = null;
+      const max = getMaxFleetShips(null);
+      while (deployShips.length > max) col.queue.push(deployShips.pop());
+      refreshColonyScreen();
+    });
+  } else {
+    admSlot.className = "fleet-ship-slot admiral-slot";
+    admSlot.innerHTML = `<div class="admiral-placeholder"><span>⭐</span>Admiral<br>(optional)</div>`;
+  }
+  admSlot.addEventListener("dragover", (e) => {
+    if (!draggedCard || draggedCard.card.category !== "admiral") return;
+    e.preventDefault();
+    admSlot.classList.add("drag-over");
+  });
+  admSlot.addEventListener("dragleave", () => admSlot.classList.remove("drag-over"));
+  admSlot.addEventListener("drop", (e) => {
+    e.preventDefault();
+    admSlot.classList.remove("drag-over");
+    if (!draggedCard || draggedCard.card.category !== "admiral") return;
+    if (deployAdmiral) col.queue.push(deployAdmiral);
+    deployAdmiral = draggedCard.card;
+    if (draggedCard.source === "queue") col.queue.splice(draggedCard.index, 1);
+    const max = getMaxFleetShips(deployAdmiral);
+    while (deployShips.length > max) col.queue.push(deployShips.pop());
+    draggedCard = null;
+    refreshColonyScreen();
+  });
+  slotsEl.appendChild(admSlot);
+
+  // ── Ship slots ──
+  for (let i = 0; i < maxShips; i++) {
+    const card = deployShips[i] || null;
+    const slot = document.createElement("div");
+    if (card) {
+      slot.className = "fleet-ship-slot occupied";
+      slot.innerHTML = buildCardHtml(card, "🚀");
+      slot.draggable = true;
+      slot.addEventListener("dragstart", (e) => {
+        draggedCard = { source: "fleet-ship", index: i, card };
+        e.dataTransfer.effectAllowed = "move";
+        slot.classList.add("dragging");
+      });
+      slot.addEventListener("dragend", () => { slot.classList.remove("dragging"); draggedCard = null; });
+      slot.addEventListener("click", (e) => {
+        e.stopPropagation();
+        col.queue.push(deployShips.splice(i, 1)[0]);
+        refreshColonyScreen();
+      });
+    } else {
+      slot.className = "fleet-ship-slot";
+      slot.textContent = "+";
+    }
+    // Drop target for ships
+    slot.addEventListener("dragover", (e) => {
+      if (!draggedCard || draggedCard.card.category !== "ship") return;
+      if (card) return;
+      e.preventDefault();
+      slot.classList.add("drag-over");
+    });
+    slot.addEventListener("dragleave", () => slot.classList.remove("drag-over"));
+    slot.addEventListener("drop", (e) => {
+      e.preventDefault();
+      slot.classList.remove("drag-over");
+      if (!draggedCard || draggedCard.card.category !== "ship") return;
+      if (deployShips.length >= maxShips) return;
+      deployShips.push(draggedCard.card);
+      if (draggedCard.source === "queue") col.queue.splice(draggedCard.index, 1);
+      else if (draggedCard.source === "fleet-ship") deployShips.splice(draggedCard.index, 1);
+      draggedCard = null;
+      refreshColonyScreen();
+    });
+    slotsEl.appendChild(slot);
+  }
+
+  // ── Controls: stance, cost, deploy buttons ──
+  // Stance toggle
+  const stanceToggle = document.getElementById("fleet-stance-toggle");
+  const newToggle = stanceToggle.cloneNode(true);
+  stanceToggle.parentNode.replaceChild(newToggle, stanceToggle);
+  newToggle.querySelector("#fleet-stance-label").textContent = deployStance === "aggressive" ? "Aggressive" : "Evasive";
+  newToggle.className = deployStance === "evasive" ? "evasive" : "";
+  newToggle.id = "fleet-stance-toggle";
+  newToggle.addEventListener("click", () => {
+    deployStance = deployStance === "aggressive" ? "evasive" : "aggressive";
+    refreshFleetTab(col);
+  });
+
+  // Cost info
+  const infoEl = document.getElementById("fleet-info");
+  const allCards = [...deployShips];
+  if (deployAdmiral) allCards.push(deployAdmiral);
+  if (allCards.length > 0) {
+    const totalCost = {};
+    for (const c of allCards) {
+      if (c.cost) for (const [k,v] of Object.entries(c.cost)) totalCost[k] = (totalCost[k]||0) + v;
+    }
+    const costStr = Object.entries(totalCost).map(([k,v]) => `${STAT_ICONS[k]||""}${v}`).join(" ");
+    infoEl.innerHTML = `Cost: ${costStr}`;
+  } else {
+    infoEl.textContent = "Drag ships from queue";
+  }
+
+  // Deploy fleet button
+  const deployBtn = document.getElementById("deploy-btn");
+  const newDeployBtn = deployBtn.cloneNode(true);
+  deployBtn.parentNode.replaceChild(newDeployBtn, deployBtn);
+  const canFleet = deployShips.length >= 2 || (deployShips.length >= 1 && deployAdmiral);
+  newDeployBtn.disabled = !canFleet;
+  newDeployBtn.addEventListener("click", () => {
+    if (deployShips.length === 0) return;
+    const allDeploy = [...deployShips];
+    if (deployAdmiral) allDeploy.push(deployAdmiral);
+    const totalCost = {};
+    for (const c of allDeploy) {
+      if (c.cost) for (const [k,v] of Object.entries(c.cost)) totalCost[k] = (totalCost[k]||0) + v;
+    }
+    if (!canAfford(totalCost)) { showCostTooltip(newDeployBtn, totalCost); return; }
+    deductCost(totalCost);
+    const star = colonyViewStar;
+    createFleet(deployAdmiral, [...deployShips], star.x, star.y);
+    mapEntities[mapEntities.length - 1].stance = deployStance;
+    deployAdmiral = null;
+    deployShips = [];
+    refreshColonyScreen();
+  });
+
+  // Deploy solo button
+  const soloBtn = document.getElementById("deploy-solo-btn");
+  const newSoloBtn = soloBtn.cloneNode(true);
+  soloBtn.parentNode.replaceChild(newSoloBtn, soloBtn);
+  newSoloBtn.disabled = !(deployShips.length === 1 && !deployAdmiral);
+  newSoloBtn.addEventListener("click", () => {
+    if (deployShips.length !== 1 || deployAdmiral) return;
+    const shipCard = deployShips[0];
+    if (shipCard.cost && !canAfford(shipCard.cost)) { showCostTooltip(newSoloBtn, shipCard.cost); return; }
+    if (shipCard.cost) deductCost(shipCard.cost);
+    const star = colonyViewStar;
+    createSoloShip(shipCard, star.x, star.y);
+    mapEntities[mapEntities.length - 1].stance = deployStance;
+    deployShips = [];
+    refreshColonyScreen();
+  });
+
+  // Scale ship cards to fit slots (same pattern as buildings)
+  requestAnimationFrame(() => {
+    document.querySelectorAll(".fleet-ship-slot.occupied .card-preview").forEach(cp => {
+      const slot = cp.closest(".fleet-ship-slot");
+      if (!slot) return;
+      const s = Math.min(slot.clientWidth / 220, slot.clientHeight / 320);
+      cp.style.transform = `scale(${s})`;
+    });
   });
 }
 
@@ -4088,7 +4690,7 @@ document.querySelectorAll(".colony-action-btn").forEach(btn => {
     const col = getActiveColony();
     if (!col) return;
     const action = btn.dataset.action;
-    const isActive = ["buildings", "captains", "leaders", "ships", "trade"].includes(action);
+    const isActive = ["buildings", "admirals", "leaders", "ships", "trade"].includes(action);
     if (col.activeAction === action) {
       // Deactivate
       col.activeAction = null;
@@ -4151,8 +4753,9 @@ function gameLoop(timestamp) {
   const dt = lastTickTime > 0 ? Math.min(now - lastTickTime, 0.1) : 0;
   lastTickTime = now;
   animTime = now;
-  tickEconomy(dt);
-  tickEntities(dt * gameSpeed);
+  const scaledDt = dt * BASE_GAME_SPEED * gameSpeed;
+  tickEconomy(scaledDt);
+  tickEntities(scaledDt);
   // Lightweight updates when colony screen is open (no full DOM rebuild)
   if (colonyViewStar && colonyViewPlanetIdx != null) {
     const col = getActiveColony();
@@ -4209,7 +4812,7 @@ function refreshResearchPanel() {
   const listEl = document.getElementById("research-list");
   listEl.innerHTML = "";
 
-  const researchableCategories = ["building", "ship", "captain", "leader"];
+  const researchableCategories = ["building", "ship", "admiral", "leader"];
   for (const cat of researchableCategories) {
     const pool = CATEGORY_TEMPLATES[cat];
     if (!pool) continue;
@@ -4315,8 +4918,12 @@ initResearch();
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 const homeStar = generateGalaxy();
-createProbe(homeStar.x + 25, homeStar.y - 20);
-createProbe(homeStar.x - 25, homeStar.y + 20);
+// Start with two scout ships at home star
+const starterScout = { id:"shp_001", name:"Scout Corvette", category:"ship", rarity:"common",
+  stats:{ shields:2, armor:1, speed:8, sensorRange:5, energyDmg:3, energyRange:"short" },
+  cost:{minerals:8,energy:4}, special:"", flavor:"First to see, last to be seen." };
+createSoloShip({...starterScout}, homeStar.x + 25, homeStar.y - 20);
+createSoloShip({...starterScout, name:"Scout Corvette II"}, homeStar.x - 25, homeStar.y + 20);
 camera.x = homeStar.x;
 camera.y = homeStar.y;
 updateResourceDisplay();

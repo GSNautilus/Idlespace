@@ -154,7 +154,7 @@ Overlap between tiers is intentional (lucky Common can beat unlucky Uncommon, et
 5. ✅ Rename all "captain" references to "admiral" across the codebase.
 
 ### Phase 4: Starmap Entities & Fleet System ✅
-1. ✅ **Entity model** — Two types: solo ship `{ card, stance, position, destination }` and fleet `{ admiral?, ships[], stance, derivedStats, position, destination }`. Replaced probe system entirely. Two starter Scout Corvettes at home star.
+1. ✅ **Entity model** — Two types: solo ship `{ card, stance, position, destination }` and fleet `{ admiral?, ships[], stance, derivedStats, position, destination }`. Replaced probe system entirely. Three starter admiral-led fleets at home star (each with a Sensor Pinnace for detection range).
 2. ✅ **Fleet stat calculation** — `recalcFleetStats()`: speed=min, sensor=max, stealth=min, damage=sum, admiral command bonus applied. Solo ships use own card stats.
 3. ✅ **Colony tab system** — Buildings/Fleet tabs in colony screen. Shared queue at bottom. Fleet tab: admiral as first grid slot (gold-styled, optional), ship slots grid, stance toggle, deploy fleet / deploy solo buttons. Drag-drop from queue to fleet slots and back.
 4. ✅ **Entity rendering** — Triangles for solo ships (rarity-colored), chevrons for fleets with ship count badge. Stance indicator (A/E). Dashed travel lines, selection highlight, labels.
@@ -167,13 +167,25 @@ Overlap between tiers is intentional (lucky Common can beat unlucky Uncommon, et
 2. ✅ **BASE_GAME_SPEED = 0.1** — Baseline pacing constant. 1x is 10% of real-time. One knob to tune overall game feel.
 3. ✅ **Speed controls** — Pause / 1x / 10x / 50x. Idle-appropriate (not RTS fractions).
 
-### Phase 5: Combat ⬅️ NEXT
-1. **Detection & engagement:** Per-tick scan for entities in detection range. Stance rules (D4) determine if combat triggers.
-2. **Combat instance model:** Independent object tracking two entities' individual ships, closing distance, per-ship HP/weapons state.
-3. **Combat engine:** Per-tick distance closing → weapons fire as range thresholds are crossed → combat triangle damage → ships die individually. Evasion/disengagement checks.
-4. **Combat window UI:** Small overlay showing live fight — ship counts, damage ticks, closing distance, casualties. Non-blocking. Multiple simultaneous windows.
-5. **Combat resolution:** Surviving ships reform entity. Destroyed ships removed. Notification + summary on end.
+### Phase 5: Combat ✅
+1. ✅ **Entity ownership & combat state** — All entities have `owner` ("player"/"npc") and `inCombat` flag. Entities in combat can't move or be disbanded.
+2. ✅ **NPC Pirates** — 3 pirate ship templates (Raider, Marauder, Corsair). Deterministic spawning in `generateChunk()` using chunk seed RNG — 10% in star-dense chunks, 3% in void chunks. Pirates patrol randomly (wander nearby), always aggressive. Rendered in crimson (#c04040).
+3. ✅ **Detection & engagement** — `checkCombatEngagements()` scans non-combat, different-owner entities within sensor range (with stealth penalty). Stance rules per D4: aggressive/aggressive = fight, aggressive/evasive = speed-based evasion roll, evasive/evasive = pass. Combat locks both entities.
+4. ✅ **Volley combat engine** — `tickCombats()` runs from game loop with `COMBAT_TIME_SCALE = 1/10`. Combat proceeds as volleys cycling through all alive ships, alternating sides. `SHOT_INTERVAL = 0.5` game-seconds between shots. Per-shot: pick random enemy target, check weapon range against physical world-unit distance (`RANGE_THRESHOLDS = { long: 400, medium: 200, short: 60 }`), roll to hit (base 70%, modified by sensorRange/stealth/speed), missile PD interception roll, then apply combat triangle damage (shields first, then armor, ship dies at armor 0). `COMBAT_HP_SCALE = 5` multiplied onto shields/armor for durability.
+5. ✅ **Physical distance closing** — Entities move toward each other at full speed during combat. `combat.distance` is the real world-unit distance between entities, recomputed each tick. Weapons activate based on actual distance vs range thresholds. Entities stop at `ENGAGED_DISTANCE = 60` world units.
+6. ✅ **Disengagement** — Switch to evasive stance mid-combat to attempt breakaway. Speed-based chance roll per tick. Both sides survive on success.
+7. ✅ **Starmap combat visuals** — Red glowing line between combating entities. Pulsing ⚔ icon at midpoint, clickable to open combat overlay. Weapon-colored particle effects on each volley (energy=blue, kinetic=orange, missile=red; 8 particles on hit, 3 on miss).
+8. ✅ **Combat overlay** — Colony-screen-sized panel (81%, semi-transparent at 0.75 opacity). Shows both sides with per-ship shield/armor HP bars, phase indicator, distance bar, round counter, next-volley countdown, and scrolling color-coded combat log. Log persists across open/close — full history from combat start.
+9. ✅ **Combat resolution** — Loser entity removed from map. Winner's surviving ships retain damage (`_combatShields`/`_combatArmor` persisted on cards). Winner entity unlocked and resumes movement. Dead ships filtered from fleet, stats recalculated.
+10. ✅ **Starter fleet upgrade** — 3 admiral-led fleets with mixed weapon types and Sensor Pinnaces for detection. Deployed offset 40 units from colony star. Deploy buttons also offset new entities.
 
-### Phase 6: Fleet Management
+**Key constants:**
+- `SHOT_INTERVAL = 0.5`, `COMBAT_TIME_SCALE = 1/10`, `COMBAT_HP_SCALE = 5`
+- `RANGE_THRESHOLDS = { long: 400, medium: 200, short: 60 }`, `ENGAGED_DISTANCE = 60`
+- Hit chance: base 70%, +1%/sensorRange (cap +15%), -5%/stealth, -0.5%/speed, clamped 10-95%
+- PD: 2% per point, capped 80%
+- Pirate spawn: 10% star chunks, 3% void chunks, 1-3 ships each
+
+### Phase 6: Fleet Management ⬅️ NEXT
 1. Fleet management panel (list, status, stats, stance).
 2. Repair/resupply at friendly colonies.

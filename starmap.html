@@ -629,6 +629,79 @@ body {
 #colony-overlay.visible { display: flex; flex-direction: column; opacity: 1; }
 #colony-overlay.fade-in { opacity: 1; }
 
+/* ── Combat Overlay ── */
+#combat-backdrop {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 34; display: none;
+}
+#combat-backdrop.visible { display: block; }
+#combat-overlay {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: 81%; height: 81%; max-width: 1400px; max-height: 900px;
+  background: rgba(5,5,8,0.75); border: 1px solid #1e2744; border-radius: 12px;
+  z-index: 35; display: none; opacity: 0; transition: opacity 0.3s ease;
+  overflow: hidden; flex-direction: column;
+}
+#combat-overlay.visible { display: flex; opacity: 1; }
+#combat-close {
+  position: absolute; top: 10px; right: 12px;
+  background: rgba(12,14,24,0.7); border: 1px solid #1e2744; color: #4a5a7b;
+  font-size: 10px; cursor: pointer; padding: 2px 5px; border-radius: 4px; z-index: 36;
+  transition: all 0.15s;
+}
+#combat-close:hover { color: #c8d0e0; background: rgba(20,26,48,0.9); }
+#combat-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 16px 20px; border-bottom: 1px solid #111828; flex-shrink: 0; gap: 12px;
+}
+.combat-side { width: 35%; }
+.combat-side h3 {
+  font-size: 13px; color: #b0c0e0; margin: 0 0 8px 0; font-weight: 600;
+}
+.combat-ship-entry {
+  display: flex; align-items: center; gap: 8px; padding: 3px 0;
+  font-size: 11px; color: #8090b0;
+}
+.combat-ship-entry.dead { opacity: 0.35; text-decoration: line-through; }
+.combat-ship-name { min-width: 100px; }
+.combat-hp-bar {
+  flex: 1; height: 6px; background: rgba(20,26,48,0.8); border-radius: 3px;
+  overflow: hidden; display: flex;
+}
+.combat-hp-shields {
+  height: 100%; background: #4a7ac0; transition: width 0.3s;
+}
+.combat-hp-armor {
+  height: 100%; background: #c08040; transition: width 0.3s;
+}
+#combat-status {
+  width: 25%; text-align: center; flex-shrink: 0;
+}
+#combat-phase {
+  font-size: 14px; color: #e05050; font-weight: 600; margin-bottom: 8px;
+}
+#combat-distance-bar {
+  width: 100%; height: 6px; background: rgba(20,26,48,0.8); border-radius: 3px;
+  overflow: hidden; margin-bottom: 6px;
+}
+#combat-distance-fill {
+  height: 100%; background: #e05050; transition: width 0.3s;
+}
+#combat-round { font-size: 11px; color: #6a7a9b; }
+#combat-log {
+  flex: 1; overflow-y: auto; padding: 12px 16px;
+  font-family: 'Consolas', 'Courier New', monospace; font-size: 11px;
+  color: #8090b0;
+}
+#combat-log .log-hit { color: #e0a050; }
+#combat-log .log-miss { color: #505870; }
+#combat-log .log-kill { color: #e05050; font-weight: 600; }
+#combat-log .log-intercept { color: #50a0e0; }
+#combat-log .log-range { color: #404860; font-style: italic; }
+#combat-log .log-engage { color: #b0c0e0; font-weight: 600; }
+#combat-log .log-resolve { color: #50c080; font-weight: 600; }
+#combat-log .log-disengage { color: #c0a020; font-weight: 600; }
+
 #colony-close {
   position: absolute;
   top: 10px;
@@ -1377,6 +1450,23 @@ body {
   </div>
 </div>
 
+<!-- Combat Screen -->
+<div id="combat-backdrop"></div>
+<div id="combat-overlay">
+  <button id="combat-close">&times;</button>
+  <div id="combat-header">
+    <div id="combat-side-a" class="combat-side"></div>
+    <div id="combat-status">
+      <div id="combat-phase">Closing...</div>
+      <div id="combat-distance-bar"><div id="combat-distance-fill"></div></div>
+      <div id="combat-round">Round 0</div>
+      <div id="combat-next-volley" style="font-size:11px;color:#6a7a9b;margin-top:2px"></div>
+    </div>
+    <div id="combat-side-b" class="combat-side"></div>
+  </div>
+  <div id="combat-log"></div>
+</div>
+
 <!-- Research Panel Overlay -->
 <div id="research-backdrop" onclick="if(event.target===this)hideResearchPanel()">
   <div id="research-overlay">
@@ -1695,6 +1785,16 @@ const SHIP_TEMPLATES = [
     cost:{minerals:6000,energy:4000,credits:20000}, special:"", flavor:"A mobile world, bristling with purpose." },
 ];
 
+// ── NPC Pirate ship templates (not available to player) ──
+const PIRATE_SHIPS = [
+  { id:"pir_001", name:"Raider", category:"ship", rarity:"common",
+    stats:{ shields:2, armor:3, speed:4, sensorRange:3, kineticDmg:4, kineticRange:"medium" } },
+  { id:"pir_002", name:"Marauder", category:"ship", rarity:"common",
+    stats:{ shields:3, armor:2, speed:6, sensorRange:2, energyDmg:3, energyRange:"short" } },
+  { id:"pir_003", name:"Corsair", category:"ship", rarity:"uncommon",
+    stats:{ shields:8, armor:10, speed:5, sensorRange:4, missileDmg:8, missileRange:"long", kineticDmg:5, kineticRange:"medium" } },
+];
+
 const CATEGORY_TEMPLATES = {
   building: BUILDING_TEMPLATES,
   leader: LEADER_TEMPLATES,
@@ -1960,6 +2060,26 @@ function generateChunk(cx, cy) {
   const centerY = (cy + 0.5) * CHUNK_SIZE;
   const density = fractalNoise(centerX * NOISE_SCALE, centerY * NOISE_SCALE);
 
+  // Pirate fleet spawning — 40% in star regions, 15% in void
+  const pirateChance = density >= DENSITY_THRESHOLD ? 0.10 : 0.03;
+  if (rng() < pirateChance) {
+    const px = cx * CHUNK_SIZE + rng() * CHUNK_SIZE;
+    const py = cy * CHUNK_SIZE + rng() * CHUNK_SIZE;
+    const shipCount = 1 + Math.floor(rng() * 3);
+    const pirateShips = [];
+    for (let pi = 0; pi < shipCount; pi++) {
+      const tpl = PIRATE_SHIPS[Math.floor(rng() * PIRATE_SHIPS.length)];
+      pirateShips.push({ ...tpl, stats: { ...tpl.stats } });
+    }
+    mapEntities.push({
+      type: "fleet", owner: "npc", ships: pirateShips, admiral: null,
+      stance: "aggressive", x: px, y: py, destX: null, destY: null,
+      speed: Math.min(...pirateShips.map(s => s.stats.speed || 1)),
+      sensorRange: Math.max(...pirateShips.map(s => s.stats.sensorRange || 0)),
+      stealth: 0, label: "Pirates", inCombat: null,
+    });
+  }
+
   if (density < DENSITY_THRESHOLD) return; // void — no stars here
 
   // Number of stars scales with density
@@ -1992,6 +2112,7 @@ function generateChunk(cx, cy) {
       break;
     }
   }
+
 }
 
 // Reveal all chunks within a radius of a world point
@@ -2055,9 +2176,10 @@ function formatETA(gameSec) {
 const mapEntities = [];  // array of ships/fleets on the starmap
 let selectedEntityIdx = null;  // index into mapEntities, or null
 
-function createSoloShip(card, x, y) {
+function createSoloShip(card, x, y, owner) {
   const ent = {
     type: "ship",
+    owner: owner || "player",
     card,
     stance: "aggressive",
     x, y,
@@ -2066,14 +2188,16 @@ function createSoloShip(card, x, y) {
     sensorRange: card.stats.sensorRange || 0,
     stealth: card.stats.stealth || 0,
     label: card.name,
+    inCombat: null,
   };
   mapEntities.push(ent);
   return ent;
 }
 
-function createFleet(admiral, ships, x, y) {
+function createFleet(admiral, ships, x, y, owner) {
   const ent = {
     type: "fleet",
+    owner: owner || "player",
     admiral,   // admiral card or null
     ships,     // array of ship cards
     stance: "aggressive",
@@ -2081,6 +2205,7 @@ function createFleet(admiral, ships, x, y) {
     destX: null, destY: null,
     speed: 1, sensorRange: 0, stealth: 0,
     label: admiral ? admiral.name : "Fleet",
+    inCombat: null,
   };
   recalcFleetStats(ent);
   mapEntities.push(ent);
@@ -2124,7 +2249,7 @@ function getEntityColony(ent) {
 
 function disbandEntity(idx) {
   const ent = mapEntities[idx];
-  if (!ent) return;
+  if (!ent || ent.inCombat) return;
   const col = getEntityColony(ent);
   if (!col) return; // can only disband at a colony
   const colony = col.planet.colony;
@@ -2141,6 +2266,7 @@ function disbandEntity(idx) {
 
 function tickEntities(dt) {
   for (const ent of mapEntities) {
+    if (ent.inCombat) continue;
     if (ent.destX === null || ent.destY === null) continue;
 
     const dx = ent.destX - ent.x;
@@ -2159,8 +2285,361 @@ function tickEntities(dt) {
       ent.y += (dy / dist) * move;
     }
 
-    // Continuous fog reveal along travel path
-    detectStarsInRange(ent.x, ent.y, ent.sensorRange * 50);
+    // Continuous fog reveal along travel path (player only)
+    if (ent.owner !== "npc") detectStarsInRange(ent.x, ent.y, ent.sensorRange * 50);
+  }
+
+  // NPC patrol behavior — idle NPCs wander randomly
+  for (const ent of mapEntities) {
+    if (ent.owner !== "npc" || ent.inCombat || ent.destX !== null) continue;
+    if (Math.random() < 0.02 * dt) {
+      ent.destX = ent.x + (Math.random() - 0.5) * 300;
+      ent.destY = ent.y + (Math.random() - 0.5) * 300;
+    }
+  }
+
+  // Detection & engagement scan
+  checkCombatEngagements();
+}
+
+function shouldEngage(a, b, aDetects, bDetects) {
+  const aAggro = a.stance === "aggressive";
+  const bAggro = b.stance === "aggressive";
+  if (!aAggro && !bAggro) return false;
+  if (aAggro && bAggro) return aDetects || bDetects;
+  // One aggressive, one evasive — aggressor must detect, then speed check
+  const aggressor = aAggro ? a : b;
+  const evader = aAggro ? b : a;
+  const aggroDetects = aAggro ? aDetects : bDetects;
+  if (!aggroDetects) return false;
+  const evasionChance = Math.max(0, Math.min(1,
+    (evader.speed - aggressor.speed) / Math.max(1, evader.speed)));
+  return Math.random() > evasionChance;
+}
+
+function startCombat(entityA, entityB) {
+  const combat = createCombat(entityA, entityB);
+  entityA.inCombat = combat.id;
+  entityB.inCombat = combat.id;
+  activeCombats.push(combat);
+}
+
+function checkCombatEngagements() {
+  for (let i = 0; i < mapEntities.length; i++) {
+    const a = mapEntities[i];
+    if (a.inCombat) continue;
+    for (let j = i + 1; j < mapEntities.length; j++) {
+      const b = mapEntities[j];
+      if (b.inCombat) continue;
+      if (a.owner === b.owner) continue;
+
+      const dist = Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+      const aDetectRange = a.sensorRange * 50 - (b.stealth || 0) * 100;
+      const bDetectRange = b.sensorRange * 50 - (a.stealth || 0) * 100;
+      const aDetects = aDetectRange > dist;
+      const bDetects = bDetectRange > dist;
+
+      if (!aDetects && !bDetects) continue;
+      if (shouldEngage(a, b, aDetects, bDetects)) {
+        startCombat(a, b);
+        break; // entity a is now in combat, skip to next
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+//  COMBAT SYSTEM
+// ═══════════════════════════════════════════
+
+function makeShipCombatState(card) {
+  const maxShields = (card.stats.shields || 0) * COMBAT_HP_SCALE;
+  const maxArmor = (card.stats.armor || 0) * COMBAT_HP_SCALE;
+  return {
+    card,
+    currentShields: card._combatShields != null ? Math.min(card._combatShields, maxShields) : maxShields,
+    currentArmor: card._combatArmor != null ? Math.min(card._combatArmor, maxArmor) : maxArmor,
+    alive: true,
+  };
+}
+
+function buildShipStates(entity) {
+  if (entity.type === "ship") return [makeShipCombatState(entity.card)];
+  return entity.ships.map(c => makeShipCombatState(c));
+}
+
+function buildTurnOrder(sideA, sideB) {
+  const aShips = sideA.ships.filter(s => s.alive);
+  const bShips = sideB.ships.filter(s => s.alive);
+  const order = [];
+  const maxLen = Math.max(aShips.length, bShips.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (i < aShips.length) order.push({ ship: aShips[i], side: "a", enemySide: sideB });
+    if (i < bShips.length) order.push({ ship: bShips[i], side: "b", enemySide: sideA });
+  }
+  return order;
+}
+
+function createCombat(entityA, entityB) {
+  const combat = {
+    id: nextCombatId++,
+    phase: "closing",
+    sideA: { entity: entityA, ships: buildShipStates(entityA) },
+    sideB: { entity: entityB, ships: buildShipStates(entityB) },
+    distance: Math.sqrt((entityA.x - entityB.x) ** 2 + (entityA.y - entityB.y) ** 2),
+    initialDistance: Math.sqrt((entityA.x - entityB.x) ** 2 + (entityA.y - entityB.y) ** 2),
+    shotTimer: SHOT_INTERVAL,
+    turnOrder: [],
+    turnIndex: 0,
+    roundNumber: 0,
+    log: [],
+    gameTime: 0,
+    // Screen-space hit detection (updated during render)
+    _screenMidX: 0, _screenMidY: 0, _screenRadius: 0,
+  };
+  combat.turnOrder = buildTurnOrder(combat.sideA, combat.sideB);
+  combat.log.push({ time: 0, text: `${entityA.label} engages ${entityB.label}!`, type: "engage" });
+  return combat;
+}
+
+function calcHitChance(attackerCard, defenderCard) {
+  let chance = 0.70;
+  chance += Math.min(0.15, (attackerCard.stats.sensorRange || 0) * 0.01);
+  chance -= (defenderCard.stats.stealth || 0) * 0.05;
+  chance -= (defenderCard.stats.speed || 0) * 0.005;
+  return Math.max(0.10, Math.min(0.95, chance));
+}
+
+function calcPDInterceptChance(defendingSide) {
+  let totalPD = 0;
+  for (const s of defendingSide.ships) {
+    if (s.alive) totalPD += (s.card.stats.pointDefense || 0);
+  }
+  return Math.min(0.80, totalPD * 0.02);
+}
+
+function pickRandomAlive(ships) {
+  const alive = ships.filter(s => s.alive);
+  return alive.length > 0 ? alive[Math.floor(Math.random() * alive.length)] : null;
+}
+
+function applyDamage(target, weaponType, baseDmg) {
+  const mult = COMBAT_TRIANGLE[weaponType];
+  let dmg = baseDmg;
+  if (target.currentShields > 0) {
+    const shieldDmg = dmg * mult.vsShields;
+    const absorbed = Math.min(target.currentShields, shieldDmg);
+    target.currentShields -= absorbed;
+    dmg -= absorbed / mult.vsShields;
+  }
+  if (dmg > 0 && target.alive) {
+    const armorDmg = dmg * mult.vsArmor;
+    target.currentArmor -= armorDmg;
+    if (target.currentArmor <= 0) {
+      target.currentArmor = 0;
+      target.alive = false;
+    }
+  }
+}
+
+function getWeaponInfo(card) {
+  const weapons = [];
+  if (card.stats.energyDmg)  weapons.push({ type: "energy",  dmg: card.stats.energyDmg,  range: card.stats.energyRange  });
+  if (card.stats.kineticDmg) weapons.push({ type: "kinetic", dmg: card.stats.kineticDmg, range: card.stats.kineticRange });
+  if (card.stats.missileDmg) weapons.push({ type: "missile", dmg: card.stats.missileDmg, range: card.stats.missileRange });
+  return weapons;
+}
+
+function fireShot(combat, turnEntry) {
+  const ship = turnEntry.ship;
+  if (!ship.alive) return;
+  const enemySide = turnEntry.enemySide;
+  const target = pickRandomAlive(enemySide.ships);
+  if (!target) return;
+
+  const weapons = getWeaponInfo(ship.card);
+  if (weapons.length === 0) return;
+
+  // Pick the best weapon that's in range
+  let firedWeapon = null;
+  for (const w of weapons) {
+    const threshold = RANGE_THRESHOLDS[w.range] ?? 0;
+    if (combat.distance <= threshold) {
+      firedWeapon = w;
+      break;
+    }
+  }
+
+  if (!firedWeapon) {
+    combat.log.push({ time: combat.gameTime, text: `${ship.card.name} — out of range`, type: "range" });
+    return;
+  }
+
+  // Determine world positions for particles
+  const attackerEnt = turnEntry.side === "a" ? combat.sideA.entity : combat.sideB.entity;
+  const defenderEnt = turnEntry.side === "a" ? combat.sideB.entity : combat.sideA.entity;
+  const midPx = (attackerEnt.x + defenderEnt.x) / 2;
+  const midPy = (attackerEnt.y + defenderEnt.y) / 2;
+
+  // Roll to hit
+  const hitChance = calcHitChance(ship.card, target.card);
+  if (Math.random() > hitChance) {
+    spawnCombatParticle(midPx, midPy, firedWeapon.type, false);
+    combat.log.push({ time: combat.gameTime, text: `${ship.card.name} fires ${firedWeapon.type} at ${target.card.name} — MISS`, type: "miss" });
+    return;
+  }
+
+  // Missile PD interception
+  if (firedWeapon.type === "missile") {
+    const pdChance = calcPDInterceptChance(enemySide);
+    if (Math.random() < pdChance) {
+      spawnCombatParticle(midPx, midPy, firedWeapon.type, false);
+      combat.log.push({ time: combat.gameTime, text: `${ship.card.name} fires missile at ${target.card.name} — INTERCEPTED`, type: "intercept" });
+      return;
+    }
+  }
+
+  // Apply damage
+  applyDamage(target, firedWeapon.type, firedWeapon.dmg);
+  const killText = target.alive ? "" : " — DESTROYED";
+  spawnCombatParticle(defenderEnt.x, defenderEnt.y, firedWeapon.type, true);
+  combat.log.push({
+    time: combat.gameTime,
+    text: `${ship.card.name} fires ${firedWeapon.type} at ${target.card.name} — HIT ${firedWeapon.dmg} dmg${killText}`,
+    type: target.alive ? "hit" : "kill",
+  });
+}
+
+function checkCombatEnd(combat) {
+  const aAlive = combat.sideA.ships.some(s => s.alive);
+  const bAlive = combat.sideB.ships.some(s => s.alive);
+  if (!aAlive || !bAlive) {
+    combat.phase = "resolved";
+    const winner = aAlive ? combat.sideA : combat.sideB;
+    const loser = aAlive ? combat.sideB : combat.sideA;
+    combat.log.push({ time: combat.gameTime,
+      text: `${winner.entity.label} victorious! ${loser.entity.label} destroyed.`, type: "resolve" });
+  }
+}
+
+function syncSurvivorState(side) {
+  const ent = side.entity;
+  if (ent.type === "fleet") {
+    const aliveCards = side.ships.filter(s => s.alive).map(s => {
+      s.card._combatShields = s.currentShields;
+      s.card._combatArmor = s.currentArmor;
+      return s.card;
+    });
+    ent.ships = aliveCards;
+    if (ent.ships.length > 0) recalcFleetStats(ent);
+  } else if (ent.type === "ship") {
+    const state = side.ships[0];
+    if (state.alive) {
+      state.card._combatShields = state.currentShields;
+      state.card._combatArmor = state.currentArmor;
+    }
+  }
+}
+
+function cleanupCombat(combat, arrayIndex) {
+  const aAlive = combat.sideA.ships.some(s => s.alive);
+  const winner = aAlive ? combat.sideA : combat.sideB;
+  const loser = aAlive ? combat.sideB : combat.sideA;
+
+  // Remove destroyed entity
+  const loserIdx = mapEntities.indexOf(loser.entity);
+  if (loserIdx >= 0) {
+    mapEntities.splice(loserIdx, 1);
+    if (selectedEntityIdx === loserIdx) selectedEntityIdx = null;
+    else if (selectedEntityIdx !== null && selectedEntityIdx > loserIdx) selectedEntityIdx--;
+  }
+
+  // Update winner
+  syncSurvivorState(winner);
+  winner.entity.inCombat = null;
+
+  activeCombats.splice(arrayIndex, 1);
+}
+
+function tryDisengage(combat) {
+  for (const side of [combat.sideA, combat.sideB]) {
+    if (side.entity.stance !== "evasive") continue;
+    if (!side.ships.some(s => s.alive)) continue;
+    const other = side === combat.sideA ? combat.sideB : combat.sideA;
+    const speedRatio = Math.max(0, (side.entity.speed - other.entity.speed) / Math.max(1, side.entity.speed));
+    // 5% base per game-second, boosted by speed advantage
+    const chance = 0.05 * (1 + speedRatio * 2);
+    if (Math.random() < chance) {
+      combat.phase = "resolved";
+      combat.log.push({ time: combat.gameTime, text: `${side.entity.label} disengages!`, type: "disengage" });
+      // Both survive — unlock both
+      syncSurvivorState(combat.sideA);
+      syncSurvivorState(combat.sideB);
+      combat.sideA.entity.inCombat = null;
+      combat.sideB.entity.inCombat = null;
+    }
+  }
+}
+
+function tickCombats(rawDt) {
+  const dt = rawDt * COMBAT_TIME_SCALE;
+  for (let ci = activeCombats.length - 1; ci >= 0; ci--) {
+    const combat = activeCombats[ci];
+    if (combat.phase === "resolved") {
+      cleanupCombat(combat, ci);
+      continue;
+    }
+
+    combat.gameTime += dt;
+
+    // Move entities toward each other at full speed
+    const entA = combat.sideA.entity;
+    const entB = combat.sideB.entity;
+    const dx = entB.x - entA.x;
+    const dy = entB.y - entA.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    combat.distance = dist;
+
+    if (dist > ENGAGED_DISTANCE) {
+      const nx = dx / dist;
+      const ny = dy / dist;
+      entA.x += nx * entA.speed * dt;
+      entA.y += ny * entA.speed * dt;
+      entB.x -= nx * entB.speed * dt;
+      entB.y -= ny * entB.speed * dt;
+    } else if (combat.phase === "closing") {
+      combat.phase = "engaged";
+      combat.log.push({ time: combat.gameTime, text: "Fleets at close range!", type: "engage" });
+    }
+
+    // Check disengagement attempts
+    if (combat.sideA.entity.stance === "evasive" || combat.sideB.entity.stance === "evasive") {
+      tryDisengage(combat);
+      if (combat.phase === "resolved") continue;
+    }
+
+    // Shot timer
+    combat.shotTimer -= dt;
+    while (combat.shotTimer <= 0 && combat.phase !== "resolved") {
+      // Fire current shot
+      if (combat.turnIndex < combat.turnOrder.length) {
+        fireShot(combat, combat.turnOrder[combat.turnIndex]);
+        combat.turnIndex++;
+      }
+
+      // Round complete?
+      if (combat.turnIndex >= combat.turnOrder.length) {
+        combat.roundNumber++;
+        combat.turnOrder = buildTurnOrder(combat.sideA, combat.sideB);
+        combat.turnIndex = 0;
+      }
+
+      // Check if combat ended this shot
+      checkCombatEnd(combat);
+      if (combat.phase === "resolved") break;
+
+      combat.shotTimer += SHOT_INTERVAL;
+    }
   }
 }
 
@@ -2196,7 +2675,8 @@ function drawEntities(ctx, time) {
     // Entity icon
     const isFleet = ent.type === "fleet";
     const size = (isFleet ? 8 : 6) * camera.zoom;
-    const rarityColor = ent.type === "ship"
+    const rarityColor = ent.owner === "npc" ? "#c04040"
+      : ent.type === "ship"
       ? (RARITY_COLORS[ent.card.rarity] || "#4a7ac0")
       : (ent.admiral ? (RARITY_COLORS[ent.admiral.rarity] || "#4a7ac0") : "#6a7a9b");
     ctx.save();
@@ -2283,6 +2763,194 @@ function drawEntities(ctx, time) {
     }
   }
 }
+
+// ── Combat particles ──
+const combatParticles = [];
+const WEAPON_PARTICLE_COLORS = {
+  energy:  { r: 80, g: 160, b: 255 },   // blue
+  kinetic: { r: 255, g: 180, b: 60 },   // orange
+  missile: { r: 255, g: 60, b: 40 },    // red
+};
+
+function spawnCombatParticle(worldX, worldY, weaponType, isHit) {
+  const col = WEAPON_PARTICLE_COLORS[weaponType] || WEAPON_PARTICLE_COLORS.energy;
+  const count = isHit ? 8 : 3;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 20 + Math.random() * 40;
+    combatParticles.push({
+      x: worldX + (Math.random() - 0.5) * 10,
+      y: worldY + (Math.random() - 0.5) * 10,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0.6 + Math.random() * 0.4,
+      maxLife: 0.6 + Math.random() * 0.4,
+      r: col.r, g: col.g, b: col.b,
+      size: isHit ? 2 + Math.random() * 2 : 1 + Math.random(),
+    });
+  }
+}
+
+function tickParticles(dt) {
+  for (let i = combatParticles.length - 1; i >= 0; i--) {
+    const p = combatParticles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vx *= 0.95;
+    p.vy *= 0.95;
+    p.life -= dt;
+    if (p.life <= 0) combatParticles.splice(i, 1);
+  }
+}
+
+function drawCombatParticles(ctx) {
+  for (const p of combatParticles) {
+    const pos = worldToScreen(p.x, p.y);
+    const alpha = Math.max(0, p.life / p.maxLife);
+    ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha.toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, p.size * camera.zoom, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawCombatIndicators(ctx, time) {
+  for (const combat of activeCombats) {
+    if (combat.phase === "resolved") continue;
+    const entA = combat.sideA.entity;
+    const entB = combat.sideB.entity;
+
+    // Use actual entity positions (they move toward each other in tickCombats)
+    const posA = worldToScreen(entA.x, entA.y);
+    const posB = worldToScreen(entB.x, entB.y);
+
+    // Red glowing line
+    ctx.save();
+    ctx.shadowColor = "#ff3030";
+    ctx.shadowBlur = 12 * camera.zoom;
+    ctx.strokeStyle = "rgba(255, 48, 48, 0.6)";
+    ctx.lineWidth = 2 * camera.zoom;
+    ctx.beginPath();
+    ctx.moveTo(posA.x, posA.y);
+    ctx.lineTo(posB.x, posB.y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // Crossed swords icon at midpoint
+    const mx = (posA.x + posB.x) / 2;
+    const my = (posA.y + posB.y) / 2;
+    const iconSize = Math.max(10, 14 * camera.zoom);
+    const pulse = 0.7 + 0.3 * Math.sin(time * 4);
+
+    ctx.fillStyle = `rgba(180, 30, 30, ${0.4 * pulse})`;
+    ctx.beginPath();
+    ctx.arc(mx, my, iconSize, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = `rgba(255, 200, 200, ${pulse})`;
+    ctx.font = `${iconSize * 1.2}px 'Segoe UI Emoji', 'Segoe UI', system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("\u2694", mx, my);
+
+    // Store screen coords for click hit testing
+    combat._screenMidX = mx;
+    combat._screenMidY = my;
+    combat._screenRadius = iconSize;
+  }
+}
+
+function getCombatAtScreen(sx, sy) {
+  for (const combat of activeCombats) {
+    if (combat.phase === "resolved") continue;
+    if (combat._screenMidX === undefined) continue;
+    const d = Math.sqrt((sx - combat._screenMidX) ** 2 + (sy - combat._screenMidY) ** 2);
+    if (d < combat._screenRadius + 5) return combat;
+  }
+  return null;
+}
+
+// ── Combat Overlay UI ──
+let viewedCombat = null;
+let lastLogLength = 0;
+
+function showCombatOverlay(combat) {
+  viewedCombat = combat;
+  lastLogLength = 0;
+  // Rebuild full log from start
+  const logEl = document.getElementById("combat-log");
+  logEl.innerHTML = "";
+  document.getElementById("combat-backdrop").classList.add("visible");
+  const overlay = document.getElementById("combat-overlay");
+  overlay.style.display = "flex";
+  requestAnimationFrame(() => overlay.classList.add("visible"));
+  refreshCombatOverlay();
+}
+
+function hideCombatOverlay() {
+  viewedCombat = null;
+  const overlay = document.getElementById("combat-overlay");
+  const backdrop = document.getElementById("combat-backdrop");
+  overlay.classList.remove("visible");
+  backdrop.classList.remove("visible");
+  setTimeout(() => { overlay.style.display = "none"; }, 300);
+}
+
+function renderCombatSide(container, side, label) {
+  const aCount = side.ships.filter(s => s.alive).length;
+  const tCount = side.ships.length;
+  let html = `<h3>${label} (${aCount}/${tCount})</h3>`;
+  for (const s of side.ships) {
+    const maxS = (s.card.stats.shields || 0) * COMBAT_HP_SCALE;
+    const maxA = (s.card.stats.armor || 0) * COMBAT_HP_SCALE;
+    const totalMax = maxS + maxA;
+    const sPct = totalMax > 0 ? (s.currentShields / totalMax * 100) : 0;
+    const aPct = totalMax > 0 ? (s.currentArmor / totalMax * 100) : 0;
+    const deadClass = s.alive ? "" : " dead";
+    html += `<div class="combat-ship-entry${deadClass}">
+      <span class="combat-ship-name">${s.card.name}</span>
+      <div class="combat-hp-bar">
+        <div class="combat-hp-shields" style="width:${sPct}%"></div>
+        <div class="combat-hp-armor" style="width:${aPct}%"></div>
+      </div>
+      <span style="font-size:10px;min-width:50px;text-align:right">${Math.ceil(s.currentShields)}s ${Math.ceil(s.currentArmor)}a</span>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function refreshCombatOverlay() {
+  if (!viewedCombat) return;
+  const c = viewedCombat;
+
+  renderCombatSide(document.getElementById("combat-side-a"), c.sideA, c.sideA.entity.label);
+  renderCombatSide(document.getElementById("combat-side-b"), c.sideB, c.sideB.entity.label);
+
+  // Status
+  const phaseNames = { closing: "Closing...", engaged: "Engaged!", resolved: "Resolved" };
+  document.getElementById("combat-phase").textContent = phaseNames[c.phase] || c.phase;
+  const distPct = c.initialDistance > 0 ? (c.distance / c.initialDistance) * 100 : 0;
+  document.getElementById("combat-distance-fill").style.width = distPct + "%";
+  document.getElementById("combat-round").textContent = `Round ${c.roundNumber}`;
+  const nextVolley = Math.max(0, c.shotTimer);
+  document.getElementById("combat-next-volley").textContent = c.phase === "resolved" ? "" : `Next volley: ${nextVolley.toFixed(1)}s`;
+
+  // Log — only append new entries
+  const logEl = document.getElementById("combat-log");
+  for (let i = lastLogLength; i < c.log.length; i++) {
+    const entry = c.log[i];
+    const div = document.createElement("div");
+    div.className = `log-${entry.type || "hit"}`;
+    div.textContent = `[${entry.time.toFixed(1)}s] ${entry.text}`;
+    logEl.appendChild(div);
+  }
+  lastLogLength = c.log.length;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+document.getElementById("combat-close").addEventListener("click", hideCombatOverlay);
+document.getElementById("combat-backdrop").addEventListener("click", hideCombatOverlay);
 
 function getEntityAtScreen(sx, sy) {
   const world = screenToWorld(sx, sy);
@@ -2697,6 +3365,8 @@ function render() {
 
   // Probes/fleets drawn above stars but below fog
   drawEntities(ctx, animTime);
+  drawCombatIndicators(ctx, animTime);
+  drawCombatParticles(ctx);
 
   // Fog of war on top — covers unexplored areas, detected stars peek through
   drawFogOfWar(ctx);
@@ -3292,6 +3962,8 @@ function showEntityPanel(idx) {
     const dist = Math.sqrt((ent.destX - ent.x) ** 2 + (ent.destY - ent.y) ** 2);
     const etaSec = dist / ent.speed;
     infoHtml += `<div style="color:#a0a0d0;margin-top:4px">⏱ ETA: ${formatETA(etaSec)}</div>`;
+  } else if (ent.inCombat) {
+    infoHtml += `<div style="color:#e05050;margin-top:4px">⚔ In Combat</div>`;
   } else if (atColony) {
     infoHtml += `<div style="color:#4a9b5a;margin-top:4px">At colony</div>`;
   }
@@ -3361,7 +4033,7 @@ const canvasEl = document.getElementById("starmap");
 const tooltip = document.getElementById("tooltip");
 
 container.addEventListener("mousedown", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#system-backdrop") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colony-backdrop") || e.target.closest("#colonies-list-overlay") || e.target.closest("#colonies-backdrop") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#system-backdrop") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colony-backdrop") || e.target.closest("#colonies-list-overlay") || e.target.closest("#colonies-backdrop") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#combat-overlay") || e.target.closest("#combat-backdrop")) return;
   isDragging = true;
   dragMoved = false;
   dragStart = { x: e.clientX, y: e.clientY };
@@ -3435,14 +4107,24 @@ window.addEventListener("mouseup", (e) => {
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
 
+      // Check combat icon click first
+      const combatHit = getCombatAtScreen(sx, sy);
+      if (combatHit) {
+        showCombatOverlay(combatHit);
+        return;
+      }
+
       // Check if clicking an entity (ship/fleet)
       const entIdx = getEntityAtScreen(sx, sy);
 
       if (selectedEntityIdx !== null && entIdx !== selectedEntityIdx) {
-        // Entity is selected — click sets destination
-        const world = screenToWorld(sx, sy);
-        mapEntities[selectedEntityIdx].destX = world.x;
-        mapEntities[selectedEntityIdx].destY = world.y;
+        // Entity is selected — click sets destination (unless in combat)
+        const selEnt = mapEntities[selectedEntityIdx];
+        if (selEnt && !selEnt.inCombat) {
+          const world = screenToWorld(sx, sy);
+          selEnt.destX = world.x;
+          selEnt.destY = world.y;
+        }
       } else if (entIdx !== null) {
         // Clicking an entity — select it and show info
         selectedEntityIdx = entIdx;
@@ -3463,7 +4145,7 @@ window.addEventListener("mouseup", (e) => {
 
 // Suppress context menu on the map entirely
 container.addEventListener("contextmenu", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#combat-overlay")) return;
   e.preventDefault();
   if (selectedEntityIdx !== null) {
     selectedEntityIdx = null;
@@ -3484,7 +4166,7 @@ canvasEl.addEventListener("dblclick", (e) => {
 });
 
 container.addEventListener("wheel", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#combat-overlay")) return;
   e.preventDefault();
   const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
   const newZoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomFactor));
@@ -3585,6 +4267,20 @@ const BASE_GAME_SPEED = 0.1;  // 1x = 10% of real-time; tweak this to tune overa
 let gameSpeed = 1;             // player-facing multiplier (1x, 10x, 50x)
 let lastTickTime = 0;
 let tickAccumulator = 0;
+
+// ── Combat constants ──
+const SHOT_INTERVAL = 0.5;       // game-seconds between each shot in a volley
+const COMBAT_TIME_SCALE = 1 / 10; // combat runs 10x slower than normal game time
+const COMBAT_HP_SCALE = 5;       // multiplier on shields/armor for combat durability
+const RANGE_THRESHOLDS = { long: 400, medium: 200, short: 60 };  // world-unit distance for weapon activation
+const ENGAGED_DISTANCE = 60;     // world units — entities stop closing at this distance
+const COMBAT_TRIANGLE = {
+  energy:  { vsShields: 2.0, vsArmor: 0.5 },
+  kinetic: { vsShields: 0.5, vsArmor: 2.0 },
+  missile: { vsShields: 1.0, vsArmor: 1.0 },
+};
+const activeCombats = [];
+let nextCombatId = 1;
 
 // Card draw cost escalation
 const DRAW_BASE_COST = 10;
@@ -4524,7 +5220,8 @@ function refreshFleetTab(col) {
     if (!canAfford(totalCost)) { showCostTooltip(newDeployBtn, totalCost); return; }
     deductCost(totalCost);
     const star = colonyViewStar;
-    createFleet(deployAdmiral, [...deployShips], star.x, star.y);
+    const deployAngle = Math.random() * Math.PI * 2;
+    createFleet(deployAdmiral, [...deployShips], star.x + Math.cos(deployAngle) * 40, star.y + Math.sin(deployAngle) * 40);
     mapEntities[mapEntities.length - 1].stance = deployStance;
     deployAdmiral = null;
     deployShips = [];
@@ -4542,7 +5239,8 @@ function refreshFleetTab(col) {
     if (shipCard.cost && !canAfford(shipCard.cost)) { showCostTooltip(newSoloBtn, shipCard.cost); return; }
     if (shipCard.cost) deductCost(shipCard.cost);
     const star = colonyViewStar;
-    createSoloShip(shipCard, star.x, star.y);
+    const soloAngle = Math.random() * Math.PI * 2;
+    createSoloShip(shipCard, star.x + Math.cos(soloAngle) * 40, star.y + Math.sin(soloAngle) * 40);
     mapEntities[mapEntities.length - 1].stance = deployStance;
     deployShips = [];
     refreshColonyScreen();
@@ -4756,6 +5454,9 @@ function gameLoop(timestamp) {
   const scaledDt = dt * BASE_GAME_SPEED * gameSpeed;
   tickEconomy(scaledDt);
   tickEntities(scaledDt);
+  tickCombats(scaledDt);
+  tickParticles(scaledDt);
+  if (viewedCombat) refreshCombatOverlay();
   // Lightweight updates when colony screen is open (no full DOM rebuild)
   if (colonyViewStar && colonyViewPlanetIdx != null) {
     const col = getActiveColony();
@@ -4918,12 +5619,41 @@ initResearch();
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 const homeStar = generateGalaxy();
-// Start with two scout ships at home star
-const starterScout = { id:"shp_001", name:"Scout Corvette", category:"ship", rarity:"common",
-  stats:{ shields:2, armor:1, speed:8, sensorRange:5, energyDmg:3, energyRange:"short" },
-  cost:{minerals:8,energy:4}, special:"", flavor:"First to see, last to be seen." };
-createSoloShip({...starterScout}, homeStar.x + 25, homeStar.y - 20);
-createSoloShip({...starterScout, name:"Scout Corvette II"}, homeStar.x - 25, homeStar.y + 20);
+// Helper to clone a ship template by id
+function cloneShip(id, nameOverride) {
+  const t = SHIP_TEMPLATES.find(s => s.id === id);
+  const c = { ...t, stats: { ...t.stats } };
+  if (nameOverride) c.name = nameOverride;
+  return c;
+}
+function cloneAdmiral(id) {
+  const t = ADMIRAL_TEMPLATES.find(a => a.id === id);
+  return { ...t, stats: { ...t.stats } };
+}
+// Start with 3 admiral-led fleets, each with a high-sensor ship, offset from home star
+const starterFleets = [
+  { admiral: cloneAdmiral("adm_002"), ships: [  // Patrol Commander
+    cloneShip("shp_002"),            // Patrol Frigate (kinetic/medium)
+    cloneShip("shp_009"),            // Sensor Pinnace (sensorRange:20)
+    cloneShip("shp_003"),            // Missile Corvette (missile/long)
+    cloneShip("shp_001"),            // Scout Corvette (energy/short)
+  ]},
+  { admiral: cloneAdmiral("adm_001"), ships: [  // Ensign Hale
+    cloneShip("shp_001"),            // Scout Corvette
+    cloneShip("shp_009", "Sensor Pinnace II"),
+    cloneShip("shp_002", "Patrol Frigate II"),
+  ]},
+  { admiral: cloneAdmiral("adm_004"), ships: [  // Privateer
+    cloneShip("shp_003", "Missile Corvette II"),
+    cloneShip("shp_009", "Sensor Pinnace III"),
+    cloneShip("shp_005"),            // Picket Ship (PD + energy)
+    cloneShip("shp_004"),            // Gunboat (kinetic/short)
+  ]},
+];
+starterFleets.forEach((f, i) => {
+  const angle = (i / starterFleets.length) * Math.PI * 2 - Math.PI / 2;
+  createFleet(f.admiral, f.ships, homeStar.x + Math.cos(angle) * 40, homeStar.y + Math.sin(angle) * 40);
+});
 camera.x = homeStar.x;
 camera.y = homeStar.y;
 updateResourceDisplay();

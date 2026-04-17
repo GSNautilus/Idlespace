@@ -4508,7 +4508,7 @@ const RESOURCE_DEFS = [
 ];
 const RESOURCE_IDS = RESOURCE_DEFS.map(r => r.id);
 const resources = {};
-for (const r of RESOURCE_DEFS) resources[r.id] = r.id === "credits" ? 500 : 5000;
+for (const r of RESOURCE_DEFS) resources[r.id] = 500;
 const BASE_GAME_SPEED = 0.1;  // 1x = 10% of real-time; tweak this to tune overall pacing
 let gameSpeed = 1;             // player-facing multiplier (1x, 10x, 50x)
 let lastTickTime = 0;
@@ -4676,12 +4676,12 @@ function getColonyOutput(colony, planet) {
       if (bonuses[id]) raw[id] *= (1 + bonuses[id] / 100);
     }
   }
-  // Starvation: food production can't cover maintenance → all production (incl. food) at 1/5
+  // Starvation: non-food production at 1/5 while food rate is negative. Food itself stays
+  // full so players can recover by building food producers.
   const maintenance = getFoodMaintenance(colony.population);
   const starving = (raw.food - maintenance) < 0;
-  const mult = starving ? 0.2 : 1;
   const out = {};
-  for (const id of RESOURCE_IDS) out[id] = raw[id] * mult;
+  for (const id of RESOURCE_IDS) out[id] = raw[id] * (starving && id !== "food" ? 0.2 : 1);
   out.food -= maintenance;
   return out;
 }

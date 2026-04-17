@@ -511,6 +511,18 @@ body {
 }
 #colonies-btn:hover { background: #252f55; color: #c0d0f0; }
 
+/* ── Research Button idle-highlight ── */
+#research-btn.idle {
+  background: rgba(164, 228, 164, 0.15);
+  border-color: #4aa06a;
+  color: #a4e4a4;
+  animation: research-pulse 1.6s ease-in-out infinite;
+}
+@keyframes research-pulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(164, 228, 164, 0.3); }
+  50%      { box-shadow: 0 0 12px rgba(164, 228, 164, 0.7); }
+}
+
 /* ── Colonies List Overlay ── */
 #colonies-backdrop {
   position: absolute;
@@ -795,6 +807,8 @@ body {
   flex: 1;
 }
 .colony-action-btn {
+  position: relative;
+  overflow: hidden;
   padding: 8px 11px;
   background: #0a0c14;
   border: 1px solid #151a2a;
@@ -804,12 +818,37 @@ body {
   cursor: pointer;
   transition: all 0.15s;
   text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .colony-action-btn:hover { background: #111628; color: #8090b0; border-color: #2a3460; }
 .colony-action-btn.active {
   background: #1a2540;
   border-color: #4060c0;
   color: #c0d0f0;
+}
+.action-progress {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 0%;
+  background: linear-gradient(90deg, rgba(74,155,90,0.08), rgba(74,155,90,0.28));
+  pointer-events: none;
+  transition: width 0.1s linear;
+}
+.action-label {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+}
+.action-eta {
+  position: relative;
+  z-index: 1;
+  color: #4a5a7b;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
 }
 
 /* Right main area: building slots grid */
@@ -1330,8 +1369,8 @@ body {
   <div id="speed-controls">
     <button data-speed="0">⏸</button>
     <button data-speed="1" class="active">1×</button>
-    <button data-speed="10">10×</button>
     <button data-speed="50">50×</button>
+    <button data-speed="150">150×</button>
   </div>
 </div>
 
@@ -1402,12 +1441,12 @@ body {
         <div id="leader-slot">No Leader</div>
         <h3>Actions</h3>
         <div id="colony-actions">
-          <button class="colony-action-btn" data-action="trade">Trade</button>
-          <button class="colony-action-btn" data-action="buildings">Build Buildings</button>
-          <button class="colony-action-btn" data-action="admirals">Recruit Admirals</button>
-          <button class="colony-action-btn" data-action="leaders">Elect Leaders</button>
-          <button class="colony-action-btn" data-action="ships">Build Ships</button>
-          <button class="colony-action-btn" data-action="terraform">Terraform</button>
+          <button class="colony-action-btn" data-action="trade"><span class="action-label">Trade</span></button>
+          <button class="colony-action-btn" data-action="buildings"><span class="action-progress"></span><span class="action-label">Build Buildings</span><span class="action-eta"></span></button>
+          <button class="colony-action-btn" data-action="admirals"><span class="action-progress"></span><span class="action-label">Recruit Admirals</span><span class="action-eta"></span></button>
+          <button class="colony-action-btn" data-action="leaders"><span class="action-progress"></span><span class="action-label">Elect Leaders</span><span class="action-eta"></span></button>
+          <button class="colony-action-btn" data-action="ships"><span class="action-progress"></span><span class="action-label">Build Ships</span><span class="action-eta"></span></button>
+          <button class="colony-action-btn" data-action="terraform"><span class="action-label">Terraform</span></button>
         </div>
         <h3>Deck</h3>
         <div id="colony-deck"></div>
@@ -1483,20 +1522,52 @@ body {
 // ═══════════════════════════════════════════
 //  STAR CARD TEMPLATES (from data/cards.json)
 // ═══════════════════════════════════════════
+// Star "stats" are now the planets it produces. planetGen drives generation:
+//   count: [min, max] planets
+//   guaranteed: array of rarities always present
+//   bonus: rarity-shift applied to remaining slots (higher = rarer rolls)
+// Even common stars roll from the full RARITY_WEIGHTS table — legendary rolls are possible but WAY rarer.
 const STAR_TEMPLATES = [
-  { id:"str_001", name:"Red Dwarf", rarity:"common", stats:{luminosity:2,stability:4,planets_max:2}, special:"", flavor:"Small, steady, eternal." },
-  { id:"str_002", name:"Yellow Main Sequence", rarity:"common", stats:{luminosity:4,stability:3,planets_max:4}, special:"", flavor:"The kind of star that breeds life." },
-  { id:"str_010", name:"Brown Dwarf", rarity:"common", stats:{luminosity:1,stability:5,planets_max:1}, special:"", flavor:"Not quite a star, not quite nothing." },
-  { id:"str_003", name:"Orange Giant", rarity:"uncommon", stats:{luminosity:5,stability:3,planets_max:5}, special:"", flavor:"Swollen with age, rich with possibility." },
-  { id:"str_006", name:"White Dwarf", rarity:"uncommon", stats:{luminosity:3,stability:5,planets_max:2,research:2}, special:"", flavor:"The ember of a once-great fire." },
-  { id:"str_004", name:"Blue Supergiant", rarity:"rare", stats:{luminosity:9,stability:2,planets_max:3,energy:4}, special:"Extreme energy output but unstable.", flavor:"Burning bright, burning fast." },
-  { id:"str_005", name:"Binary System", rarity:"rare", stats:{luminosity:7,stability:2,planets_max:4,research:3}, special:"Unique orbital mechanics to study.", flavor:"Two hearts, one system." },
-  { id:"str_011", name:"Pulsar", rarity:"rare", stats:{luminosity:5,stability:3,energy:5,research:4}, special:"Provides navigation beacon to nearby systems.", flavor:"A lighthouse spinning in the dark." },
-  { id:"str_007", name:"Neutron Star", rarity:"epic", stats:{luminosity:6,stability:4,research:8,energy:5}, special:"Pulsar emissions boost research.", flavor:"A teaspoon weighs a billion tons." },
-  { id:"str_008", name:"Magnetar", rarity:"epic", stats:{luminosity:8,stability:1,energy:10,research:5}, special:"Dangerous but incredibly energy-rich.", flavor:"Space itself screams near its poles." },
-  { id:"str_012", name:"Trinary System", rarity:"epic", stats:{luminosity:10,stability:1,planets_max:3,energy:6,research:4}, special:"Complex orbits yield unique research.", flavor:"Three suns dance an eternal waltz." },
-  { id:"str_009", name:"Primordial Quasar Remnant", rarity:"legendary", stats:{luminosity:15,stability:3,planets_max:6,energy:10,research:8}, special:"All colonies in system gain +25% output.", flavor:"A relic of creation, still burning with the first light." },
+  { id:"str_001", name:"Red Dwarf", rarity:"common",
+    planetGen:{ count:[1,3], guaranteed:[], bonus:0 },
+    special:"", flavor:"Small, steady, eternal." },
+  { id:"str_002", name:"Yellow Main Sequence", rarity:"common",
+    planetGen:{ count:[2,4], guaranteed:[], bonus:0 },
+    special:"", flavor:"The kind of star that breeds life." },
+  { id:"str_010", name:"Brown Dwarf", rarity:"common",
+    planetGen:{ count:[0,2], guaranteed:[], bonus:0 },
+    special:"", flavor:"Not quite a star, not quite nothing." },
+  { id:"str_003", name:"Orange Giant", rarity:"uncommon",
+    planetGen:{ count:[3,5], guaranteed:["uncommon"], bonus:1 },
+    special:"", flavor:"Swollen with age, rich with possibility." },
+  { id:"str_006", name:"White Dwarf", rarity:"uncommon",
+    planetGen:{ count:[1,3], guaranteed:["uncommon"], bonus:1 },
+    special:"", flavor:"The ember of a once-great fire." },
+  { id:"str_004", name:"Blue Supergiant", rarity:"rare",
+    planetGen:{ count:[2,4], guaranteed:["rare"], bonus:2 },
+    special:"Extreme energy output but unstable.", flavor:"Burning bright, burning fast." },
+  { id:"str_005", name:"Binary System", rarity:"rare",
+    planetGen:{ count:[3,5], guaranteed:["rare"], bonus:2 },
+    special:"Unique orbital mechanics to study.", flavor:"Two hearts, one system." },
+  { id:"str_011", name:"Pulsar", rarity:"rare",
+    planetGen:{ count:[2,4], guaranteed:["rare"], bonus:2 },
+    special:"A lighthouse spinning in the dark.", flavor:"Signals echo across systems." },
+  { id:"str_007", name:"Neutron Star", rarity:"epic",
+    planetGen:{ count:[2,4], guaranteed:["rare","epic"], bonus:3 },
+    special:"Extreme density warps nearby space.", flavor:"A teaspoon weighs a billion tons." },
+  { id:"str_008", name:"Magnetar", rarity:"epic",
+    planetGen:{ count:[2,3], guaranteed:["epic"], bonus:3 },
+    special:"Dangerous but incredibly rich.", flavor:"Space itself screams near its poles." },
+  { id:"str_012", name:"Trinary System", rarity:"epic",
+    planetGen:{ count:[3,5], guaranteed:["rare","epic"], bonus:3 },
+    special:"Complex orbits yield unique worlds.", flavor:"Three suns dance an eternal waltz." },
+  { id:"str_009", name:"Primordial Quasar Remnant", rarity:"legendary",
+    planetGen:{ count:[4,6], guaranteed:["epic","epic","legendary"], bonus:5 },
+    special:"A relic of creation, still burning with the first light.", flavor:"Worlds from a younger universe." },
 ];
+
+// Star rendering luminosity (was a stat; now derived from rarity so stars scale visually).
+const STAR_RENDER_LUMINOSITY = { common:3, uncommon:5, rare:7, epic:9, legendary:14 };
 
 const RARITY_WEIGHTS = { common:60, uncommon:25, rare:10, epic:4, legendary:1 };
 const RARITY_COLORS = { common:"#6a7a9b", uncommon:"#4a9b5a", rare:"#4a7ac0", epic:"#8a4ac0", legendary:"#c0a020" };
@@ -1556,7 +1627,6 @@ const STAR_VISUALS = {
 };
 
 const STAT_ICONS = {
-  luminosity:"☀️", stability:"🛡️", planets_max:"🪐",
   credits:"💰", energy:"⚡", minerals:"⛏️", research:"🔬", food:"🌾",
   ecology:"🌿", gravity:"🌀", size:"📐", atmosphere:"💨",
   growth:"📈", morale:"😊", efficiency:"⚙️", engineering:"🔧",
@@ -1579,26 +1649,42 @@ const RANGE_COLORS = { short:"#e0a040", medium:"#a0c0e0", long:"#60d060" };
 // ═══════════════════════════════════════════
 //  PLANET CARD TEMPLATES
 // ═══════════════════════════════════════════
+// Planet cards grant percentage bonuses to colony production of specific resources.
+// Bonuses stack multiplicatively with building/leader output. Rolled ±25% at generation, biased by rarity.
 const PLANET_TEMPLATES = [
-  // Common (4) — ~1x baseline
-  { id:"pln_001", name:"Barren Rock", type:"planet", rarity:"common", stats:{size:3,gravity:2,minerals:3}, special:"", flavor:"Nothing grows here, but the ground is rich." },
-  { id:"pln_002", name:"Arid Waste", type:"planet", rarity:"common", stats:{size:3,gravity:3,minerals:2,energy:1}, special:"", flavor:"Sun-blasted plains of cracked earth." },
-  { id:"pln_003", name:"Frozen Moon", type:"planet", rarity:"common", stats:{size:2,gravity:1,research:2}, special:"", flavor:"Silent, cold, and full of secrets." },
-  { id:"pln_004", name:"Desert Oasis", type:"planet", rarity:"common", stats:{size:3,gravity:3,food:2,minerals:1}, special:"", flavor:"Life clings to scattered water sources." },
-  // Uncommon (4) — ~5x
-  { id:"pln_005", name:"Temperate World", type:"planet", rarity:"uncommon", stats:{size:6,gravity:4,ecology:15,food:12}, special:"", flavor:"A gentle world with room to breathe." },
-  { id:"pln_006", name:"Ocean World", type:"planet", rarity:"uncommon", stats:{size:6,gravity:4,ecology:12,food:15,research:5}, special:"", flavor:"Endless waves hide endless depth." },
-  { id:"pln_007", name:"Volcanic World", type:"planet", rarity:"uncommon", stats:{size:5,gravity:6,minerals:18,energy:12}, special:"", flavor:"The ground never stops shaking." },
-  { id:"pln_008", name:"Tidally Locked World", type:"planet", rarity:"uncommon", stats:{size:5,gravity:4,energy:12,minerals:8,ecology:4}, special:"", flavor:"One face burns, the other freezes." },
-  // Rare (2) — ~25x
-  { id:"pln_009", name:"Gas Giant", type:"planet", rarity:"rare", stats:{size:15,gravity:12,energy:60,atmosphere:50}, special:"Cannot be colonized — orbital stations only.", flavor:"A world of storms with no ground to stand on." },
-  { id:"pln_010", name:"Jungle World", type:"planet", rarity:"rare", stats:{size:8,gravity:5,ecology:70,food:60,growth:30}, special:"", flavor:"Green devours everything. Even the sky." },
-  // Epic (2) — ~100x
-  { id:"pln_011", name:"Crystalline World", type:"planet", rarity:"epic", stats:{size:8,gravity:4,minerals:250,research:150,energy:80}, special:"Yields rare crystalline resources.", flavor:"The surface refracts light into impossible colors." },
-  { id:"pln_012", name:"Gaia World", type:"planet", rarity:"epic", stats:{size:12,gravity:5,ecology:300,food:250,growth:120,morale:80}, special:"Perfect habitability — all output +20%.", flavor:"As if the planet was made for us." },
-  // Legendary (2) — ~500x
-  { id:"pln_013", name:"Precursor Homeworld", type:"planet", rarity:"legendary", stats:{size:15,gravity:5,ecology:400,research:1500,minerals:600,energy:500}, special:"Ancient ruins grant unique technologies.", flavor:"They were here long before us. Where did they go?" },
-  { id:"pln_014", name:"Ring World Fragment", type:"planet", rarity:"legendary", stats:{size:20,gravity:3,ecology:500,food:1200,minerals:800,research:600}, special:"Massive habitable surface area.", flavor:"A broken circle that still dwarfs most worlds." },
+  // Common — single resource, modest bonus (~5-15%)
+  { id:"pln_001", name:"Barren Rock", type:"planet", rarity:"common",
+    bonuses:{minerals:12}, special:"", flavor:"Nothing grows here, but the ground is rich." },
+  { id:"pln_002", name:"Arid Waste", type:"planet", rarity:"common",
+    bonuses:{energy:10}, special:"", flavor:"Sun-blasted plains of cracked earth." },
+  { id:"pln_003", name:"Frozen Moon", type:"planet", rarity:"common",
+    bonuses:{research:10}, special:"", flavor:"Silent, cold, and full of secrets." },
+  { id:"pln_004", name:"Desert Oasis", type:"planet", rarity:"common",
+    bonuses:{food:10,credits:5}, special:"", flavor:"Life clings to scattered water sources." },
+  // Uncommon — 1-2 resources, ~15-30%
+  { id:"pln_005", name:"Temperate World", type:"planet", rarity:"uncommon",
+    bonuses:{food:25,credits:10}, special:"", flavor:"A gentle world with room to breathe." },
+  { id:"pln_006", name:"Ocean World", type:"planet", rarity:"uncommon",
+    bonuses:{food:20,research:15}, special:"", flavor:"Endless waves hide endless depth." },
+  { id:"pln_007", name:"Volcanic World", type:"planet", rarity:"uncommon",
+    bonuses:{minerals:30}, special:"", flavor:"The ground never stops shaking." },
+  { id:"pln_008", name:"Tidally Locked World", type:"planet", rarity:"uncommon",
+    bonuses:{energy:25,minerals:10}, special:"", flavor:"One face burns, the other freezes." },
+  // Rare — 2 resources, ~30-55%
+  { id:"pln_009", name:"Gas Giant", type:"planet", rarity:"rare",
+    bonuses:{energy:55,credits:25}, special:"Vast atmospheric harvest.", flavor:"A world of storms with no ground to stand on." },
+  { id:"pln_010", name:"Jungle World", type:"planet", rarity:"rare",
+    bonuses:{food:45,research:30}, special:"", flavor:"Green devours everything. Even the sky." },
+  // Epic — 2-3 resources, ~50-100%
+  { id:"pln_011", name:"Crystalline World", type:"planet", rarity:"epic",
+    bonuses:{minerals:80,research:55,energy:40}, special:"Light refracts into rare isotopes.", flavor:"The surface shines in impossible colors." },
+  { id:"pln_012", name:"Gaia World", type:"planet", rarity:"epic",
+    bonuses:{food:90,credits:60,research:40}, special:"Perfect habitability.", flavor:"As if the planet was made for us." },
+  // Legendary — 3+ resources, 100%+
+  { id:"pln_013", name:"Precursor Homeworld", type:"planet", rarity:"legendary",
+    bonuses:{research:180,minerals:120,energy:100,credits:60}, special:"Ancient ruins unlock hidden potential.", flavor:"They were here long before us. Where did they go?" },
+  { id:"pln_014", name:"Ring World Fragment", type:"planet", rarity:"legendary",
+    bonuses:{food:200,minerals:150,credits:120,research:80}, special:"Massive habitable surface area.", flavor:"A broken circle that still dwarfs most worlds." },
 ];
 
 const PLANET_VISUALS = {
@@ -1793,7 +1879,43 @@ const PIRATE_SHIPS = [
     stats:{ shields:3, armor:2, speed:6, sensorRange:2, energyDmg:3, energyRange:"short" } },
   { id:"pir_003", name:"Corsair", category:"ship", rarity:"uncommon",
     stats:{ shields:8, armor:10, speed:5, sensorRange:4, missileDmg:8, missileRange:"long", kineticDmg:5, kineticRange:"medium" } },
+  { id:"pir_004", name:"Buccaneer Cruiser", category:"ship", rarity:"rare",
+    stats:{ shields:18, armor:20, speed:4, sensorRange:5, kineticDmg:14, kineticRange:"medium", missileDmg:10, missileRange:"long" } },
+  { id:"pir_005", name:"Warlord Destroyer", category:"ship", rarity:"epic",
+    stats:{ shields:32, armor:38, speed:5, sensorRange:6, energyDmg:22, energyRange:"medium", kineticDmg:18, kineticRange:"long", pointDefense:5 } },
+  { id:"pir_006", name:"Dreadlord Prime", category:"ship", rarity:"legendary",
+    stats:{ shields:70, armor:90, speed:3, sensorRange:8, missileDmg:45, missileRange:"long", energyDmg:35, energyRange:"medium", kineticDmg:28, kineticRange:"short", pointDefense:10 } },
 ];
+
+// Pirate power tier 0..1 based on distance from home (origin).
+// Ramps over ~18000 world units — a long-term progression knob.
+const PIRATE_TIER_RANGE = 18000;
+function getPirateTier(x, y) {
+  return Math.max(0, Math.min(1, Math.hypot(x, y) / PIRATE_TIER_RANGE));
+}
+function rollPirateRarity(rng, tier) {
+  // Near home: almost all common. Far: epic/legendary become plausible.
+  const weights = {
+    common:    Math.max(0, 60 - 55 * tier),
+    uncommon:  Math.max(0, 35 - 10 * tier),
+    rare:      5  + 25 * tier,
+    epic:      0  + 20 * tier,
+    legendary: 0  + 20 * tier,
+  };
+  const total = weights.common + weights.uncommon + weights.rare + weights.epic + weights.legendary;
+  let r = rng() * total;
+  for (const [k, v] of Object.entries(weights)) {
+    if (r < v) return k;
+    r -= v;
+  }
+  return "common";
+}
+function rollPirateShip(rng, tier) {
+  const rarity = rollPirateRarity(rng, tier);
+  const pool = PIRATE_SHIPS.filter(s => s.rarity === rarity);
+  const fallback = pool.length ? pool : PIRATE_SHIPS;
+  return fallback[Math.floor(rng() * fallback.length)];
+}
 
 const CATEGORY_TEMPLATES = {
   building: BUILDING_TEMPLATES,
@@ -1918,39 +2040,56 @@ function rollRarityWithBonus(bonus) {
   return "common";
 }
 
+// Roll the rarity list for a star's planet slots.
+// Guaranteed slots are filled first, remaining slots roll via rollRarityWithBonus.
+function rollStarPlanetSlots(template, rand) {
+  rand = rand || Math.random;
+  const gen = template.planetGen || { count:[1,1], guaranteed:[], bonus:0 };
+  const [min, max] = gen.count;
+  const count = min + Math.floor(rand() * (max - min + 1));
+  const slots = (gen.guaranteed || []).slice(0, count);
+  while (slots.length < count) slots.push(rollRarityWithBonus(gen.bonus || 0));
+  return slots;
+}
+
 function rollStarCard(rng) {
   const rand = rng || Math.random;
   const rarity = rollRarity(rng);
   const pool = STAR_TEMPLATES.filter(t => t.rarity === rarity);
   const template = pool[Math.floor(rand() * pool.length)];
-  // Deep copy — assign a unique proper name, keep template name as `type`
-  return { ...template, stats: { ...template.stats }, type: template.name, name: drawStarName() };
+  // Pre-roll planet slots so the card can display them. Sort by rarity index desc (best first).
+  const slots = rollStarPlanetSlots(template, rand);
+  slots.sort((a,b) => RARITY_ORDER.indexOf(b) - RARITY_ORDER.indexOf(a));
+  return { ...template, planetSlots: slots, type: template.name, name: drawStarName() };
 }
 
-function rollPlanetCard(rarityBonus) {
-  const rarity = rollRarityWithBonus(rarityBonus || 0);
+const RARITY_ORDER = ["common","uncommon","rare","epic","legendary"];
+
+// Roll a planet of a specific rarity with its bonuses varied ±25%.
+function rollPlanetCardOfRarity(rarity) {
   const pool = PLANET_TEMPLATES.filter(t => t.rarity === rarity);
   const fallback = pool.length > 0 ? pool : PLANET_TEMPLATES;
   const template = fallback[Math.floor(Math.random() * fallback.length)];
-  // Roll planet stats within ±25% range, biased by rarity
-  const { stats: rolledStats, statRanges } = rollStats(template);
-  return { ...template, stats: rolledStats, statRanges };
+  const bias = RARITY_ROLL_BIAS[template.rarity] || 0.5;
+  const bonuses = {};
+  const bonusRanges = {};
+  for (const [key, val] of Object.entries(template.bonuses || {})) {
+    const min = Math.max(1, Math.round(val * (1 - STAT_ROLL_VARIANCE)));
+    const max = Math.max(min + 1, Math.round(val * (1 + STAT_ROLL_VARIANCE)));
+    bonuses[key] = min + Math.round((max - min) * biasedRandom(bias));
+    bonusRanges[key] = [min, max];
+  }
+  return { ...template, bonuses, bonusRanges };
 }
 
 const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X"];
-const STAR_RARITY_BONUS = { common:0, uncommon:1, rare:2, epic:3, legendary:5 };
 
 function generatePlanets(star) {
   if (star.planets) return; // already generated
-  const maxP = star.card.stats.planets_max || 1;
-  const bonus = STAR_RARITY_BONUS[star.card.rarity] || 0;
-  // Higher rarity stars produce more planets (biased toward max)
-  const minP = Math.min(1 + Math.floor(bonus / 2), maxP);
-  const count = minP + Math.floor(Math.random() * (maxP - minP + 1));
+  const slots = star.card.planetSlots || [];
   star.planets = [];
-  for (let i = 0; i < count; i++) {
-    const card = rollPlanetCard(bonus);
-    // Keep template name as `type` for visual lookup, name after parent star
+  for (let i = 0; i < slots.length; i++) {
+    const card = rollPlanetCardOfRarity(slots[i]);
     card.type = card.name;
     card.name = `${star.card.name} ${ROMAN[i] || (i + 1)}`;
     star.planets.push({
@@ -2060,15 +2199,18 @@ function generateChunk(cx, cy) {
   const centerY = (cy + 0.5) * CHUNK_SIZE;
   const density = fractalNoise(centerX * NOISE_SCALE, centerY * NOISE_SCALE);
 
-  // Pirate fleet spawning — 40% in star regions, 15% in void
-  const pirateChance = density >= DENSITY_THRESHOLD ? 0.10 : 0.03;
+  // Pirate fleet spawning — rate reduced to 1/5; fleet size & rarity scale with distance from home.
+  const pirateChance = density >= DENSITY_THRESHOLD ? 0.02 : 0.006;
   if (rng() < pirateChance) {
     const px = cx * CHUNK_SIZE + rng() * CHUNK_SIZE;
     const py = cy * CHUNK_SIZE + rng() * CHUNK_SIZE;
-    const shipCount = 1 + Math.floor(rng() * 3);
+    const tier = getPirateTier(px, py);
+    // 1-3 ships near home, up to 1-9 at max tier.
+    const maxShips = 3 + Math.floor(tier * 6);
+    const shipCount = 1 + Math.floor(rng() * maxShips);
     const pirateShips = [];
     for (let pi = 0; pi < shipCount; pi++) {
-      const tpl = PIRATE_SHIPS[Math.floor(rng() * PIRATE_SHIPS.length)];
+      const tpl = rollPirateShip(rng, tier);
       pirateShips.push({ ...tpl, stats: { ...tpl.stats } });
     }
     mapEntities.push({
@@ -2144,7 +2286,10 @@ function detectStarsInRange(wx, wy, sensorRange) {
 // Initialize galaxy — home star at origin + detect neighbors
 function generateGalaxy() {
   // Home star — always Yellow Main Sequence, placed at origin
-  const homeCard = { ...STAR_TEMPLATES[1], stats: { ...STAR_TEMPLATES[1].stats }, type: STAR_TEMPLATES[1].name, name: drawStarName() };
+  const homeTpl = STAR_TEMPLATES[1];
+  const homeSlots = rollStarPlanetSlots(homeTpl);
+  homeSlots.sort((a,b) => RARITY_ORDER.indexOf(b) - RARITY_ORDER.indexOf(a));
+  const homeCard = { ...homeTpl, planetSlots: homeSlots, type: homeTpl.name, name: drawStarName() };
 
   // Force-generate the home chunk and place home star at origin
   const homeCx = Math.floor(0 / CHUNK_SIZE);
@@ -3044,7 +3189,7 @@ function drawStar(ctx, star, time) {
   if (star.visibility === "unknown") return;
 
   const visual = isExplored ? (STAR_VISUALS[star.card.type] || DETECTED_VISUAL) : DETECTED_VISUAL;
-  const lum = isExplored ? (star.card.stats.luminosity || 3) : 2;
+  const lum = isExplored ? (STAR_RENDER_LUMINOSITY[star.card.rarity] || 3) : 2;
   const baseRadius = visual.baseSize * (1 + lum * 0.08);
 
   // Pulse animation
@@ -3445,8 +3590,41 @@ function buildAdmiralStatsHtml(card) {
   return html;
 }
 
+function buildStarStatsHtml(card) {
+  const slots = card.planetSlots || [];
+  if (slots.length === 0) {
+    return `<div class="card-stat" style="color:#6a7a9b;font-style:italic">No planets</div>`;
+  }
+  // Each slot rendered as a rarity-colored pip.
+  const pips = slots.map(r => {
+    const c = RARITY_COLORS[r] || "#6a7a9b";
+    return `<span title="${r}" style="display:inline-block;width:14px;height:14px;margin:2px;border-radius:50%;background:${c};box-shadow:0 0 6px ${c}99"></span>`;
+  }).join("");
+  return `<div class="card-stat" style="flex-direction:column;align-items:flex-start;width:100%">
+    <div style="color:#a0b0c8;font-size:10px;margin-bottom:3px">${slots.length} Planet${slots.length === 1 ? "" : "s"}</div>
+    <div style="display:flex;flex-wrap:wrap">${pips}</div>
+  </div>`;
+}
+
+function buildPlanetStatsHtml(card) {
+  const bonuses = card.bonuses || {};
+  const entries = Object.entries(bonuses);
+  if (entries.length === 0) {
+    return `<div class="card-stat" style="color:#6a7a9b;font-style:italic">No bonus</div>`;
+  }
+  return entries.map(([key, val]) => {
+    const icon = STAT_ICONS[key] || "◆";
+    const color = card.bonusRanges && card.bonusRanges[key]
+      ? getStatQualityColor(val, card.bonusRanges[key][0], card.bonusRanges[key][1])
+      : "#a4e4a4";
+    return `<div class="card-stat"><span class="card-stat-icon">${icon}</span><span class="card-stat-value" style="color:${color}">+${val}%</span></div>`;
+  }).join("");
+}
+
 function buildGenericStatsHtml(card) {
-  const statsHtml = Object.entries(card.stats)
+  if (card.planetSlots !== undefined) return buildStarStatsHtml(card);
+  if (card.bonuses !== undefined) return buildPlanetStatsHtml(card);
+  const statsHtml = Object.entries(card.stats || {})
     .map(([key, val]) => {
       const icon = STAT_ICONS[key] || "◆";
       const color = card.statRanges && card.statRanges[key]
@@ -3509,7 +3687,7 @@ function resizeSystemCanvas() {
 
 function drawSystemStar(ctx, cx, cy, star, time) {
   const visual = STAR_VISUALS[star.card.type] || DETECTED_VISUAL;
-  const lum = star.card.stats.luminosity || 3;
+  const lum = STAR_RENDER_LUMINOSITY[star.card.rarity] || 3;
   const scale = 3.5;
   const baseRadius = visual.baseSize * (1 + lum * 0.08) * scale;
   const pulse = 1 + Math.sin(time * 3) * 0.05;
@@ -4287,10 +4465,6 @@ const DRAW_BASE_COST = 10;
 let drawCostMultiplier = 1;
 const DRAW_COST_DECAY_HALF_LIFE = 60; // seconds to halve multiplier back toward 1
 
-// Colony upkeep
-const COLONY_UPKEEP_BASE = 25;
-const COLONY_UPKEEP_EXPONENT = 2.2;
-
 // Population system
 const POP_LEVELS = [
   { level: 1,  label: "100K", people: 100000,            foodMaint: 1 },
@@ -4315,10 +4489,6 @@ function getFoodMaintenance(pop) {
   return entry ? entry.foodMaint : 0;
 }
 
-function getGrowthThreshold(nextLevel) {
-  return Math.ceil(150 * Math.pow(2.5, nextLevel - 1));
-}
-
 function getPopGrowthCost(nextLevel) {
   return {
     credits: Math.ceil(200 * Math.pow(3.5, nextLevel - 1)),
@@ -4337,7 +4507,6 @@ function buyPopulation() {
   }
   deductCost(cost);
   col.population = Math.min(col.population + 1, col.maxPopulation);
-  col.growthProgress = 0;
   colonyDirty = true;
   refreshColonyScreen();
 }
@@ -4406,43 +4575,46 @@ function getDrawCost() {
   return Math.ceil(DRAW_BASE_COST * drawCostMultiplier);
 }
 
-function getColonyUpkeep() {
-  let total = 0;
-  for (let i = 0; i < colonies.length; i++) {
-    if (i === 0) continue; // first colony is free
-    total += COLONY_UPKEEP_BASE * Math.pow(i + 1, COLONY_UPKEEP_EXPONENT);
-  }
-  return Math.ceil(total);
-}
-
 function getTradeIncome(colony) {
   if (!colony.activeAction || colony.activeAction !== "trade") return 0;
   return colony.population * 50;
 }
 
-function getColonyOutput(colony) {
-  const out = {};
-  for (const id of RESOURCE_IDS) out[id] = 0;
+function getColonyOutput(colony, planet) {
+  const raw = {};
+  for (const id of RESOURCE_IDS) raw[id] = 0;
   // Only count buildings in unlocked slots (up to population)
   for (let i = 0; i < colony.population; i++) {
     const b = colony.buildings[i];
     if (b && b.stats) {
-      for (const id of RESOURCE_IDS) out[id] += (b.stats[id] || 0);
+      for (const id of RESOURCE_IDS) raw[id] += (b.stats[id] || 0);
     }
     if (b && b.upkeep) {
-      for (const id of RESOURCE_IDS) out[id] -= (b.upkeep[id] || 0);
+      for (const id of RESOURCE_IDS) raw[id] -= (b.upkeep[id] || 0);
     }
   }
   for (const l of colony.leaders) {
     if (l && l.stats) {
-      for (const id of RESOURCE_IDS) out[id] += (l.stats[id] || 0);
+      for (const id of RESOURCE_IDS) raw[id] += (l.stats[id] || 0);
     }
     if (l && l.upkeep) {
-      for (const id of RESOURCE_IDS) out[id] -= (l.upkeep[id] || 0);
+      for (const id of RESOURCE_IDS) raw[id] -= (l.upkeep[id] || 0);
     }
   }
-  // Food maintenance for population
-  out.food -= getFoodMaintenance(colony.population);
+  // Planet bonuses: multiplicative on top of building+leader totals (stacks on leader bonuses).
+  const bonuses = planet && planet.card && planet.card.bonuses ? planet.card.bonuses : null;
+  if (bonuses) {
+    for (const id of RESOURCE_IDS) {
+      if (bonuses[id]) raw[id] *= (1 + bonuses[id] / 100);
+    }
+  }
+  // Starvation: food production can't cover maintenance → all production (incl. food) at 1/5
+  const maintenance = getFoodMaintenance(colony.population);
+  const starving = (raw.food - maintenance) < 0;
+  const mult = starving ? 0.2 : 1;
+  const out = {};
+  for (const id of RESOURCE_IDS) out[id] = raw[id] * mult;
+  out.food -= maintenance;
   return out;
 }
 
@@ -4478,40 +4650,12 @@ function tickEconomy(dt) {
     for (const c of colonies) {
       const col = c.planet.colony;
       if (!col) continue;
-      const out = getColonyOutput(col);
+      const out = getColonyOutput(col, c.planet);
       for (const id of RESOURCE_IDS) resources[id] += (out[id] || 0);
       // Trade income
       resources.credits += getTradeIncome(col);
-      // Population growth / starvation
-      const foodRate = out.food; // net food including maintenance
-      if (foodRate >= 0 && col.population < col.maxPopulation) {
-        col.growthProgress += foodRate;
-        const threshold = getGrowthThreshold(col.population + 1);
-        if (col.growthProgress >= threshold) {
-          col.growthProgress = 0;
-          col.population = Math.min(col.population + 1, col.maxPopulation);
-          colonyDirty = true;
-        }
-        col.starvationTimer = 0;
-      } else if (foodRate < 0) {
-        col.growthProgress = 0;
-        col.starvationTimer += 1;
-        if (col.starvationTimer >= 30 && col.population > 1) {
-          col.population -= 1;
-          col.starvationTimer = 0;
-          // If a building is in a now-locked slot, return it to queue
-          for (let si = col.population; si < col.buildings.length; si++) {
-            if (col.buildings[si]) {
-              col.queue.push(col.buildings[si]);
-              col.buildings[si] = null;
-            }
-          }
-          colonyDirty = true;
-        }
-      }
+      // Population growth is buy-only; starvation only reduces production (see getColonyOutput)
     }
-    // Colony upkeep (credits drain)
-    resources.credits -= getColonyUpkeep();
 
     // Research spending — capped rate per game-second so research takes real time
     if (activeResearch && resources.research > 0) {
@@ -4548,11 +4692,10 @@ function updateResourceDisplay() {
   for (const c of colonies) {
     const col = c.planet.colony;
     if (!col) continue;
-    const out = getColonyOutput(col);
+    const out = getColonyOutput(col, c.planet);
     for (const id of RESOURCE_IDS) totalOut[id] += (out[id] || 0);
     totalOut.credits += getTradeIncome(col);
   }
-  totalOut.credits -= getColonyUpkeep();
   for (const id of RESOURCE_IDS) {
     const valEl = document.getElementById(`res-${id}`);
     const rateEl = document.getElementById(`rate-${id}`);
@@ -4564,6 +4707,9 @@ function updateResourceDisplay() {
       rateEl.style.color = rate < 0 ? "#e05050" : "";
     }
   }
+  // Research button: highlight when no research is active (idle or just-completed)
+  const researchBtn = document.getElementById("research-btn");
+  if (researchBtn) researchBtn.classList.toggle("idle", !activeResearch);
 }
 
 function canAfford(cost) {
@@ -4671,8 +4817,6 @@ function colonizePlanet(star, planetIdx) {
     queue: [],                            // face-up selected cards awaiting placement
     activeAction: null,                   // "trade"|"buildings"|"admirals"|"leaders"|"ships"
     genTimer: 0,                          // seconds toward next card
-    growthProgress: 0,                    // food accumulated toward next pop level
-    starvationTimer: 0,                   // seconds of sustained food deficit
   };
   colonies.push({ starId: star.id, planetIdx, planet });
   // Refresh the planet card to show "Manage Colony" instead of "Colonize"
@@ -4854,6 +4998,33 @@ function hideColonyScreen() {
   document.getElementById("system-planet-card").style.display = "";
 }
 
+// Update the progress fill + ETA on the active colony action button each frame.
+function updateActionButtonProgress(col) {
+  const btns = document.querySelectorAll(".colony-action-btn");
+  for (const btn of btns) {
+    const action = btn.dataset.action;
+    const fill = btn.querySelector(".action-progress");
+    const eta = btn.querySelector(".action-eta");
+    if (!fill || !eta) continue; // trade/terraform have no progress elements
+    if (col.activeAction === action && ACTION_TO_CATEGORY[action]) {
+      const deckSize = col.deck.length;
+      const genInterval = 10 * Math.pow(3, deckSize);
+      const pct = Math.min(100, (col.genTimer / genInterval) * 100);
+      fill.style.width = pct + "%";
+      const gameSecLeft = Math.max(0, genInterval - col.genTimer);
+      const realRate = BASE_GAME_SPEED * gameSpeed;
+      if (realRate > 0) {
+        eta.textContent = formatETA(gameSecLeft / realRate);
+      } else {
+        eta.textContent = "⏸";
+      }
+    } else {
+      fill.style.width = "0%";
+      eta.textContent = "";
+    }
+  }
+}
+
 function refreshDeckDisplay(col) {
   const deckEl = document.getElementById("colony-deck");
   if (!deckEl) return;
@@ -4877,26 +5048,22 @@ function refreshColonyScreen() {
   const planet = colonyViewStar.planets[colonyViewPlanetIdx];
 
   document.getElementById("colony-name").textContent = planet.card.name;
-  // Population display with growth progress + buy button
+  // Population display + buy-to-grow button (no passive growth)
   const popLabel = getPopLabel(col.population);
   let popHtml = `👤 ${popLabel} (${col.population}/${col.maxPopulation})`;
   if (col.population < col.maxPopulation) {
-    const threshold = getGrowthThreshold(col.population + 1);
-    const pct = Math.floor((col.growthProgress / threshold) * 100);
-    popHtml += ` — Growth: ${pct}%`;
     const growCost = getPopGrowthCost(col.population + 1);
     const affordable = canAfford(growCost);
     popHtml += ` <button id="buy-pop-btn" onclick="buyPopulation()" style="margin-left:8px;padding:2px 8px;font-size:10px;border-radius:4px;cursor:pointer;border:1px solid ${affordable ? '#4a9b5a' : '#3a3a5a'};background:${affordable ? 'rgba(74,155,90,0.2)' : 'rgba(30,30,50,0.5)'};color:${affordable ? '#4a9b5a' : '#3a3a5a'}">+ Grow (💰${growCost.credits} 🌾${growCost.food})</button>`;
   }
-  const out2 = getColonyOutput(col);
+  const out2 = getColonyOutput(col, planet);
   if (out2.food < 0) {
-    const starvSecs = 30 - col.starvationTimer;
-    popHtml += ` <span style="color:#e05050">⚠️ Starving (${starvSecs}s)</span>`;
+    popHtml += ` <span style="color:#e05050">⚠️ Starving — production at 1/5</span>`;
   }
   document.getElementById("colony-pop").innerHTML = popHtml;
 
   // Colony resource output
-  const out = getColonyOutput(col);
+  const out = getColonyOutput(col, planet);
   updateColonyResourceDisplay(out);
 
   // ── Building slots ──
@@ -5466,8 +5633,10 @@ function gameLoop(timestamp) {
         refreshDeckDisplay(col);
       }
       // Update colony resource header without full refresh
-      const out = getColonyOutput(col);
+      const viewedPlanet = colonyViewStar.planets[colonyViewPlanetIdx];
+      const out = getColonyOutput(col, viewedPlanet);
       updateColonyResourceDisplay(out);
+      updateActionButtonProgress(col);
     }
     if (colonyDirty) {
       colonyDirty = false;

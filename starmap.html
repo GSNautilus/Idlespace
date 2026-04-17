@@ -44,12 +44,18 @@ body {
 .resource-value { font-size: 12px; font-weight: 600; color: #fff; }
 .resource-rate { font-size: 9px; color: #6a7a9b; }
 .resource-label { display: none; }
+#right-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 #speed-controls {
   display: flex;
   gap: 3px;
   align-items: center;
 }
-#speed-controls button {
+#speed-controls button,
+#save-controls button {
   background: #1a2040;
   border: 1px solid #2a3460;
   color: #8090b0;
@@ -59,12 +65,63 @@ body {
   font-size: 10px;
   transition: all 0.15s;
 }
-#speed-controls button:hover { background: #252f55; color: #c0d0f0; }
+#speed-controls button:hover,
+#save-controls button:hover { background: #252f55; color: #c0d0f0; }
 #speed-controls button.active {
   background: #2a4080;
   border-color: #4060c0;
   color: #fff;
 }
+#save-controls {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  padding-left: 10px;
+  border-left: 1px solid #2a3460;
+}
+#save-menu-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 200;
+  display: none;
+  align-items: center; justify-content: center;
+}
+#save-menu-backdrop.visible { display: flex; }
+#save-menu {
+  background: #08090f;
+  border: 1px solid #2a3460;
+  border-radius: 8px;
+  padding: 18px 20px;
+  min-width: 340px;
+  max-width: 420px;
+  color: #c0d0e0;
+  font-size: 12px;
+}
+#save-menu h2 { margin: 0 0 12px 0; color: #c0d0e0; font-size: 15px; font-weight: 600; }
+#save-menu .menu-btn {
+  display: block; width: 100%; text-align: left;
+  background: #1a2040; border: 1px solid #2a3460;
+  color: #c0d0e0; padding: 8px 12px; margin-bottom: 6px;
+  border-radius: 4px; cursor: pointer; font-size: 12px;
+  transition: all 0.15s;
+}
+#save-menu .menu-btn:hover { background: #252f55; border-color: #4060c0; }
+#save-menu .menu-btn.secondary { background: transparent; color: #6a7a9b; margin-top: 8px; }
+#save-menu .menu-btn.danger:hover { border-color: #c04040; color: #ffa0a0; }
+#save-menu .save-meta {
+  background: #0d1128;
+  border: 1px solid #1a2040;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 6px 0 10px 0;
+  font-size: 11px;
+  color: #8090b0;
+  line-height: 1.5;
+}
+#save-menu .save-meta .meta-title { color: #c0d0e0; font-weight: 600; margin-bottom: 2px; }
+#save-menu .save-status { font-size: 11px; color: #8090b0; margin-top: 8px; min-height: 14px; }
+#save-menu .save-status.err { color: #ffa0a0; }
+#save-menu .save-status.ok { color: #a4e4a4; }
 
 /* ── Canvas Container ── */
 #map-container {
@@ -1366,13 +1423,24 @@ body {
     }
   })();
   </script>
-  <div id="speed-controls">
-    <button data-speed="0">⏸</button>
-    <button data-speed="1" class="active">1×</button>
-    <button data-speed="50">50×</button>
-    <button data-speed="150">150×</button>
+  <div id="right-controls">
+    <div id="speed-controls">
+      <button data-speed="0">⏸</button>
+      <button data-speed="1" class="active">1×</button>
+      <button data-speed="50">50×</button>
+      <button data-speed="150">150×</button>
+    </div>
+    <div id="save-controls">
+      <button id="save-btn" onclick="showSaveMenu()" title="Save / Load">⚙</button>
+    </div>
   </div>
 </div>
+
+<!-- Save / Load Menu -->
+<div id="save-menu-backdrop">
+  <div id="save-menu"></div>
+</div>
+<input type="file" id="save-file-input" accept=".json,application/json" style="display:none">
 
 <!-- Map Container -->
 <div id="map-container">
@@ -5782,6 +5850,402 @@ function showResearchReveal(template, category) {
 }
 
 // ═══════════════════════════════════════════
+//  SAVE / LOAD
+// ═══════════════════════════════════════════
+const SAVE_VERSION = 1;
+const AUTOSAVE_KEY = "idlespace_autosave_v1";
+const AUTOSAVE_INTERVAL_MS = 60000; // every 60 real seconds
+let lastSaveStatus = "";
+
+function serializeGame() {
+  const entityIdx = new Map();
+  mapEntities.forEach((e, i) => entityIdx.set(e, i));
+
+  return {
+    version: SAVE_VERSION,
+    savedAt: Date.now(),
+    gameTime: animTime,
+
+    stars: [...stars.values()].map(s => ({
+      id: s.id, x: s.x, y: s.y, visibility: s.visibility,
+      card: s.card,
+      planets: s.planets || null,
+    })),
+    generatedChunks: [...generatedChunks.keys()],
+    nextStarId,
+    nextStarNameIdx: _nextStarNameIdx,
+    shuffledStarNames: [..._shuffledStarNames],
+
+    mapEntities: mapEntities.map(e => ({
+      type: e.type, owner: e.owner, stance: e.stance,
+      x: e.x, y: e.y, destX: e.destX, destY: e.destY,
+      speed: e.speed, sensorRange: e.sensorRange, stealth: e.stealth,
+      label: e.label, inCombat: e.inCombat,
+      card: e.card || null,
+      ships: e.ships || null,
+      admiral: e.admiral || null,
+    })),
+    selectedEntityIdx,
+
+    activeCombats: activeCombats.map(c => serializeCombat(c, entityIdx)),
+    nextCombatId,
+
+    resources: { ...resources },
+    gameSpeed,
+    drawCostMultiplier,
+
+    researchCounts: { ...researchCounts },
+    researchedCards: [...researchedCards],
+    activeResearch: activeResearch ? { ...activeResearch } : null,
+
+    camera: { x: camera.x, y: camera.y, zoom: camera.zoom },
+  };
+}
+
+function serializeCombat(c, entityIdx) {
+  return {
+    id: c.id, phase: c.phase,
+    sideA: serializeSide(c.sideA, entityIdx),
+    sideB: serializeSide(c.sideB, entityIdx),
+    distance: c.distance,
+    initialDistance: c.initialDistance,
+    shotTimer: c.shotTimer,
+    turnIndex: c.turnIndex,
+    roundNumber: c.roundNumber,
+    log: c.log || [],
+    gameTime: c.gameTime,
+  };
+}
+
+function serializeSide(side, entityIdx) {
+  const eIdx = entityIdx.get(side.entity);
+  const ent = side.entity;
+  const ships = side.ships.map(s => {
+    let shipIdx = -1;
+    if (ent.type === "ship") shipIdx = 0;
+    else if (ent.type === "fleet") shipIdx = ent.ships.indexOf(s.card);
+    return {
+      shipIdx,
+      currentShields: s.currentShields,
+      currentArmor: s.currentArmor,
+      alive: s.alive,
+    };
+  });
+  return { entityIdx: eIdx, ships };
+}
+
+function clearGameState() {
+  // Close any open overlays so we don't hold stale refs
+  if (typeof hideSystemOverlay === "function") hideSystemOverlay();
+  if (typeof hideColonyScreen === "function") hideColonyScreen();
+  if (typeof hideCombatOverlay === "function") hideCombatOverlay();
+  if (typeof hideColoniesList === "function") hideColoniesList();
+  if (typeof hideResearchPanel === "function") hideResearchPanel();
+  if (typeof hideSelectPanel === "function") hideSelectPanel();
+
+  stars.clear();
+  generatedChunks.clear();
+  nextStarId = 1;
+  _nextStarNameIdx = 0;
+  mapEntities.length = 0;
+  selectedEntityIdx = null;
+  hoveredStarId = null;
+  selectedStarId = null;
+  activeCombats.length = 0;
+  nextCombatId = 1;
+  viewedCombat = null;
+  colonies.length = 0;
+  combatParticles.length = 0;
+  for (const k of Object.keys(resources)) delete resources[k];
+  drawCostMultiplier = 1;
+  for (const k of Object.keys(researchCounts)) researchCounts[k] = 0;
+  researchedCards.clear();
+  activeResearch = null;
+}
+
+function deserializeGame(data) {
+  if (!data || typeof data !== "object") throw new Error("Save data is not an object.");
+  if (data.version !== SAVE_VERSION) {
+    throw new Error(`Incompatible save version ${data.version} (expected ${SAVE_VERSION}).`);
+  }
+  // Minimal shape check before clobbering live state
+  if (!Array.isArray(data.stars) || !Array.isArray(data.mapEntities)) {
+    throw new Error("Save file is missing required fields.");
+  }
+
+  clearGameState();
+
+  for (const s of data.stars) {
+    const star = { id: s.id, x: s.x, y: s.y, visibility: s.visibility, card: s.card };
+    if (s.planets) star.planets = s.planets;
+    stars.set(s.id, star);
+  }
+  nextStarId = data.nextStarId || 1;
+  _nextStarNameIdx = data.nextStarNameIdx || 0;
+  if (Array.isArray(data.shuffledStarNames) && data.shuffledStarNames.length > 0) {
+    _shuffledStarNames.length = 0;
+    for (const n of data.shuffledStarNames) _shuffledStarNames.push(n);
+  }
+
+  for (const key of (data.generatedChunks || [])) generatedChunks.set(key, true);
+
+  for (const e of data.mapEntities) {
+    const ent = {
+      type: e.type, owner: e.owner, stance: e.stance,
+      x: e.x, y: e.y, destX: e.destX, destY: e.destY,
+      speed: e.speed, sensorRange: e.sensorRange, stealth: e.stealth,
+      label: e.label, inCombat: e.inCombat,
+    };
+    if (e.card) ent.card = e.card;
+    if (e.ships) ent.ships = e.ships;
+    if (e.admiral) ent.admiral = e.admiral;
+    mapEntities.push(ent);
+  }
+  selectedEntityIdx = data.selectedEntityIdx ?? null;
+
+  for (const c of (data.activeCombats || [])) {
+    activeCombats.push(deserializeCombat(c));
+  }
+  nextCombatId = data.nextCombatId || 1;
+
+  for (const k of Object.keys(data.resources || {})) resources[k] = data.resources[k];
+  // Fill in any missing resource defs with 0 (forward-compat)
+  for (const r of RESOURCE_DEFS) if (resources[r.id] == null) resources[r.id] = 0;
+
+  gameSpeed = data.gameSpeed != null ? data.gameSpeed : 1;
+  drawCostMultiplier = data.drawCostMultiplier != null ? data.drawCostMultiplier : 1;
+
+  for (const k of Object.keys(data.researchCounts || {})) researchCounts[k] = data.researchCounts[k];
+  for (const id of (data.researchedCards || [])) researchedCards.add(id);
+  activeResearch = data.activeResearch || null;
+
+  if (data.camera) {
+    camera.x = data.camera.x;
+    camera.y = data.camera.y;
+    camera.zoom = data.camera.zoom;
+  }
+
+  // Rebuild colonies[] from star.planets
+  for (const star of stars.values()) {
+    if (!star.planets) continue;
+    star.planets.forEach((p, i) => {
+      if (p.colony) colonies.push({ starId: star.id, planetIdx: i, planet: p });
+    });
+  }
+
+  updateSpeedControlActive();
+  updateResourceDisplay();
+}
+
+function deserializeCombat(c) {
+  const sideA = deserializeSide(c.sideA);
+  const sideB = deserializeSide(c.sideB);
+  const combat = {
+    id: c.id, phase: c.phase,
+    sideA, sideB,
+    distance: c.distance,
+    initialDistance: c.initialDistance,
+    shotTimer: c.shotTimer,
+    turnOrder: [],
+    turnIndex: c.turnIndex || 0,
+    roundNumber: c.roundNumber || 0,
+    log: c.log || [],
+    gameTime: c.gameTime || 0,
+    _screenMidX: 0, _screenMidY: 0, _screenRadius: 0,
+  };
+  combat.turnOrder = buildTurnOrder(sideA, sideB);
+  if (combat.turnOrder.length === 0) combat.turnIndex = 0;
+  else if (combat.turnIndex >= combat.turnOrder.length) combat.turnIndex = 0;
+  return combat;
+}
+
+function deserializeSide(s) {
+  const entity = mapEntities[s.entityIdx];
+  if (!entity) throw new Error("Combat references missing entity.");
+  const ships = [];
+  for (const ss of s.ships) {
+    const card = entity.type === "ship" ? entity.card : entity.ships[ss.shipIdx];
+    if (!card) continue; // ship was already removed at save time — skip stale state
+    ships.push({
+      card,
+      currentShields: ss.currentShields,
+      currentArmor: ss.currentArmor,
+      alive: ss.alive,
+    });
+  }
+  return { entity, ships };
+}
+
+function updateSpeedControlActive() {
+  document.querySelectorAll("#speed-controls button").forEach(b => {
+    b.classList.toggle("active", parseFloat(b.dataset.speed) === gameSpeed);
+  });
+}
+
+// ── File export / import ──
+function exportSaveFile() {
+  try {
+    const data = serializeGame();
+    const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `idlespace-${ts}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setSaveStatus(`Exported idlespace-${ts}.json`, "ok");
+  } catch (e) {
+    console.error(e);
+    setSaveStatus(`Export failed: ${e.message}`, "err");
+  }
+}
+
+function readSaveFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try { resolve(JSON.parse(reader.result)); }
+      catch (e) { reject(new Error("Save file is not valid JSON.")); }
+    };
+    reader.onerror = () => reject(new Error("Could not read file."));
+    reader.readAsText(file);
+  });
+}
+
+// ── Autosave ──
+function doAutosave() {
+  try {
+    const data = serializeGame();
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+    return true;
+  } catch (e) {
+    console.warn("Autosave failed:", e);
+    return false;
+  }
+}
+
+function loadAutosaveData() {
+  const raw = localStorage.getItem(AUTOSAVE_KEY);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch (e) { return null; }
+}
+
+function deleteAutosave() {
+  localStorage.removeItem(AUTOSAVE_KEY);
+}
+
+function getSaveSummary(data) {
+  let colonyCount = 0;
+  for (const s of (data.stars || [])) {
+    if (!s.planets) continue;
+    for (const p of s.planets) if (p.colony) colonyCount++;
+  }
+  const fleetCount = (data.mapEntities || []).filter(e => e.owner === "player").length;
+  return {
+    savedAt: new Date(data.savedAt).toLocaleString(),
+    colonyCount,
+    fleetCount,
+    starsKnown: (data.stars || []).length,
+    credits: Math.floor((data.resources && data.resources.credits) || 0),
+  };
+}
+
+// ── Save menu UI ──
+function showSaveMenu() {
+  // Pause the game while the menu is open so the player can read metadata
+  document.getElementById("save-menu-backdrop").classList.add("visible");
+  renderSaveMenu();
+}
+
+function hideSaveMenu() {
+  document.getElementById("save-menu-backdrop").classList.remove("visible");
+  lastSaveStatus = "";
+}
+
+function setSaveStatus(msg, cls) {
+  lastSaveStatus = msg;
+  const el = document.getElementById("save-status");
+  if (el) {
+    el.textContent = msg;
+    el.className = "save-status" + (cls ? " " + cls : "");
+  }
+}
+
+function renderSaveMenu() {
+  const menu = document.getElementById("save-menu");
+  const autosave = loadAutosaveData();
+  let autosaveBlock = "";
+  if (autosave) {
+    try {
+      const s = getSaveSummary(autosave);
+      autosaveBlock = `
+        <div class="save-meta">
+          <div class="meta-title">Autosave</div>
+          <div>${s.savedAt}</div>
+          <div>${s.colonyCount} colonies · ${s.fleetCount} player fleets · ${s.starsKnown} stars known</div>
+        </div>
+        <button class="menu-btn" onclick="confirmLoadAutosave()">↺ Load autosave</button>
+        <button class="menu-btn danger" onclick="confirmDeleteAutosave()">🗑 Delete autosave</button>
+      `;
+    } catch (e) {
+      autosaveBlock = `<div class="save-meta">Autosave exists but could not be read.</div>`;
+    }
+  } else {
+    autosaveBlock = `<div class="save-meta">No autosave yet. One will be written every ${AUTOSAVE_INTERVAL_MS/1000}s and on page close.</div>`;
+  }
+
+  menu.innerHTML = `
+    <h2>💾 Save &amp; Load</h2>
+    <button class="menu-btn" onclick="exportSaveFile()">⬇ Export save to file…</button>
+    <button class="menu-btn" onclick="document.getElementById('save-file-input').click()">⬆ Import save from file…</button>
+    ${autosaveBlock}
+    <div id="save-status" class="save-status${lastSaveStatus ? "" : ""}">${lastSaveStatus || ""}</div>
+    <button class="menu-btn secondary" onclick="hideSaveMenu()">Close</button>
+  `;
+}
+
+function confirmLoadAutosave() {
+  const data = loadAutosaveData();
+  if (!data) { setSaveStatus("No autosave available.", "err"); return; }
+  confirmLoadSave(data, "autosave");
+}
+
+function confirmDeleteAutosave() {
+  if (!confirm("Delete the autosave? The current game stays running; this only clears the saved slot.")) return;
+  deleteAutosave();
+  setSaveStatus("Autosave deleted.", "ok");
+  renderSaveMenu();
+}
+
+function confirmLoadSave(data, sourceLabel) {
+  let summary;
+  try { summary = getSaveSummary(data); }
+  catch (e) { setSaveStatus("Save metadata unreadable.", "err"); return; }
+  const msg =
+    `Load this save?\n\n` +
+    `Saved: ${summary.savedAt}\n` +
+    `${summary.colonyCount} colonies · ${summary.fleetCount} player fleets\n` +
+    `${summary.starsKnown} stars known · ${summary.credits.toLocaleString()} credits\n\n` +
+    `Your current game will be replaced.`;
+  if (!confirm(msg)) return;
+  try {
+    const prevSpeed = gameSpeed;
+    gameSpeed = 0; // pause during load
+    deserializeGame(data);
+    gameSpeed = 0; // stay paused after load — user can resume explicitly
+    updateSpeedControlActive();
+    setSaveStatus(`Loaded ${sourceLabel || "save"}. Game paused.`, "ok");
+    hideSaveMenu();
+  } catch (e) {
+    console.error(e);
+    setSaveStatus(`Load failed: ${e.message}`, "err");
+  }
+}
+
+// ═══════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════
 initResearch();
@@ -5826,6 +6290,56 @@ starterFleets.forEach((f, i) => {
 camera.x = homeStar.x;
 camera.y = homeStar.y;
 updateResourceDisplay();
+
+// ── Save / Load wiring ──
+document.getElementById("save-file-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = ""; // allow re-selecting the same file later
+  if (!file) return;
+  try {
+    const data = await readSaveFile(file);
+    confirmLoadSave(data, "file");
+  } catch (err) {
+    setSaveStatus(err.message, "err");
+  }
+});
+
+// Clicking outside the save menu closes it (but not clicks on the menu itself)
+document.getElementById("save-menu-backdrop").addEventListener("click", (e) => {
+  if (e.target.id === "save-menu-backdrop") hideSaveMenu();
+});
+
+// Periodic autosave + save on page close
+setInterval(doAutosave, AUTOSAVE_INTERVAL_MS);
+window.addEventListener("beforeunload", doAutosave);
+
+// Offer to resume autosave on startup
+(function offerAutosaveResume() {
+  const data = loadAutosaveData();
+  if (!data) return;
+  // Defer slightly so the canvas has painted before the confirm dialog blocks
+  setTimeout(() => {
+    let summary;
+    try { summary = getSaveSummary(data); } catch (e) { return; }
+    const msg =
+      `Resume previous game?\n\n` +
+      `Autosaved: ${summary.savedAt}\n` +
+      `${summary.colonyCount} colonies · ${summary.fleetCount} player fleets\n` +
+      `${summary.starsKnown} stars known · ${summary.credits.toLocaleString()} credits\n\n` +
+      `Cancel to start a fresh game (autosave is kept either way).`;
+    if (confirm(msg)) {
+      try {
+        deserializeGame(data);
+        gameSpeed = 0;
+        updateSpeedControlActive();
+      } catch (e) {
+        console.error("Failed to resume autosave:", e);
+        alert("Could not load autosave: " + e.message);
+      }
+    }
+  }, 50);
+})();
+
 requestAnimationFrame(gameLoop);
 </script>
 </body>

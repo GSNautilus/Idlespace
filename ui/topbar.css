@@ -1,0 +1,163 @@
+/* TopBar specific styles */
+
+.tb-root {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  height: 52px;
+  flex-shrink: 0;
+  /* metal gives gradient + border + shadow */
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  border-bottom-color: var(--metal-darker);
+  min-width: 0;
+}
+
+.tb-left,
+.tb-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Logo ────────────────────────────────────────── */
+.tb-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 10px;
+  margin-right: 4px;
+}
+.tb-logo-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 6px rgba(74,122,192,.35));
+}
+.tb-logo-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--fg-primary);
+  letter-spacing: -0.2px;
+}
+.tb-logo-accent {
+  color: var(--rarity-rare);
+}
+
+/* ── Nav buttons ─────────────────────────────────── */
+.tb-nav {
+  display: flex;
+  gap: 4px;
+  padding-left: 10px;
+  border-left: 1px solid var(--metal-edge);
+}
+.tb-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+/* Override .ico.sm (11px) for nav context — these are primary top-level buttons */
+.tb-nav-btn .ico,
+.tb-nav-btn .ico.sm {
+  width: 16px;
+  height: 16px;
+  opacity: .9;
+}
+
+/* ── Resource rack ───────────────────────────────── */
+.tb-res-rack {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 5px 6px;
+  border-radius: 4px;
+  background:
+    linear-gradient(145deg, #07080c 0%, #0a0b10 100%);
+  border: 1px solid var(--metal-darker);
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,.55),
+    inset 0 -1px 0 rgba(255,255,255,.03);
+  min-height: 36px;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.tb-res {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 0 9px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.tb-res .ico {
+  align-self: center;
+  filter: drop-shadow(0 0 3px currentColor);
+  opacity: .95;
+}
+.tb-res-val {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg-strong);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+  text-align: right;
+}
+.tb-res-rate {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--fg-dim);
+  letter-spacing: 0.2px;
+  text-transform: lowercase;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tb-res-sep {
+  align-self: stretch;
+  width: 1px;
+  margin: 6px 0;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--metal-edge) 30%,
+    var(--metal-edge) 70%,
+    transparent);
+}
+
+/* ── Speed controls ──────────────────────────────── */
+.tb-speed {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background:
+    linear-gradient(145deg, #07080c 0%, #0a0b10 100%);
+  border: 1px solid var(--metal-darker);
+  border-radius: 4px;
+  box-shadow: inset 0 2px 3px rgba(0,0,0,.5);
+}
+.tb-speed-btn {
+  min-width: 36px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+}
+.tb-settings {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

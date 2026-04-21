@@ -1,0 +1,238 @@
+/* ══════════════════════════════════════════════════════════
+   IdleSpace Design Tokens
+   Deep space. Blue-black. Cool UI chrome.
+   Rarity tiering drives meaning.
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Surfaces (deep → shallow) ─────────────────────── */
+  --bg-void:        #050508;  /* body, starmap background */
+  --bg-header:      #08090f;  /* top bar, card builder header */
+  --bg-panel:       #06080c;  /* sidebars, editor panels */
+  --bg-surface:     #0a0c14;  /* list items, action buttons rest */
+  --bg-surface-2:   #0c0e18;  /* inputs, resource badges */
+  --bg-surface-3:   #111628;  /* hover states on surface */
+  --bg-card:        #141a30;  /* card body inside rarity border */
+  --bg-card-back:   #0c0e18;  /* deck card back, mystery card */
+  --bg-chip:        #1a2040;  /* button default, leader slot fill */
+  --bg-chip-hover:  #252f55;  /* speed control hover */
+
+  /* ── Borders / hairlines ───────────────────────────── */
+  --border-hairline:     #111828;  /* section dividers */
+  --border-subtle:       #151a2a;  /* list item border */
+  --border-line:         #151c30;  /* input border */
+  --border-line-2:       #1a2040;  /* research list item */
+  --border-frame:        #1e2744;  /* overlay frames, card frames */
+  --border-chip:         #2a3460;  /* chip border, stat key default */
+  --border-accent:       #4060c0;  /* focus, active button */
+  --border-dashed:       #1e2744;  /* empty slot placeholder */
+
+  /* ── Foreground text ───────────────────────────────── */
+  --fg-strong:      #ffffff;  /* card name, stat values */
+  --fg-primary:     #c8d0e0;  /* body text, active tab */
+  --fg-secondary:   #b0c0e0;  /* combat side labels, special text */
+  --fg-muted:       #8090b0;  /* subheads, catalog items */
+  --fg-dim:         #6a7a9b;  /* secondary labels, subtler text */
+  --fg-faint:       #4a5a7b;  /* section heads, flavor text */
+  --fg-ghost:       #384868;  /* uppercase labels, count text */
+  --fg-whisper:     #2a3460;  /* empty-state, zero values */
+
+  /* ── Rarity (the core semantic system) ─────────────── */
+  --rarity-common:     #6a7a9b;  /* steel grey-blue */
+  --rarity-uncommon:   #4a9b5a;  /* muted emerald */
+  --rarity-rare:       #4a7ac0;  /* cobalt — the IdleSpace blue */
+  --rarity-epic:       #8a4ac0;  /* royal violet */
+  --rarity-legendary:  #c0a020;  /* antique gold */
+
+  /* Deeper rarity (for catalog dots at small size) */
+  --rarity-common-dot:  #506888;
+
+  /* ── Resource palette (emoji tinting, UI accents) ── */
+  --res-credits:   #d4af37;  /* gold */
+  --res-energy:    #e0a040;  /* amber */
+  --res-minerals:  #b0845a;  /* ochre */
+  --res-research:  #8ac0ff;  /* pale blue */
+  --res-food:      #6ac46a;  /* sage green */
+
+  /* ── Combat / weapon typing ────────────────────────── */
+  --wpn-energy:       #4a7ac0;  /* shield icon, energy dmg */
+  --wpn-kinetic:      #c08040;  /* armor icon, kinetic dmg */
+  --wpn-missile:      #e05050;  /* missile, combat alerts */
+  --range-short:      #e0a040;
+  --range-medium:     #a0c0e0;
+  --range-long:       #60d060;
+
+  /* ── Stance ─────────────────────────────────────── */
+  --stance-aggressive: #e05050;
+  --stance-evasive:    #50a0e0;
+
+  /* ── Semantic ─────────────────────────────────────── */
+  --success:     #4aa06a;
+  --success-fg:  #a4e4a4;  /* idle-pulse glow, research done */
+  --danger:      #c04040;  /* deck count badge, remove button */
+  --danger-fg:   #ffa0a0;
+  --warning:     #c0a020;
+  --info:        #4a7ac0;
+
+  /* ── Gradients — used for primary CTAs ─────────────── */
+  --grad-primary:       linear-gradient(135deg, #2a4080, #3a5ab0);
+  --grad-primary-hover: linear-gradient(135deg, #3050a0, #4a6ac0);
+  --grad-subtle:        linear-gradient(135deg, #1a2540, #243060);
+  --grad-subtle-hover:  linear-gradient(135deg, #243060, #2e4080);
+  --grad-success:       linear-gradient(135deg, #2a6040, #3a8060);
+  --grad-success-hover: linear-gradient(135deg, #3a7050, #4a9070);
+  --grad-danger:        linear-gradient(135deg, #602020, #803030);
+  --grad-danger-hover:  linear-gradient(135deg, #803030, #a04040);
+
+  /* ── Overlays ─────────────────────────────────────── */
+  --overlay-backdrop:   rgba(0,0,0,0.5);
+  --overlay-backdrop-2: rgba(0,0,0,0.7);
+  --overlay-panel:      rgba(5,5,8,0.95);
+  --overlay-panel-2:    rgba(5,5,8,0.97);
+  --overlay-tooltip:    rgba(8,9,15,0.92);
+  --overlay-dim-panel:  rgba(5,5,8,0.75);
+
+  /* ── Typography ───────────────────────────────────── */
+  --font-ui:    'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono:  'Consolas', 'Courier New', monospace;
+
+  --fs-10: 10px;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-20: 20px;
+
+  --fw-regular:  400;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+
+  --ls-tight:   normal;
+  --ls-caps:    0.5px;
+  --ls-caps-2:  1px;
+
+  /* ── Radii ─────────────────────────────────────────── */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
+  --radius-pill: 999px;
+
+  /* ── Spacing ─────────────────────────────────────── */
+  --sp-1:  2px;
+  --sp-2:  4px;
+  --sp-3:  6px;
+  --sp-4:  8px;
+  --sp-5:  10px;
+  --sp-6:  12px;
+  --sp-7:  14px;
+  --sp-8:  16px;
+  --sp-9:  20px;
+
+  /* ── Shadows ─────────────────────────────────────── */
+  --shadow-card:   0 2px 6px rgba(0,0,0,0.4);
+  --shadow-float:  0 8px 24px rgba(0,0,0,0.7);
+  --shadow-lift:   0 8px 24px rgba(74,122,192,0.3);
+
+  /* ── Motion ───────────────────────────────────────── */
+  --motion-fast:   0.1s;
+  --motion-base:   0.15s;
+  --motion-slow:   0.3s;
+  --ease-default:  ease;
+  --ease-linear:   linear;
+}
+
+/* ══════════════════════════════════════════════════════════
+   Semantic type styles — apply these via class
+   ══════════════════════════════════════════════════════════ */
+
+.ds-h1 {
+  font-family: var(--font-ui);
+  font-size: var(--fs-18);
+  font-weight: var(--fw-bold);
+  color: var(--fg-primary);
+  line-height: 1.2;
+}
+
+.ds-h2 {
+  font-family: var(--font-ui);
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
+  color: var(--fg-muted);
+}
+
+.ds-label-caps {
+  font-family: var(--font-ui);
+  font-size: var(--fs-10);
+  font-weight: var(--fw-semibold);
+  color: var(--fg-faint);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-caps-2);
+}
+
+.ds-label-caps-sm {
+  font-family: var(--font-ui);
+  font-size: var(--fs-13);
+  font-weight: var(--fw-semibold);
+  color: var(--fg-faint);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-caps);
+}
+
+.ds-body {
+  font-family: var(--font-ui);
+  font-size: var(--fs-13);
+  color: var(--fg-primary);
+  line-height: 1.4;
+}
+
+.ds-body-sm {
+  font-family: var(--font-ui);
+  font-size: var(--fs-12);
+  color: var(--fg-muted);
+}
+
+.ds-caption {
+  font-family: var(--font-ui);
+  font-size: var(--fs-11);
+  color: var(--fg-dim);
+}
+
+.ds-micro {
+  font-family: var(--font-ui);
+  font-size: var(--fs-10);
+  color: var(--fg-ghost);
+}
+
+.ds-flavor {
+  font-family: var(--font-ui);
+  font-size: var(--fs-10);
+  font-style: italic;
+  color: var(--fg-faint);
+  line-height: 1.3;
+}
+
+.ds-card-name {
+  font-family: var(--font-ui);
+  font-size: var(--fs-12);
+  font-weight: var(--fw-bold);
+  color: var(--fg-strong);
+  line-height: 1.2;
+}
+
+.ds-stat-value {
+  font-family: var(--font-ui);
+  font-size: var(--fs-13);
+  font-weight: var(--fw-semibold);
+  color: var(--fg-strong);
+}
+
+.ds-mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  color: var(--fg-muted);
+}

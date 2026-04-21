@@ -1,0 +1,162 @@
+<!-- Shared SVG sprite for starmap UI.
+     Injected inline into the page so <use href="#i-NAME"/> works.
+     Style: 24x24 viewBox, stroke-based, currentColor. -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <defs>
+    <!-- ─── Resources ───────────────────────────────────── -->
+    <!-- Credits: hex coin with orbit ring -->
+    <symbol id="i-credits" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="7"/>
+      <path d="M9 12 L15 12 M12 9 L12 15"/>
+      <circle cx="12" cy="12" r="3.5" stroke-dasharray="1.5 2"/>
+    </symbol>
+    <!-- Energy: lightning bolt in hex -->
+    <symbol id="i-energy" viewBox="0 0 24 24">
+      <path d="M12 3 L21 12 L12 21 L3 12 Z"/>
+      <path d="M13 7 L9 13 L12 13 L11 17 L15 11 L12 11 Z" fill="currentColor" stroke="none"/>
+    </symbol>
+    <!-- Minerals: stacked crystals -->
+    <symbol id="i-minerals" viewBox="0 0 24 24">
+      <path d="M4 14 L8 7 L16 7 L20 14 L12 21 Z"/>
+      <path d="M8 7 L12 14 L16 7 M4 14 L20 14"/>
+    </symbol>
+    <!-- Research: atom / orbital -->
+    <symbol id="i-research" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="2"/>
+      <ellipse cx="12" cy="12" rx="9" ry="3.5"/>
+      <ellipse cx="12" cy="12" rx="9" ry="3.5" transform="rotate(60 12 12)"/>
+      <ellipse cx="12" cy="12" rx="9" ry="3.5" transform="rotate(-60 12 12)"/>
+    </symbol>
+    <!-- Food: seed / stalks -->
+    <symbol id="i-food" viewBox="0 0 24 24">
+      <path d="M12 21 L12 10"/>
+      <path d="M12 14 C8 13, 6 10, 6 6 C10 6, 12 9, 12 14 Z" fill="currentColor" stroke="none" opacity=".35"/>
+      <path d="M12 14 C8 13, 6 10, 6 6 C10 6, 12 9, 12 14 Z"/>
+      <path d="M12 11 C16 10, 18 7, 18 3 C14 3, 12 6, 12 11 Z" fill="currentColor" stroke="none" opacity=".35"/>
+      <path d="M12 11 C16 10, 18 7, 18 3 C14 3, 12 6, 12 11 Z"/>
+    </symbol>
+
+    <!-- ─── Ship stats ──────────────────────────────────── -->
+    <symbol id="i-shield" viewBox="0 0 24 24">
+      <path d="M12 3 L20 6 L20 12 C20 17, 16 20, 12 21 C8 20, 4 17, 4 12 L4 6 Z"/>
+      <path d="M9 12 L11 14 L15 10"/>
+    </symbol>
+    <symbol id="i-armor" viewBox="0 0 24 24">
+      <path d="M4 5 L20 5 L20 19 L4 19 Z"/>
+      <path d="M4 10 L20 10 M4 14 L20 14 M8 5 L8 19 M16 5 L16 19"/>
+      <circle cx="6" cy="7" r=".6" fill="currentColor"/>
+      <circle cx="18" cy="7" r=".6" fill="currentColor"/>
+      <circle cx="6" cy="17" r=".6" fill="currentColor"/>
+      <circle cx="18" cy="17" r=".6" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-speed" viewBox="0 0 24 24">
+      <path d="M3 12 L10 12"/>
+      <path d="M5 8 L14 8"/>
+      <path d="M7 16 L12 16"/>
+      <path d="M13 6 L21 12 L13 18 Z" fill="currentColor" stroke="none" opacity=".3"/>
+      <path d="M13 6 L21 12 L13 18 Z"/>
+    </symbol>
+    <symbol id="i-sensor" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+      <path d="M12 8 A4 4 0 0 1 16 12"/>
+      <path d="M12 5 A7 7 0 0 1 19 12"/>
+      <path d="M12 2 A10 10 0 0 1 22 12"/>
+    </symbol>
+    <symbol id="i-pd" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8"/>
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2 L12 6 M12 18 L12 22 M2 12 L6 12 M18 12 L22 12"/>
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="i-stealth" viewBox="0 0 24 24">
+      <path d="M6 6 L18 6 L14 12 L18 18 L6 18 L10 12 Z" stroke-dasharray="2 2"/>
+      <path d="M10 12 L14 12"/>
+    </symbol>
+
+    <!-- ─── Weapons ─────────────────────────────────────── -->
+    <symbol id="i-kinetic" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>
+      <path d="M12 4 L12 7 M12 17 L12 20 M4 12 L7 12 M17 12 L20 12 M6 6 L8 8 M16 16 L18 18 M6 18 L8 16 M16 8 L18 6"/>
+    </symbol>
+    <symbol id="i-missile" viewBox="0 0 24 24">
+      <path d="M5 19 L14 10 L18 6 L20 4 L18 8 L14 14 L10 19 Z"/>
+      <path d="M14 10 L17 13 M10 14 L13 17"/>
+      <path d="M5 19 L3 21 M8 16 L6 18"/>
+    </symbol>
+    <symbol id="i-beam" viewBox="0 0 24 24">
+      <path d="M3 12 L21 12" stroke-width="2.5"/>
+      <circle cx="21" cy="12" r="2" fill="currentColor" stroke="none"/>
+      <path d="M5 9 L7 12 L5 15 M9 10 L10 12 L9 14"/>
+    </symbol>
+
+    <!-- ─── Nav / UI ───────────────────────────────────── -->
+    <symbol id="i-starmap" viewBox="0 0 24 24">
+      <circle cx="6" cy="6" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="18" cy="5" r=".8" fill="currentColor" stroke="none"/>
+      <circle cx="14" cy="11" r="1.2" fill="currentColor" stroke="none"/>
+      <circle cx="7" cy="17" r=".8" fill="currentColor" stroke="none"/>
+      <circle cx="19" cy="18" r="1" fill="currentColor" stroke="none"/>
+      <path d="M6 6 L14 11 L19 18 M14 11 L7 17 M6 6 L18 5" opacity=".4"/>
+    </symbol>
+    <symbol id="i-colony" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="6"/>
+      <ellipse cx="12" cy="12" rx="11" ry="3" transform="rotate(-20 12 12)"/>
+    </symbol>
+    <symbol id="i-research-tree" viewBox="0 0 24 24">
+      <circle cx="12" cy="4" r="2"/>
+      <circle cx="5" cy="18" r="2"/>
+      <circle cx="19" cy="18" r="2"/>
+      <circle cx="12" cy="12" r="1.5"/>
+      <path d="M12 6 L12 10 M12 13.5 L6 16 M12 13.5 L18 16"/>
+    </symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 2 L12 5 M12 19 L12 22 M2 12 L5 12 M19 12 L22 12 M5 5 L7 7 M17 17 L19 19 M5 19 L7 17 M17 7 L19 5"/>
+    </symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24">
+      <rect x="7" y="5" width="3.5" height="14" fill="currentColor" stroke="none"/>
+      <rect x="13.5" y="5" width="3.5" height="14" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="i-play" viewBox="0 0 24 24">
+      <path d="M7 5 L7 19 L19 12 Z" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="i-fast-forward" viewBox="0 0 24 24">
+      <path d="M3 5 L3 19 L11 12 Z" fill="currentColor" stroke="none"/>
+      <path d="M12 5 L12 19 L20 12 Z" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="i-close" viewBox="0 0 24 24">
+      <path d="M6 6 L18 18 M18 6 L6 18"/>
+    </symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24">
+      <path d="M9 5 L16 12 L9 19"/>
+    </symbol>
+
+    <!-- ─── Planet types ──────────────────────────────── -->
+    <symbol id="i-planet-fire" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8"/>
+      <path d="M8 14 C9 11, 11 10, 12 7 C13 10, 15 11, 16 14 C15 16, 13 17, 12 17 C11 17, 9 16, 8 14 Z" fill="currentColor" stroke="none" opacity=".35"/>
+    </symbol>
+    <symbol id="i-planet-verdant" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8"/>
+      <path d="M6 10 C8 9, 10 11, 12 10 C14 9, 16 11, 18 10 M5 14 C8 13, 11 15, 14 13 C16 12, 17 13, 19 13"/>
+    </symbol>
+    <symbol id="i-planet-ice" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8"/>
+      <path d="M12 5 L12 19 M7 7 L17 17 M7 17 L17 7 M5 12 L19 12"/>
+    </symbol>
+    <symbol id="i-planet-ocean" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8"/>
+      <path d="M5 10 C7 9, 9 11, 11 10 C13 9, 15 11, 17 10 C18 9, 19 10, 19 10 M5 14 C7 13, 9 15, 11 14 C13 13, 15 15, 17 14"/>
+    </symbol>
+
+    <!-- ─── Entities ────────────────────────────────── -->
+    <symbol id="i-fleet" viewBox="0 0 24 24">
+      <path d="M6 14 L12 4 L18 14 L12 12 Z"/>
+      <path d="M9 16 L15 16 L13 20 L11 20 Z"/>
+    </symbol>
+    <symbol id="i-solo-ship" viewBox="0 0 24 24">
+      <path d="M12 3 L17 14 L12 12 L7 14 Z"/>
+      <path d="M12 12 L12 19"/>
+    </symbol>
+  </defs>
+</svg>

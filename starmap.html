@@ -123,6 +123,46 @@ body {
 #save-menu .save-status.err { color: #ffa0a0; }
 #save-menu .save-status.ok { color: #a4e4a4; }
 
+/* ── Card-source badge (live override indicator) ── */
+#card-source-badge {
+  position: fixed;
+  top: 10px; right: 12px;
+  z-index: 9000;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: linear-gradient(135deg, #3a2a10, #503a15);
+  border: 1px solid #c0a020;
+  border-radius: 6px;
+  color: #ffe8a0;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(192,160,32,0.25);
+  pointer-events: auto;
+}
+#card-source-badge.visible { display: flex; }
+#card-source-badge .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #ffd040;
+  box-shadow: 0 0 6px #ffd040;
+  animation: badge-pulse 1.8s ease-in-out infinite;
+}
+@keyframes badge-pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+#card-source-badge button {
+  background: transparent;
+  border: 1px solid #c0a020;
+  color: #ffe8a0;
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+#card-source-badge button:hover { background: rgba(192,160,32,0.25); }
+
 /* ── Canvas Container ── */
 #map-container {
   flex: 1;
@@ -1396,6 +1436,13 @@ body {
 </head>
 <body>
 
+<!-- Live override indicator (shown only when loader picked localStorage override) -->
+<div id="card-source-badge" title="Cards are being read from a card-builder override, not from data/game-cards.json">
+  <span class="dot"></span>
+  <span>Live builder override</span>
+  <button onclick="revertCardOverride()" title="Clear override and reload shipped cards">Revert</button>
+</div>
+
 <!-- Top Bar -->
 <div id="top-bar">
   <div style="display:flex;align-items:center;gap:10px">
@@ -1588,372 +1635,212 @@ body {
 
 <script>
 // ═══════════════════════════════════════════
-//  STAR CARD TEMPLATES (from data/cards.json)
+//  CARD DATA LOADER
 // ═══════════════════════════════════════════
-// Star "stats" are now the planets it produces. planetGen drives generation:
-//   count: [min, max] planets
-//   guaranteed: array of rarities always present
-//   bonus: rarity-shift applied to remaining slots (higher = rarer rolls)
-// Even common stars roll from the full RARITY_WEIGHTS table — legendary rolls are possible but WAY rarer.
-const STAR_TEMPLATES = [
-  { id:"str_001", name:"Red Dwarf", rarity:"common",
-    planetGen:{ count:[1,3], guaranteed:[], bonus:0 },
-    special:"", flavor:"Small, steady, eternal." },
-  { id:"str_002", name:"Yellow Main Sequence", rarity:"common",
-    planetGen:{ count:[2,4], guaranteed:[], bonus:0 },
-    special:"", flavor:"The kind of star that breeds life." },
-  { id:"str_010", name:"Brown Dwarf", rarity:"common",
-    planetGen:{ count:[0,2], guaranteed:[], bonus:0 },
-    special:"", flavor:"Not quite a star, not quite nothing." },
-  { id:"str_003", name:"Orange Giant", rarity:"uncommon",
-    planetGen:{ count:[3,5], guaranteed:["uncommon"], bonus:1 },
-    special:"", flavor:"Swollen with age, rich with possibility." },
-  { id:"str_006", name:"White Dwarf", rarity:"uncommon",
-    planetGen:{ count:[1,3], guaranteed:["uncommon"], bonus:1 },
-    special:"", flavor:"The ember of a once-great fire." },
-  { id:"str_004", name:"Blue Supergiant", rarity:"rare",
-    planetGen:{ count:[2,4], guaranteed:["rare"], bonus:2 },
-    special:"Extreme energy output but unstable.", flavor:"Burning bright, burning fast." },
-  { id:"str_005", name:"Binary System", rarity:"rare",
-    planetGen:{ count:[3,5], guaranteed:["rare"], bonus:2 },
-    special:"Unique orbital mechanics to study.", flavor:"Two hearts, one system." },
-  { id:"str_011", name:"Pulsar", rarity:"rare",
-    planetGen:{ count:[2,4], guaranteed:["rare"], bonus:2 },
-    special:"A lighthouse spinning in the dark.", flavor:"Signals echo across systems." },
-  { id:"str_007", name:"Neutron Star", rarity:"epic",
-    planetGen:{ count:[2,4], guaranteed:["rare","epic"], bonus:3 },
-    special:"Extreme density warps nearby space.", flavor:"A teaspoon weighs a billion tons." },
-  { id:"str_008", name:"Magnetar", rarity:"epic",
-    planetGen:{ count:[2,3], guaranteed:["epic"], bonus:3 },
-    special:"Dangerous but incredibly rich.", flavor:"Space itself screams near its poles." },
-  { id:"str_012", name:"Trinary System", rarity:"epic",
-    planetGen:{ count:[3,5], guaranteed:["rare","epic"], bonus:3 },
-    special:"Complex orbits yield unique worlds.", flavor:"Three suns dance an eternal waltz." },
-  { id:"str_009", name:"Primordial Quasar Remnant", rarity:"legendary",
-    planetGen:{ count:[4,6], guaranteed:["epic","epic","legendary"], bonus:5 },
-    special:"A relic of creation, still burning with the first light.", flavor:"Worlds from a younger universe." },
-];
+// Runtime card templates come from data/game-cards.json, or a localStorage
+// override set by the card builder. Falls back to the embedded template
+// arrays below if both are unavailable (file:// load, first-open, fetch
+// error). Embedded fallback is Phase-1 temporary and goes away in Phase 5.
+//
+// Schema, precedence, and rules live in CARDS_PIPELINE_PLAN.md.
 
-// Star rendering luminosity (was a stat; now derived from rarity so stars scale visually).
-const STAR_RENDER_LUMINOSITY = { common:3, uncommon:5, rare:7, epic:9, legendary:14 };
+const CARDS_OVERRIDE_KEY = "idlespace_gameCards_override";
+let CARD_TEMPLATES = {};       // category -> Card[]
+let CARD_INDEX = new Map();    // id -> Card
+let CARD_SOURCE = "embedded";  // "override" | "file" | "embedded"
 
-const RARITY_WEIGHTS = { common:60, uncommon:25, rare:10, epic:4, legendary:1 };
-const RARITY_COLORS = { common:"#6a7a9b", uncommon:"#4a9b5a", rare:"#4a7ac0", epic:"#8a4ac0", legendary:"#c0a020" };
-
-// Stat rolling: ±25% variance around template value, higher rarity biases toward top of range
-const STAT_ROLL_VARIANCE = 0.25;
-const RARITY_ROLL_BIAS = { common:0.5, uncommon:0.55, rare:0.6, epic:0.7, legendary:0.8 };
-
-function biasedRandom(bias) {
-  // Returns 0-1 skewed toward 1 when bias > 0.5
-  // bias=0.5 → uniform, bias=0.8 → heavily top-weighted
-  return Math.pow(Math.random(), 1 / (bias * 2));
+function getTemplates(category) {
+  return CARD_TEMPLATES[category] || [];
+}
+function getCardById(id) {
+  return CARD_INDEX.get(id);
 }
 
-function rollStats(template) {
-  const rarity = template.rarity;
-  const bias = RARITY_ROLL_BIAS[rarity] || 0.5;
-  const rolled = {};
-  const ranges = {};
-  for (const [key, val] of Object.entries(template.stats)) {
-    if (typeof val !== "number") {
-      rolled[key] = val;  // pass through non-numeric stats (e.g., weapon range strings)
-      continue;
-    }
-    const min = Math.max(1, Math.round(val * (1 - STAT_ROLL_VARIANCE)));
-    const max = Math.max(min + 1, Math.round(val * (1 + STAT_ROLL_VARIANCE)));
-    rolled[key] = min + Math.round((max - min) * biasedRandom(bias));
-    ranges[key] = [min, max];
+function normalizeCard(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  // Legacy embedded PLANET_TEMPLATES uses `type` instead of `category`.
+  const category = raw.category || raw.type;
+  if (!raw.id || !category || !raw.rarity) return null;
+
+  const c = {
+    id: raw.id,
+    name: raw.name || "",
+    category,
+    rarity: raw.rarity,
+    weight: (typeof raw.weight === "number") ? raw.weight : 1,
+    image: raw.image || "",
+    stats: { ...(raw.stats || {}) },
+    cost: { ...(raw.cost || {}) },
+    upkeep: { ...(raw.upkeep || {}) },
+    special: raw.special || "",
+    flavor: raw.flavor || "",
+    tags: Array.isArray(raw.tags) ? raw.tags.slice() : [],
+    attributes: { ...(raw.attributes || {}) },
+    categoryData: { ...(raw.categoryData || {}) },
+  };
+
+  // Back-compat mirrors. Canonical home for category-specific fields is
+  // `categoryData`, but existing consumers read top-level `planetGen` /
+  // `bonuses`. Keep both in sync until those call sites are migrated.
+  if (c.category === "star") {
+    if (raw.planetGen && !c.categoryData.planetGen) c.categoryData.planetGen = raw.planetGen;
+    if (c.categoryData.planetGen) c.planetGen = c.categoryData.planetGen;
   }
-  return { stats: rolled, statRanges: ranges };
+  if (c.category === "planet") {
+    if (raw.bonuses && !c.categoryData.bonuses) c.categoryData.bonuses = raw.bonuses;
+    if (c.categoryData.bonuses) c.bonuses = c.categoryData.bonuses;
+  }
+
+  // Forward-compat: preserve unknown top-level fields.
+  for (const k of Object.keys(raw)) {
+    if (!(k in c)) c[k] = raw[k];
+  }
+
+  return c;
 }
 
-function getStatQualityColor(value, min, max) {
-  if (min >= max) return "#c0a020";
-  const pct = (value - min) / (max - min);
-  if (pct >= 0.8) return "#c0a020";  // gold (legendary)
-  if (pct >= 0.6) return "#8a4ac0";  // purple (epic)
-  if (pct >= 0.4) return "#4a7ac0";  // blue (rare)
-  if (pct >= 0.2) return "#4a9b5a";  // green (uncommon)
-  return "#6a7a9b";                   // gray (common)
+function buildTemplateIndex(rawCards) {
+  const byCat = {};
+  const byId = new Map();
+  let skipped = 0;
+  for (const raw of rawCards) {
+    const c = normalizeCard(raw);
+    if (!c) { skipped++; continue; }
+    (byCat[c.category] ||= []).push(c);
+    byId.set(c.id, c);
+  }
+  if (skipped > 0) console.warn(`[cards] skipped ${skipped} malformed cards`);
+  return { byCat, byId };
 }
 
-// Visual properties per star name
-const STAR_VISUALS = {
-  "Red Dwarf":                 { color:"#cc4444", glowColor:"rgba(204,68,68,0.4)", baseSize:3 },
-  "Yellow Main Sequence":      { color:"#e8d44a", glowColor:"rgba(232,212,74,0.4)", baseSize:4.5 },
-  "Brown Dwarf":               { color:"#8b6914", glowColor:"rgba(139,105,20,0.25)", baseSize:2.5 },
-  "Orange Giant":              { color:"#e08830", glowColor:"rgba(224,136,48,0.45)", baseSize:6 },
-  "White Dwarf":               { color:"#d0d8f0", glowColor:"rgba(208,216,240,0.35)", baseSize:2.5 },
-  "Blue Supergiant":           { color:"#5090ff", glowColor:"rgba(80,144,255,0.5)", baseSize:7 },
-  "Binary System":             { color:"#70b8e8", glowColor:"rgba(112,184,232,0.4)", baseSize:5 },
-  "Pulsar":                    { color:"#80e0e0", glowColor:"rgba(128,224,224,0.5)", baseSize:3.5 },
-  "Neutron Star":              { color:"#c0a0ff", glowColor:"rgba(192,160,255,0.5)", baseSize:3 },
-  "Magnetar":                  { color:"#ff60ff", glowColor:"rgba(255,96,255,0.55)", baseSize:3.5 },
-  "Trinary System":            { color:"#f0c060", glowColor:"rgba(240,192,96,0.45)", baseSize:5.5 },
-  "Primordial Quasar Remnant": { color:"#ffdd44", glowColor:"rgba(255,221,68,0.6)", baseSize:9 },
-};
+function applyCardBundle(rawCards, source) {
+  const { byCat, byId } = buildTemplateIndex(rawCards);
+  if (byId.size === 0) return false;
+  CARD_TEMPLATES = byCat;
+  CARD_INDEX = byId;
+  CARD_SOURCE = source;
+  const cats = Object.keys(byCat).sort().join(", ");
+  console.info(`[cards] loaded ${byId.size} cards from ${source} (${cats})`);
+  return true;
+}
 
-const STAT_ICONS = {
-  credits:"💰", energy:"⚡", minerals:"⛏️", research:"🔬", food:"🌾",
-  ecology:"🌿", gravity:"🌀", size:"📐", atmosphere:"💨",
-  growth:"📈", morale:"😊", efficiency:"⚙️", engineering:"🔧",
-  charisma:"💬", logistics:"📦", diplomacy:"🤝",
-  // Ship combat stats
-  shields:"🔷", armor:"🛡️", speed:"💨", sensorRange:"📡",
-  stealth:"👁️", pointDefense:"🎯",
-  energyDmg:"⚡", kineticDmg:"💥", missileDmg:"🚀",
-  // Admiral stats
-  commandBonus:"⭐", maxFleetSize:"⚓",
-  // Legacy
-  attack:"⚔️", hull:"🛸", navigation:"🧭",
-  tactics:"🎯", fleet_size:"⚓", research_bonus:"🔬", defense:"🛡️",
-};
+async function loadCardData() {
+  // 1. localStorage override (live-edit loop from card builder)
+  try {
+    const s = localStorage.getItem(CARDS_OVERRIDE_KEY);
+    if (s) {
+      const bundle = JSON.parse(s);
+      if (bundle && Array.isArray(bundle.cards) && applyCardBundle(bundle.cards, "override")) return;
+      console.warn("[cards] localStorage override malformed, falling through to file");
+    }
+  } catch (e) {
+    console.warn("[cards] override parse failed, falling through to file", e);
+  }
 
-// Weapon range labels for ship card display
-const RANGE_LABELS = { short:"S", medium:"M", long:"L" };
-const RANGE_COLORS = { short:"#e0a040", medium:"#a0c0e0", long:"#60d060" };
+  // 2. fetch data/game-cards.json
+  let reason;
+  try {
+    const res = await fetch("data/game-cards.json", { cache: "no-cache" });
+    if (!res.ok) {
+      reason = `HTTP ${res.status} ${res.statusText}`;
+    } else {
+      const bundle = await res.json();
+      if (bundle && Array.isArray(bundle.cards) && applyCardBundle(bundle.cards, "file")) return;
+      reason = "file contained no usable cards";
+    }
+  } catch (e) {
+    reason = (e && e.message) || String(e);
+  }
+
+  // Hard failure — no more embedded fallback. Show an error screen and halt.
+  showCardLoadError(reason);
+  throw new Error("card data load failed: " + reason);
+}
+
+// ── Hot reload: pick up new cards from a running card-builder push. ──
+// reloadCardData is tolerant: a failed pull keeps the current templates
+// in place so live gameplay isn't knocked offline by a bad override.
+async function reloadCardData() {
+  const prevSource = CARD_SOURCE;
+  try {
+    await loadCardData();
+  } catch (e) {
+    console.warn("[cards] hot reload failed, keeping previous templates:", e.message);
+    return;
+  }
+  // Auto-unlock any newly-added common cards; existing unlocks stay.
+  if (typeof initResearch === "function") initResearch();
+  updateCardSourceBadge();
+  if (prevSource !== CARD_SOURCE) {
+    console.info(`[cards] source changed: ${prevSource} → ${CARD_SOURCE}`);
+  }
+}
+
+function updateCardSourceBadge() {
+  const el = document.getElementById("card-source-badge");
+  if (!el) return;
+  el.classList.toggle("visible", CARD_SOURCE === "override");
+}
+
+function revertCardOverride() {
+  try { localStorage.removeItem(CARDS_OVERRIDE_KEY); } catch (_) {}
+  // Clear the error screen too (harmless no-op if not present).
+  const err = document.getElementById("card-load-error");
+  if (err) err.remove();
+  reloadCardData().then(() => {
+    if (typeof setSaveStatus === "function") setSaveStatus("Reverted to shipped cards.", "ok");
+  });
+  // Tell any open card-builder tab to refresh its live-link status.
+  if (typeof CARDS_BROADCAST !== "undefined" && CARDS_BROADCAST) {
+    CARDS_BROADCAST.postMessage({ type: "override-cleared" });
+  }
+}
+
+// Cross-tab notification so card-builder → starmap hot reload works in the
+// same browser. A null value means BroadcastChannel isn't available (very
+// old browsers); the override still works on page reload either way.
+const CARDS_BROADCAST = (typeof BroadcastChannel !== "undefined")
+  ? new BroadcastChannel("idlespace-cards")
+  : null;
+if (CARDS_BROADCAST) {
+  CARDS_BROADCAST.onmessage = (ev) => {
+    const msg = ev && ev.data;
+    if (!msg || typeof msg !== "object") return;
+    if (msg.type === "cards-updated" || msg.type === "override-cleared") {
+      reloadCardData();
+    }
+  };
+}
+
+function showCardLoadError(detail) {
+  const el = document.createElement("div");
+  el.id = "card-load-error";
+  el.style.cssText = "position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#05060a;color:#c8d0e0;font-family:system-ui,sans-serif;padding:40px;";
+  el.innerHTML = `
+    <div style="max-width:620px;padding:32px;background:#0b0f1a;border:1px solid #1f2a44;border-radius:10px;">
+      <div style="font-size:22px;font-weight:600;color:#ffb080;margin-bottom:12px;">Card data failed to load</div>
+      <div style="font-size:14px;color:#a0b0d0;line-height:1.5;margin-bottom:16px;">
+        IdleSpace now loads all card definitions from <code style="color:#e0c080;">data/game-cards.json</code>.
+        This file must be served over HTTP — opening <code>starmap.html</code> directly from the filesystem
+        (<code>file://</code>) will not work.
+      </div>
+      <div style="font-size:13px;color:#708098;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">To fix</div>
+      <div style="font-size:14px;color:#a0b0d0;line-height:1.5;margin-bottom:16px;">
+        From the project root, run a local HTTP server and open the game from that URL:
+        <pre style="background:#05070d;border:1px solid #1f2a44;border-radius:6px;padding:10px;margin-top:8px;color:#a4e4a4;font-size:13px;overflow-x:auto;">python -m http.server 8765
+# then open http://localhost:8765/starmap.html</pre>
+      </div>
+      <div style="font-size:12px;color:#506888;">Reason: <code style="color:#e08888;">${String(detail).replace(/[<>&]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]))}</code></div>
+    </div>`;
+  document.body.appendChild(el);
+}
 
 // ═══════════════════════════════════════════
-//  PLANET CARD TEMPLATES
+//  CARD DATA — all templates live in data/game-cards.json
+//  (or a localStorage override set by card-builder.html).
+//  Loaded by loadCardData() above. See CARDS_PIPELINE_PLAN.md.
 // ═══════════════════════════════════════════
-// Planet cards grant percentage bonuses to colony production of specific resources.
-// Bonuses stack multiplicatively with building/leader output. Rolled ±25% at generation, biased by rarity.
-const PLANET_TEMPLATES = [
-  // Common — single resource, modest bonus (~5-15%)
-  { id:"pln_001", name:"Barren Rock", type:"planet", rarity:"common",
-    bonuses:{minerals:12}, special:"", flavor:"Nothing grows here, but the ground is rich." },
-  { id:"pln_002", name:"Arid Waste", type:"planet", rarity:"common",
-    bonuses:{energy:10}, special:"", flavor:"Sun-blasted plains of cracked earth." },
-  { id:"pln_003", name:"Frozen Moon", type:"planet", rarity:"common",
-    bonuses:{research:10}, special:"", flavor:"Silent, cold, and full of secrets." },
-  { id:"pln_004", name:"Desert Oasis", type:"planet", rarity:"common",
-    bonuses:{food:10,credits:5}, special:"", flavor:"Life clings to scattered water sources." },
-  // Uncommon — 1-2 resources, ~15-30%
-  { id:"pln_005", name:"Temperate World", type:"planet", rarity:"uncommon",
-    bonuses:{food:25,credits:10}, special:"", flavor:"A gentle world with room to breathe." },
-  { id:"pln_006", name:"Ocean World", type:"planet", rarity:"uncommon",
-    bonuses:{food:20,research:15}, special:"", flavor:"Endless waves hide endless depth." },
-  { id:"pln_007", name:"Volcanic World", type:"planet", rarity:"uncommon",
-    bonuses:{minerals:30}, special:"", flavor:"The ground never stops shaking." },
-  { id:"pln_008", name:"Tidally Locked World", type:"planet", rarity:"uncommon",
-    bonuses:{energy:25,minerals:10}, special:"", flavor:"One face burns, the other freezes." },
-  // Rare — 2 resources, ~30-55%
-  { id:"pln_009", name:"Gas Giant", type:"planet", rarity:"rare",
-    bonuses:{energy:55,credits:25}, special:"Vast atmospheric harvest.", flavor:"A world of storms with no ground to stand on." },
-  { id:"pln_010", name:"Jungle World", type:"planet", rarity:"rare",
-    bonuses:{food:45,research:30}, special:"", flavor:"Green devours everything. Even the sky." },
-  // Epic — 2-3 resources, ~50-100%
-  { id:"pln_011", name:"Crystalline World", type:"planet", rarity:"epic",
-    bonuses:{minerals:80,research:55,energy:40}, special:"Light refracts into rare isotopes.", flavor:"The surface shines in impossible colors." },
-  { id:"pln_012", name:"Gaia World", type:"planet", rarity:"epic",
-    bonuses:{food:90,credits:60,research:40}, special:"Perfect habitability.", flavor:"As if the planet was made for us." },
-  // Legendary — 3+ resources, 100%+
-  { id:"pln_013", name:"Precursor Homeworld", type:"planet", rarity:"legendary",
-    bonuses:{research:180,minerals:120,energy:100,credits:60}, special:"Ancient ruins unlock hidden potential.", flavor:"They were here long before us. Where did they go?" },
-  { id:"pln_014", name:"Ring World Fragment", type:"planet", rarity:"legendary",
-    bonuses:{food:200,minerals:150,credits:120,research:80}, special:"Massive habitable surface area.", flavor:"A broken circle that still dwarfs most worlds." },
-];
 
-const PLANET_VISUALS = {
-  "Barren Rock":          { color:"#8a7a6a", glowColor:"rgba(138,122,106,0.2)", baseSize:4 },
-  "Arid Waste":           { color:"#c4a55a", glowColor:"rgba(196,165,90,0.2)", baseSize:4 },
-  "Frozen Moon":          { color:"#b0d0e8", glowColor:"rgba(176,208,232,0.25)", baseSize:3 },
-  "Desert Oasis":         { color:"#c4a860", glowColor:"rgba(196,168,96,0.2)", baseSize:4 },
-  "Temperate World":      { color:"#5aaa7a", glowColor:"rgba(90,170,122,0.3)", baseSize:5.5 },
-  "Ocean World":          { color:"#3070c0", glowColor:"rgba(48,112,192,0.3)", baseSize:5.5 },
-  "Volcanic World":       { color:"#c04020", glowColor:"rgba(192,64,32,0.35)", baseSize:4.5 },
-  "Tidally Locked World": { color:"#a08870", glowColor:"rgba(160,136,112,0.25)", baseSize:4.5 },
-  "Gas Giant":            { color:"#c89050", glowColor:"rgba(200,144,80,0.35)", baseSize:9 },
-  "Jungle World":         { color:"#2a8a30", glowColor:"rgba(42,138,48,0.3)", baseSize:5.5 },
-  "Crystalline World":    { color:"#a0c0f0", glowColor:"rgba(160,192,240,0.4)", baseSize:4 },
-  "Gaia World":           { color:"#40b080", glowColor:"rgba(64,176,128,0.35)", baseSize:6.5 },
-  "Precursor Homeworld":  { color:"#60b060", glowColor:"rgba(96,176,96,0.35)", baseSize:7 },
-  "Ring World Fragment":  { color:"#90a8c0", glowColor:"rgba(144,168,192,0.35)", baseSize:10 },
-};
-
-// ═══════════════════════════════════════════
-//  BUILDING / LEADER / ADMIRAL / SHIP TEMPLATES
-// ═══════════════════════════════════════════
-const BUILDING_TEMPLATES = [
-  // Common — no upkeep, basic production (~1x baseline)
-  { id:"bld_001", name:"Solar Array", category:"building", rarity:"common", stats:{energy:3}, cost:{minerals:5}, special:"", flavor:"Harnessing the light of distant suns." },
-  { id:"bld_002", name:"Mining Outpost", category:"building", rarity:"common", stats:{minerals:3}, cost:{energy:5}, special:"", flavor:"Deep core extractors never rest." },
-  { id:"bld_003", name:"Research Lab", category:"building", rarity:"common", stats:{research:3}, cost:{energy:4,minerals:3}, special:"", flavor:"Knowledge is the ultimate resource." },
-  { id:"bld_004", name:"Hydroponics Bay", category:"building", rarity:"common", stats:{food:3}, cost:{energy:3,minerals:3}, special:"", flavor:"Life finds a way, even in the void." },
-  { id:"bld_016", name:"Colony Hub", category:"building", rarity:"common", stats:{food:2,credits:5}, cost:{minerals:8}, special:"", flavor:"Where settlers first call home." },
-  { id:"bld_019", name:"Spaceport", category:"building", rarity:"common", stats:{credits:8}, cost:{minerals:8,energy:4}, special:"", flavor:"The gateway between ground and sky." },
-  // Uncommon — some upkeep, ~5x production
-  { id:"bld_005", name:"Fusion Reactor", category:"building", rarity:"uncommon", stats:{energy:15}, upkeep:{minerals:3}, cost:{minerals:25,research:8}, special:"", flavor:"Atoms split, power flows." },
-  { id:"bld_006", name:"Ore Refinery", category:"building", rarity:"uncommon", stats:{minerals:15}, upkeep:{energy:3}, cost:{energy:20,credits:50}, special:"", flavor:"Raw stone becomes refined wealth." },
-  { id:"bld_007", name:"Data Archive", category:"building", rarity:"uncommon", stats:{research:15}, upkeep:{energy:3}, cost:{energy:20,minerals:15}, special:"", flavor:"Every discovery preserved for eternity." },
-  { id:"bld_008", name:"Bio Dome", category:"building", rarity:"uncommon", stats:{food:15}, upkeep:{energy:2}, cost:{energy:15,minerals:15}, special:"", flavor:"A garden among the stars." },
-  { id:"bld_017", name:"Shield Generator", category:"building", rarity:"uncommon", stats:{defense:20}, upkeep:{energy:5}, cost:{energy:25,minerals:15,credits:50}, special:"", flavor:"An invisible dome of safety." },
-  // Rare — meaningful upkeep, ~25x production
-  { id:"bld_009", name:"Quantum Computer", category:"building", rarity:"rare", stats:{research:75}, upkeep:{energy:15}, cost:{energy:120,minerals:80,credits:250}, special:"Boosts all research output by 10%.", flavor:"Processing power beyond mortal comprehension." },
-  { id:"bld_010", name:"Stellar Foundry", category:"building", rarity:"rare", stats:{minerals:75}, upkeep:{energy:15,food:5}, cost:{energy:150,food:50,credits:200}, special:"", flavor:"Forged in the heat of captured stars." },
-  { id:"bld_013", name:"Orbital Farm Ring", category:"building", rarity:"rare", stats:{food:75}, upkeep:{energy:10}, cost:{energy:100,minerals:80,credits:200}, special:"", flavor:"Endless fields circling the world below." },
-  { id:"bld_020", name:"Dark Matter Lab", category:"building", rarity:"rare", stats:{research:60}, upkeep:{energy:15,credits:100}, cost:{energy:150,minerals:80,research:30}, special:"Chance to discover exotic tech.", flavor:"Probing the invisible scaffolding of reality." },
-  // Epic — heavy upkeep, ~100x production
-  { id:"bld_011", name:"Antimatter Plant", category:"building", rarity:"epic", stats:{energy:300}, upkeep:{minerals:40,credits:200}, cost:{minerals:500,research:150,credits:1500}, special:"Powers adjacent buildings for free.", flavor:"The annihilation of matter feeds the empire." },
-  { id:"bld_012", name:"Megastructure Scaffold", category:"building", rarity:"epic", stats:{minerals:250,energy:80}, upkeep:{energy:50,credits:300}, cost:{energy:600,research:200,credits:2000}, special:"Unlocks tier-3 buildings.", flavor:"The skeleton of something immense takes shape." },
-  { id:"bld_015", name:"Nanite Assembler", category:"building", rarity:"epic", stats:{minerals:200}, upkeep:{energy:50,research:20}, cost:{energy:400,research:200,credits:1500}, special:"Reduces all building costs by 15%.", flavor:"Molecule by molecule, a world remade." },
-  // Legendary — game-changing, ~500x production
-  { id:"bld_014", name:"Dyson Collector", category:"building", rarity:"legendary", stats:{energy:1500,research:300}, upkeep:{minerals:200,credits:2000}, cost:{minerals:5000,research:1500,credits:15000}, special:"Energy output scales with star luminosity.", flavor:"To harness a star is to hold infinity." },
-  { id:"bld_018", name:"Terraform Engine", category:"building", rarity:"legendary", stats:{food:1200}, upkeep:{energy:300,minerals:100,credits:1500}, cost:{energy:4000,minerals:3000,research:1000,credits:12000}, special:"Gradually improves planet habitability.", flavor:"Rewriting the laws of a world." },
-];
-
-const LEADER_TEMPLATES = [
-  // Common — ~1x baseline
-  { id:"ldr_001", name:"Colony Overseer", category:"leader", rarity:"common", stats:{efficiency:2,morale:1}, cost:{food:5}, special:"", flavor:"Keeping the gears turning." },
-  { id:"ldr_002", name:"Frontier Preacher", category:"leader", rarity:"common", stats:{morale:3}, cost:{food:4}, special:"", flavor:"Faith holds where bulkheads fail." },
-  { id:"ldr_003", name:"Supply Coordinator", category:"leader", rarity:"common", stats:{logistics:3,efficiency:1}, cost:{food:4,energy:3}, special:"", flavor:"Every crate accounted for." },
-  { id:"ldr_013", name:"Labor Organizer", category:"leader", rarity:"common", stats:{efficiency:3,morale:1}, cost:{food:4}, special:"", flavor:"Together we build." },
-  // Uncommon — ~5x
-  { id:"ldr_004", name:"Chief Engineer", category:"leader", rarity:"uncommon", stats:{engineering:15,efficiency:8}, cost:{food:20,minerals:15,credits:50}, special:"", flavor:"If it's broken, she'll fix it." },
-  { id:"ldr_005", name:"Propaganda Minister", category:"leader", rarity:"uncommon", stats:{morale:15,charisma:10}, cost:{food:25,energy:10,credits:60}, special:"Boosts colony growth by 10%.", flavor:"The truth is whatever keeps them working." },
-  { id:"ldr_006", name:"Research Director", category:"leader", rarity:"uncommon", stats:{research_bonus:15,research:10}, cost:{food:25,research:15,credits:50}, special:"", flavor:"Funding the questions no one else asks." },
-  // Rare — ~25x
-  { id:"ldr_007", name:"Trade Magnate", category:"leader", rarity:"rare", stats:{logistics:50,diplomacy:40,charisma:25}, cost:{food:80,energy:50,credits:300}, special:"Trade routes yield 20% more.", flavor:"Credits are just a way of keeping score." },
-  { id:"ldr_008", name:"War Marshal", category:"leader", rarity:"rare", stats:{tactics:60,morale:30,attack:25}, cost:{food:100,energy:50,credits:400}, special:"All ships gain +1 attack.", flavor:"Strategy wins battles. Logistics wins wars." },
-  { id:"ldr_012", name:"Spymaster", category:"leader", rarity:"rare", stats:{tactics:40,charisma:40,efficiency:30}, cost:{food:80,energy:60,credits:350}, special:"Reveals enemy fleet composition.", flavor:"Information is the only currency that never devalues." },
-  // Epic — ~100x
-  { id:"ldr_009", name:"Visionary Architect", category:"leader", rarity:"epic", stats:{engineering:200,efficiency:150,research:80}, cost:{food:300,minerals:200,research:100,credits:2000}, special:"Buildings cost 20% less.", flavor:"She sees the city that will stand in a thousand years." },
-  { id:"ldr_010", name:"Galactic Diplomat", category:"leader", rarity:"epic", stats:{diplomacy:250,charisma:150,morale:80}, cost:{food:350,energy:200,credits:2500}, special:"Prevents war declarations for 10 ticks.", flavor:"Peace is not weakness. It is the hardest victory." },
-  // Legendary — ~500x
-  { id:"ldr_011", name:"Eternal Chancellor", category:"leader", rarity:"legendary", stats:{efficiency:1000,morale:500,charisma:400,growth:300}, cost:{food:2000,energy:1500,research:800,credits:15000}, special:"All colony output +15%.", flavor:"Under her rule, empires flourish." },
-];
-
-const ADMIRAL_TEMPLATES = [
-  // ── Common — commandBonus 1-2%, fleet 4-7 ──
-  { id:"adm_001", name:"Ensign Hale", category:"admiral", rarity:"common",
-    stats:{ commandBonus:1, maxFleetSize:5 },
-    cost:{food:4,credits:5}, special:"", flavor:"Freshly commissioned and eager to prove it." },
-  { id:"adm_002", name:"Patrol Commander", category:"admiral", rarity:"common",
-    stats:{ commandBonus:2, maxFleetSize:4 },
-    cost:{food:5,credits:8}, special:"", flavor:"Every sector deserves a watchful eye." },
-  { id:"adm_003", name:"Convoy Leader", category:"admiral", rarity:"common",
-    stats:{ commandBonus:1, maxFleetSize:7 },
-    cost:{food:4,energy:3,credits:5}, special:"", flavor:"Safety in numbers, profit in punctuality." },
-  { id:"adm_004", name:"Privateer", category:"admiral", rarity:"common",
-    stats:{ commandBonus:2, maxFleetSize:4, speed:3 },
-    cost:{food:5,credits:10}, special:"", flavor:"A letter of marque and a fast ship." },
-  // ── Uncommon — commandBonus 2-4%, fleet 6-12 ──
-  { id:"adm_005", name:"Tactical Officer", category:"admiral", rarity:"uncommon",
-    stats:{ commandBonus:3, maxFleetSize:8, kineticDmg:5 },
-    cost:{food:20,energy:15,credits:50}, special:"", flavor:"Precision wins battles. Instinct wins wars." },
-  { id:"adm_006", name:"Shield Warden", category:"admiral", rarity:"uncommon",
-    stats:{ commandBonus:2, maxFleetSize:10, shields:8 },
-    cost:{food:20,energy:20,credits:60}, special:"", flavor:"Nothing gets through on my watch." },
-  { id:"adm_007", name:"Scout Master", category:"admiral", rarity:"uncommon",
-    stats:{ commandBonus:4, maxFleetSize:6, sensorRange:10, speed:5 },
-    cost:{food:25,research:12,credits:50}, special:"", flavor:"Know the void before the void knows you." },
-  // ── Rare — commandBonus 4-7%, fleet 11-24 ──
-  { id:"adm_008", name:"Corsair Queen", category:"admiral", rarity:"rare",
-    stats:{ commandBonus:5, maxFleetSize:16, speed:10, armor:8 },
-    cost:{food:80,energy:50,credits:300}, special:"", flavor:"The void bows to no law but hers." },
-  { id:"adm_009", name:"War Sage", category:"admiral", rarity:"rare",
-    stats:{ commandBonus:6, maxFleetSize:14, shields:12, kineticDmg:10 },
-    cost:{food:80,research:30,credits:300}, special:"", flavor:"Every battle is a lesson." },
-  { id:"adm_010", name:"Ghost Commodore", category:"admiral", rarity:"rare",
-    stats:{ commandBonus:7, maxFleetSize:11, stealth:15, speed:8 },
-    cost:{food:60,energy:40,credits:350}, special:"", flavor:"They never see the blade that cuts deepest." },
-  // ── Epic — commandBonus 7-10%, fleet 20-36 ──
-  { id:"adm_011", name:"Iron Admiral", category:"admiral", rarity:"epic",
-    stats:{ commandBonus:9, maxFleetSize:28, armor:20, shields:15, kineticDmg:12 },
-    cost:{food:300,energy:200,research:80,credits:2000}, special:"", flavor:"Fleets break against her formations like waves on steel." },
-  { id:"adm_012", name:"Void Marshal", category:"admiral", rarity:"epic",
-    stats:{ commandBonus:10, maxFleetSize:24, speed:18, sensorRange:20, missileDmg:15 },
-    cost:{food:350,energy:250,credits:2500}, special:"", flavor:"Rank means nothing. Results mean everything." },
-  // ── Legendary — commandBonus 10-15%, fleet 30-50 ──
-  { id:"adm_013", name:"The Sovereign", category:"admiral", rarity:"legendary",
-    stats:{ commandBonus:14, maxFleetSize:45, shields:25, armor:25, speed:15, kineticDmg:18 },
-    cost:{food:2000,energy:1200,research:600,credits:12000}, special:"", flavor:"Where she commands, stars kneel." },
-];
-
-const SHIP_TEMPLATES = [
-  // ── Common ──
-  // Single weapon type, basic stats, cheap
-  { id:"shp_001", name:"Scout Corvette", category:"ship", rarity:"common",
-    stats:{ shields:2, armor:1, speed:8, sensorRange:5, energyDmg:3, energyRange:"short" },
-    cost:{minerals:8,energy:4}, special:"", flavor:"First to see, last to be seen." },
-  { id:"shp_002", name:"Patrol Frigate", category:"ship", rarity:"common",
-    stats:{ shields:3, armor:3, speed:4, sensorRange:2, kineticDmg:4, kineticRange:"medium" },
-    cost:{minerals:10,energy:4}, special:"", flavor:"Keeping the spacelanes safe." },
-  { id:"shp_003", name:"Missile Corvette", category:"ship", rarity:"common",
-    stats:{ shields:2, armor:2, speed:5, sensorRange:2, missileDmg:4, missileRange:"long" },
-    cost:{minerals:10,energy:6}, special:"", flavor:"One shot, one kill." },
-  { id:"shp_004", name:"Gunboat", category:"ship", rarity:"common",
-    stats:{ shields:1, armor:4, speed:3, sensorRange:1, kineticDmg:5, kineticRange:"short" },
-    cost:{minerals:12,energy:3}, special:"", flavor:"More gun than ship." },
-  { id:"shp_005", name:"Picket Ship", category:"ship", rarity:"common",
-    stats:{ shields:3, armor:2, speed:6, sensorRange:4, pointDefense:3, energyDmg:2, energyRange:"short" },
-    cost:{minerals:8,energy:6}, special:"", flavor:"The fleet's first line of defense." },
-
-  // ── Uncommon ──
-  // Better stats, some mixed weapons or special stats
-  { id:"shp_006", name:"Destroyer", category:"ship", rarity:"uncommon",
-    stats:{ shields:12, armor:15, speed:18, sensorRange:8, kineticDmg:20, kineticRange:"medium", pointDefense:6 },
-    cost:{minerals:40,energy:25,credits:80}, special:"", flavor:"Purpose-built for one thing: war." },
-  { id:"shp_007", name:"Shield Frigate", category:"ship", rarity:"uncommon",
-    stats:{ shields:25, armor:8, speed:14, sensorRange:6, energyDmg:10, energyRange:"short" },
-    cost:{minerals:35,energy:30,credits:70}, special:"", flavor:"Stand behind me." },
-  { id:"shp_008", name:"Missile Frigate", category:"ship", rarity:"uncommon",
-    stats:{ shields:10, armor:10, speed:16, sensorRange:10, missileDmg:18, missileRange:"long" },
-    cost:{minerals:35,energy:25,credits:80}, special:"", flavor:"Death delivered from a safe distance." },
-  { id:"shp_009", name:"Sensor Pinnace", category:"ship", rarity:"uncommon",
-    stats:{ shields:8, armor:5, speed:22, sensorRange:20, stealth:1, energyDmg:5, energyRange:"short" },
-    cost:{minerals:25,energy:30,credits:60}, special:"", flavor:"Watching, always watching." },
-  { id:"shp_010", name:"Assault Corvette", category:"ship", rarity:"uncommon",
-    stats:{ shields:10, armor:12, speed:20, sensorRange:5, energyDmg:15, energyRange:"short", kineticDmg:8, kineticRange:"short" },
-    cost:{minerals:40,energy:30,credits:90}, special:"", flavor:"Close fast, hit hard, don't stop." },
-
-  // ── Rare ──
-  // Strong combat ships, multi-weapon, stealth options
-  { id:"shp_011", name:"Stealth Interceptor", category:"ship", rarity:"rare",
-    stats:{ shields:20, armor:15, speed:60, sensorRange:12, stealth:2, energyDmg:50, energyRange:"short" },
-    cost:{minerals:120,energy:80,credits:350}, special:"", flavor:"A whisper in the dark between stars." },
-  { id:"shp_012", name:"Heavy Cruiser", category:"ship", rarity:"rare",
-    stats:{ shields:50, armor:60, speed:30, sensorRange:10, kineticDmg:45, kineticRange:"medium", missileDmg:25, missileRange:"long", pointDefense:15 },
-    cost:{minerals:160,energy:90,credits:400}, special:"", flavor:"The iron fist of the fleet." },
-  { id:"shp_013", name:"Torpedo Cruiser", category:"ship", rarity:"rare",
-    stats:{ shields:35, armor:40, speed:35, sensorRange:14, missileDmg:70, missileRange:"long" },
-    cost:{minerals:140,energy:100,credits:380}, special:"", flavor:"Salvos that darken the stars." },
-
-  // ── Epic ──
-  // Powerhouse multi-role ships
-  { id:"shp_014", name:"Battlecruiser", category:"ship", rarity:"epic",
-    stats:{ shields:200, armor:250, speed:25, sensorRange:16, energyDmg:120, energyRange:"medium", kineticDmg:100, kineticRange:"medium", missileDmg:60, missileRange:"long", pointDefense:40 },
-    cost:{minerals:600,energy:400,credits:2800}, special:"", flavor:"A fortress that sails the void." },
-  { id:"shp_015", name:"Fleet Carrier", category:"ship", rarity:"epic",
-    stats:{ shields:180, armor:300, speed:15, sensorRange:25, pointDefense:80, missileDmg:150, missileRange:"long" },
-    cost:{minerals:700,energy:450,credits:3200}, special:"", flavor:"Its squadrons swarm like angry stars." },
-
-  // ── Legendary ──
-  // Overwhelming firepower and durability
-  { id:"shp_016", name:"Dreadnought", category:"ship", rarity:"legendary",
-    stats:{ shields:800, armor:1000, speed:12, sensorRange:20, energyDmg:500, energyRange:"medium", kineticDmg:400, kineticRange:"medium", missileDmg:200, missileRange:"long", pointDefense:100 },
-    cost:{minerals:5000,energy:3000,credits:16000}, special:"", flavor:"When it appears, wars end." },
-  { id:"shp_017", name:"Titan", category:"ship", rarity:"legendary",
-    stats:{ shields:1200, armor:800, speed:10, sensorRange:30, energyDmg:600, energyRange:"short", kineticDmg:300, kineticRange:"medium", missileDmg:400, missileRange:"long", pointDefense:150, stealth:1 },
-    cost:{minerals:6000,energy:4000,credits:20000}, special:"", flavor:"A mobile world, bristling with purpose." },
-];
-
-// ── NPC Pirate ship templates (not available to player) ──
-const PIRATE_SHIPS = [
-  { id:"pir_001", name:"Raider", category:"ship", rarity:"common",
-    stats:{ shields:2, armor:3, speed:4, sensorRange:3, kineticDmg:4, kineticRange:"medium" } },
-  { id:"pir_002", name:"Marauder", category:"ship", rarity:"common",
-    stats:{ shields:3, armor:2, speed:6, sensorRange:2, energyDmg:3, energyRange:"short" } },
-  { id:"pir_003", name:"Corsair", category:"ship", rarity:"uncommon",
-    stats:{ shields:8, armor:10, speed:5, sensorRange:4, missileDmg:8, missileRange:"long", kineticDmg:5, kineticRange:"medium" } },
-  { id:"pir_004", name:"Buccaneer Cruiser", category:"ship", rarity:"rare",
-    stats:{ shields:18, armor:20, speed:4, sensorRange:5, kineticDmg:14, kineticRange:"medium", missileDmg:10, missileRange:"long" } },
-  { id:"pir_005", name:"Warlord Destroyer", category:"ship", rarity:"epic",
-    stats:{ shields:32, armor:38, speed:5, sensorRange:6, energyDmg:22, energyRange:"medium", kineticDmg:18, kineticRange:"long", pointDefense:5 } },
-  { id:"pir_006", name:"Dreadlord Prime", category:"ship", rarity:"legendary",
-    stats:{ shields:70, armor:90, speed:3, sensorRange:8, missileDmg:45, missileRange:"long", energyDmg:35, energyRange:"medium", kineticDmg:28, kineticRange:"short", pointDefense:10 } },
-];
 
 // Pirate power tier 0..1 based on distance from home (origin).
 // Ramps over ~18000 world units — a long-term progression knob.
@@ -1980,22 +1867,68 @@ function rollPirateRarity(rng, tier) {
 }
 function rollPirateShip(rng, tier) {
   const rarity = rollPirateRarity(rng, tier);
-  const pool = PIRATE_SHIPS.filter(s => s.rarity === rarity);
-  const fallback = pool.length ? pool : PIRATE_SHIPS;
+  const pirates = getTemplates("pirate");
+  const pool = pirates.filter(s => s.rarity === rarity);
+  const fallback = pool.length ? pool : pirates;
   return fallback[Math.floor(rng() * fallback.length)];
 }
 
-const CATEGORY_TEMPLATES = {
-  building: BUILDING_TEMPLATES,
-  leader: LEADER_TEMPLATES,
-  admiral: ADMIRAL_TEMPLATES,
-  ship: SHIP_TEMPLATES,
-};
 const CATEGORY_WATERMARKS = { building:"🏗️", leader:"👑", admiral:"⭐", ship:"🚀" };
 const ACTION_TO_CATEGORY = { buildings:"building", admirals:"admiral", leaders:"leader", ships:"ship" };
 
+// ═══════════════════════════════════════════
+//  RARITY / STAT ROLLING
+// ═══════════════════════════════════════════
+// Runtime constants the engine uses to roll cards. These live in code (not
+// the cards file) because they're engine-wide tuning, not per-card data —
+// consumers always iterate RARITY_WEIGHTS/RESOURCE_DEFS dynamically so
+// moving them into game-cards.json later is a lift-and-shift.
+
+// Star rendering luminosity, derived from rarity so stars scale visually.
+const STAR_RENDER_LUMINOSITY = { common:3, uncommon:5, rare:7, epic:9, legendary:14 };
+
+const RARITY_WEIGHTS = { common:60, uncommon:25, rare:10, epic:4, legendary:1 };
+const RARITY_COLORS  = { common:"#6a7a9b", uncommon:"#4a9b5a", rare:"#4a7ac0", epic:"#8a4ac0", legendary:"#c0a020" };
+
+// Stat rolling: ±25% variance around template value, higher rarity biases toward top of range
+const STAT_ROLL_VARIANCE = 0.25;
+const RARITY_ROLL_BIAS   = { common:0.5, uncommon:0.55, rare:0.6, epic:0.7, legendary:0.8 };
+
+function biasedRandom(bias) {
+  // 0..1 skewed toward 1 when bias > 0.5. bias=0.5 → uniform; bias=0.8 → heavily top-weighted.
+  return Math.pow(Math.random(), 1 / (bias * 2));
+}
+
+function rollStats(template) {
+  const bias = RARITY_ROLL_BIAS[template.rarity] || 0.5;
+  const rolled = {};
+  const ranges = {};
+  for (const [key, val] of Object.entries(template.stats || {})) {
+    if (typeof val !== "number") {
+      rolled[key] = val;  // pass through non-numeric stats (e.g., weapon range strings)
+      continue;
+    }
+    const min = Math.max(1, Math.round(val * (1 - STAT_ROLL_VARIANCE)));
+    const max = Math.max(min + 1, Math.round(val * (1 + STAT_ROLL_VARIANCE)));
+    rolled[key] = min + Math.round((max - min) * biasedRandom(bias));
+    ranges[key] = [min, max];
+  }
+  return { stats: rolled, statRanges: ranges };
+}
+
+// Tooltip color coding for rolled stats: where a value lands in its ±25% range.
+function getStatQualityColor(value, min, max) {
+  if (min >= max) return "#c0a020";
+  const pct = (value - min) / (max - min);
+  if (pct >= 0.8) return "#c0a020";  // gold (legendary)
+  if (pct >= 0.6) return "#8a4ac0";  // purple (epic)
+  if (pct >= 0.4) return "#4a7ac0";  // blue (rare)
+  if (pct >= 0.2) return "#4a9b5a";  // green (uncommon)
+  return "#6a7a9b";                   // gray (common)
+}
+
 function rollCardFromCategory(category) {
-  const pool = CATEGORY_TEMPLATES[category];
+  const pool = getTemplates(category);
   if (!pool) return null;
   // Filter to only researched cards for gated categories
   const available = RESEARCH_GATED_CATEGORIES.includes(category)
@@ -2074,6 +2007,65 @@ function drawStarName() {
 // Detected star visuals
 const DETECTED_VISUAL = { color:"#384868", glowColor:"rgba(56,72,104,0.2)", baseSize:3 };
 
+// Visual properties per star template name (looked up via star.card.type,
+// which rollStarCard sets to template.name). Cards file can add new stars
+// by id; their rendering falls back to DETECTED_VISUAL unless listed here.
+const STAR_VISUALS = {
+  "Red Dwarf":                 { color:"#cc4444", glowColor:"rgba(204,68,68,0.4)", baseSize:3 },
+  "Yellow Main Sequence":      { color:"#e8d44a", glowColor:"rgba(232,212,74,0.4)", baseSize:4.5 },
+  "Brown Dwarf":               { color:"#8b6914", glowColor:"rgba(139,105,20,0.25)", baseSize:2.5 },
+  "Orange Giant":              { color:"#e08830", glowColor:"rgba(224,136,48,0.45)", baseSize:6 },
+  "White Dwarf":               { color:"#d0d8f0", glowColor:"rgba(208,216,240,0.35)", baseSize:2.5 },
+  "Blue Supergiant":           { color:"#5090ff", glowColor:"rgba(80,144,255,0.5)", baseSize:7 },
+  "Binary System":             { color:"#70b8e8", glowColor:"rgba(112,184,232,0.4)", baseSize:5 },
+  "Pulsar":                    { color:"#80e0e0", glowColor:"rgba(128,224,224,0.5)", baseSize:3.5 },
+  "Neutron Star":              { color:"#c0a0ff", glowColor:"rgba(192,160,255,0.5)", baseSize:3 },
+  "Magnetar":                  { color:"#ff60ff", glowColor:"rgba(255,96,255,0.55)", baseSize:3.5 },
+  "Trinary System":            { color:"#f0c060", glowColor:"rgba(240,192,96,0.45)", baseSize:5.5 },
+  "Primordial Quasar Remnant": { color:"#ffdd44", glowColor:"rgba(255,221,68,0.6)", baseSize:9 },
+};
+
+// Visual properties per planet template name (looked up via planet.card.type,
+// which generatePlanets sets to the template name).
+const PLANET_VISUALS = {
+  "Barren Rock":          { color:"#8a7a6a", glowColor:"rgba(138,122,106,0.2)", baseSize:4 },
+  "Arid Waste":           { color:"#c4a55a", glowColor:"rgba(196,165,90,0.2)", baseSize:4 },
+  "Frozen Moon":          { color:"#b0d0e8", glowColor:"rgba(176,208,232,0.25)", baseSize:3 },
+  "Desert Oasis":         { color:"#c4a860", glowColor:"rgba(196,168,96,0.2)", baseSize:4 },
+  "Temperate World":      { color:"#5aaa7a", glowColor:"rgba(90,170,122,0.3)", baseSize:5.5 },
+  "Ocean World":          { color:"#3070c0", glowColor:"rgba(48,112,192,0.3)", baseSize:5.5 },
+  "Volcanic World":       { color:"#c04020", glowColor:"rgba(192,64,32,0.35)", baseSize:4.5 },
+  "Tidally Locked World": { color:"#a08870", glowColor:"rgba(160,136,112,0.25)", baseSize:4.5 },
+  "Gas Giant":            { color:"#c89050", glowColor:"rgba(200,144,80,0.35)", baseSize:9 },
+  "Jungle World":         { color:"#2a8a30", glowColor:"rgba(42,138,48,0.3)", baseSize:5.5 },
+  "Crystalline World":    { color:"#a0c0f0", glowColor:"rgba(160,192,240,0.4)", baseSize:4 },
+  "Gaia World":           { color:"#40b080", glowColor:"rgba(64,176,128,0.35)", baseSize:6.5 },
+  "Precursor Homeworld":  { color:"#60b060", glowColor:"rgba(96,176,96,0.35)", baseSize:7 },
+  "Ring World Fragment":  { color:"#90a8c0", glowColor:"rgba(144,168,192,0.35)", baseSize:10 },
+};
+
+// Weapon-range decoration for ship cards.
+const RANGE_LABELS = { short:"S", medium:"M", long:"L" };
+const RANGE_COLORS = { short:"#e0a040", medium:"#a0c0e0", long:"#60d060" };
+
+// Icon lookup used when rendering cards. New stat keys don't need an entry;
+// fallback handling draws a neutral glyph.
+const STAT_ICONS = {
+  credits:"💰", energy:"⚡", minerals:"⛏️", research:"🔬", food:"🌾",
+  ecology:"🌿", gravity:"🌀", size:"📐", atmosphere:"💨",
+  growth:"📈", morale:"😊", efficiency:"⚙️", engineering:"🔧",
+  charisma:"💬", logistics:"📦", diplomacy:"🤝",
+  // Ship combat stats
+  shields:"🔷", armor:"🛡️", speed:"💨", sensorRange:"📡",
+  stealth:"👁️", pointDefense:"🎯",
+  energyDmg:"⚡", kineticDmg:"💥", missileDmg:"🚀",
+  // Admiral stats
+  commandBonus:"⭐", maxFleetSize:"⚓",
+  // Legacy
+  attack:"⚔️", hull:"🛸", navigation:"🧭",
+  tactics:"🎯", fleet_size:"⚓", research_bonus:"🔬", defense:"🛡️",
+};
+
 // ═══════════════════════════════════════════
 //  RARITY ROLLER
 // ═══════════════════════════════════════════
@@ -2123,7 +2115,7 @@ function rollStarPlanetSlots(template, rand) {
 function rollStarCard(rng) {
   const rand = rng || Math.random;
   const rarity = rollRarity(rng);
-  const pool = STAR_TEMPLATES.filter(t => t.rarity === rarity);
+  const pool = getTemplates("star").filter(t => t.rarity === rarity);
   const template = pool[Math.floor(rand() * pool.length)];
   // Pre-roll planet slots so the card can display them. Sort by rarity index desc (best first).
   const slots = rollStarPlanetSlots(template, rand);
@@ -2135,8 +2127,9 @@ const RARITY_ORDER = ["common","uncommon","rare","epic","legendary"];
 
 // Roll a planet of a specific rarity with its bonuses varied ±25%.
 function rollPlanetCardOfRarity(rarity) {
-  const pool = PLANET_TEMPLATES.filter(t => t.rarity === rarity);
-  const fallback = pool.length > 0 ? pool : PLANET_TEMPLATES;
+  const planetPool = getTemplates("planet");
+  const pool = planetPool.filter(t => t.rarity === rarity);
+  const fallback = pool.length > 0 ? pool : planetPool;
   const template = fallback[Math.floor(Math.random() * fallback.length)];
   const bias = RARITY_ROLL_BIAS[template.rarity] || 0.5;
   const bonuses = {};
@@ -2354,7 +2347,8 @@ function detectStarsInRange(wx, wy, sensorRange) {
 // Initialize galaxy — home star at origin + detect neighbors
 function generateGalaxy() {
   // Home star — always Yellow Main Sequence, placed at origin
-  const homeTpl = STAR_TEMPLATES[1];
+  // Home star is always Yellow Main Sequence — look up by id, not array index.
+  const homeTpl = getCardById("str_002") || getTemplates("star")[0];
   const homeSlots = rollStarPlanetSlots(homeTpl);
   homeSlots.sort((a,b) => RARITY_ORDER.indexOf(b) - RARITY_ORDER.indexOf(a));
   const homeCard = { ...homeTpl, planetSlots: homeSlots, type: homeTpl.name, name: drawStarName() };
@@ -3709,7 +3703,8 @@ function buildGenericStatsHtml(card) {
 }
 
 function buildCardHtml(card, watermark) {
-  const isShip = card.category === "ship";
+  // Pirate ships are functionally ships — render with the ship stats layout.
+  const isShip = card.category === "ship" || card.category === "pirate";
   const isAdmiral = card.category === "admiral";
   const statsContent = isShip ? buildShipStatsHtml(card) : isAdmiral ? buildAdmiralStatsHtml(card) : buildGenericStatsHtml(card);
 
@@ -4603,7 +4598,7 @@ function startResearch(category) {
 }
 
 function rollResearchResult(category) {
-  const pool = CATEGORY_TEMPLATES[category];
+  const pool = getTemplates(category);
   if (!pool) return null;
   const candidates = pool.filter(t => !researchedCards.has(t.id) && t.rarity !== "common");
   if (candidates.length === 0) return null;
@@ -4626,8 +4621,7 @@ function rollResearchResult(category) {
 function initResearch() {
   // Auto-unlock all common cards across all gated categories
   for (const catName of RESEARCH_GATED_CATEGORIES) {
-    const templates = CATEGORY_TEMPLATES[catName];
-    if (!templates) continue;
+    const templates = getTemplates(catName);
     for (const t of templates) {
       if (t.rarity === "common") {
         researchedCards.add(t.id);
@@ -4635,8 +4629,8 @@ function initResearch() {
     }
   }
   // Stars and planets are never gated
-  for (const t of (CATEGORY_TEMPLATES["star"] || [])) researchedCards.add(t.id);
-  for (const t of (CATEGORY_TEMPLATES["planet"] || [])) researchedCards.add(t.id);
+  for (const t of getTemplates("star")) researchedCards.add(t.id);
+  for (const t of getTemplates("planet")) researchedCards.add(t.id);
 }
 
 function getDrawCost() {
@@ -5752,8 +5746,8 @@ function refreshResearchPanel() {
 
   const researchableCategories = ["building", "ship", "admiral", "leader"];
   for (const cat of researchableCategories) {
-    const pool = CATEGORY_TEMPLATES[cat];
-    if (!pool) continue;
+    const pool = getTemplates(cat);
+    if (pool.length === 0) continue;
     const researchedCount = pool.filter(t => researchedCards.has(t.id)).length;
     const remaining = pool.filter(t => !researchedCards.has(t.id) && t.rarity !== "common");
     const count = researchCounts[cat] || 0;
@@ -5857,6 +5851,105 @@ const AUTOSAVE_KEY = "idlespace_autosave_v1";
 const AUTOSAVE_INTERVAL_MS = 60000; // every 60 real seconds
 let lastSaveStatus = "";
 
+// ── Card reference serialization ──
+// Cards are stored in saves as { id, ...instanceState }. The template (name,
+// cost, upkeep, flavor, base stats, etc.) is re-resolved from the active
+// card file at load time. This lets us rebalance a card without invalidating
+// running saves — the save is the source of truth for *instance* state
+// (rolled values, drawn names, HP, planet slot rolls); the card file is the
+// source of truth for *definition*. Missing IDs drop with a warning.
+//
+// Legacy full-card shapes (pre-Phase-4) also hydrate cleanly: full cards
+// already carry an `id` from the template spread, and the same instance
+// fields live at the top level.
+const CARD_INSTANCE_FIELDS = ["stats", "statRanges", "bonuses", "bonusRanges", "planetSlots", "name"];
+
+function serializeCardRef(card) {
+  if (!card) return null;
+  if (!card.id || !getCardById(card.id)) {
+    // Unknown / untracked card — store opaque. Shouldn't happen for player cards.
+    return { ...card };
+  }
+  const out = { id: card.id };
+  for (const k of CARD_INSTANCE_FIELDS) {
+    if (card[k] !== undefined) out[k] = card[k];
+  }
+  return out;
+}
+
+function hydrateCardRef(ref) {
+  if (!ref) return null;
+  if (!ref.id) return ref; // legacy full card without a resolvable id
+  const template = getCardById(ref.id);
+  if (!template) {
+    console.warn("[save] dropping card with unknown id:", ref.id, ref.name || "(no name)");
+    return null;
+  }
+  const c = { ...template };
+  for (const k of CARD_INSTANCE_FIELDS) {
+    if (ref[k] !== undefined) c[k] = ref[k];
+  }
+  // Stars/planets require .type == template.name for STAR_VISUALS / PLANET_VISUALS
+  // lookups (see rollStarCard and generatePlanets which set this at runtime).
+  if (c.category === "star" || c.category === "planet") {
+    c.type = template.name;
+  }
+  return c;
+}
+
+function serializePlanet(p) {
+  return {
+    card: serializeCardRef(p.card),
+    orbitRadius: p.orbitRadius,
+    orbitSpeed: p.orbitSpeed,
+    orbitPhase: p.orbitPhase,
+    colony: p.colony ? serializeColony(p.colony) : null,
+  };
+}
+
+function serializeColony(col) {
+  return {
+    population: col.population,
+    maxPopulation: col.maxPopulation,
+    buildings: col.buildings.map(b => b ? serializeCardRef(b) : null),
+    leaders: col.leaders.map(serializeCardRef).filter(Boolean),
+    deck: col.deck.map(d => ({ ...d })), // already thin: { category, faceDown }
+    queue: col.queue.map(serializeCardRef).filter(Boolean),
+    activeAction: col.activeAction,
+    genTimer: col.genTimer,
+    growthProgress: col.growthProgress,
+    starvationTimer: col.starvationTimer,
+  };
+}
+
+function hydratePlanet(p) {
+  const card = hydrateCardRef(p.card);
+  if (!card) return null; // unknown planet template, drop the planet
+  const planet = {
+    card,
+    orbitRadius: p.orbitRadius,
+    orbitSpeed: p.orbitSpeed,
+    orbitPhase: p.orbitPhase,
+    colony: p.colony ? hydrateColony(p.colony) : null,
+  };
+  return planet;
+}
+
+function hydrateColony(col) {
+  return {
+    population: col.population,
+    maxPopulation: col.maxPopulation,
+    buildings: (col.buildings || []).map(b => b ? hydrateCardRef(b) : null),
+    leaders: (col.leaders || []).map(hydrateCardRef).filter(Boolean),
+    deck: (col.deck || []).map(d => ({ ...d })),
+    queue: (col.queue || []).map(hydrateCardRef).filter(Boolean),
+    activeAction: col.activeAction ?? null,
+    genTimer: col.genTimer || 0,
+    growthProgress: col.growthProgress || 0,
+    starvationTimer: col.starvationTimer || 0,
+  };
+}
+
 function serializeGame() {
   const entityIdx = new Map();
   mapEntities.forEach((e, i) => entityIdx.set(e, i));
@@ -5868,8 +5961,8 @@ function serializeGame() {
 
     stars: [...stars.values()].map(s => ({
       id: s.id, x: s.x, y: s.y, visibility: s.visibility,
-      card: s.card,
-      planets: s.planets || null,
+      card: serializeCardRef(s.card),
+      planets: s.planets ? s.planets.map(serializePlanet) : null,
     })),
     generatedChunks: [...generatedChunks.keys()],
     nextStarId,
@@ -5881,9 +5974,9 @@ function serializeGame() {
       x: e.x, y: e.y, destX: e.destX, destY: e.destY,
       speed: e.speed, sensorRange: e.sensorRange, stealth: e.stealth,
       label: e.label, inCombat: e.inCombat,
-      card: e.card || null,
-      ships: e.ships || null,
-      admiral: e.admiral || null,
+      card: e.card ? serializeCardRef(e.card) : null,
+      ships: e.ships ? e.ships.map(serializeCardRef).filter(Boolean) : null,
+      admiral: e.admiral ? serializeCardRef(e.admiral) : null,
     })),
     selectedEntityIdx,
 
@@ -5976,8 +6069,12 @@ function deserializeGame(data) {
   clearGameState();
 
   for (const s of data.stars) {
-    const star = { id: s.id, x: s.x, y: s.y, visibility: s.visibility, card: s.card };
-    if (s.planets) star.planets = s.planets;
+    const card = hydrateCardRef(s.card);
+    if (!card) continue; // unknown star template — drop the star rather than corrupt state
+    const star = { id: s.id, x: s.x, y: s.y, visibility: s.visibility, card };
+    if (s.planets) {
+      star.planets = s.planets.map(hydratePlanet).filter(Boolean);
+    }
     stars.set(s.id, star);
   }
   nextStarId = data.nextStarId || 1;
@@ -5990,15 +6087,18 @@ function deserializeGame(data) {
   for (const key of (data.generatedChunks || [])) generatedChunks.set(key, true);
 
   for (const e of data.mapEntities) {
+    // Preserve mapEntities order: activeCombats reference entities by index
+    // via entityIdx, so dropping entities here would corrupt combat. If a
+    // card ref can't resolve, we keep the raw ref as a degraded card and warn.
     const ent = {
       type: e.type, owner: e.owner, stance: e.stance,
       x: e.x, y: e.y, destX: e.destX, destY: e.destY,
       speed: e.speed, sensorRange: e.sensorRange, stealth: e.stealth,
       label: e.label, inCombat: e.inCombat,
     };
-    if (e.card) ent.card = e.card;
-    if (e.ships) ent.ships = e.ships;
-    if (e.admiral) ent.admiral = e.admiral;
+    if (e.card) ent.card = hydrateCardRef(e.card) || e.card;
+    if (e.ships) ent.ships = e.ships.map(s => hydrateCardRef(s) || s);
+    if (e.admiral) ent.admiral = hydrateCardRef(e.admiral) || e.admiral;
     mapEntities.push(ent);
   }
   selectedEntityIdx = data.selectedEntityIdx ?? null;
@@ -6197,11 +6297,24 @@ function renderSaveMenu() {
     autosaveBlock = `<div class="save-meta">No autosave yet. One will be written every ${AUTOSAVE_INTERVAL_MS/1000}s and on page close.</div>`;
   }
 
+  const overrideActive = CARD_SOURCE === "override";
+  const cardsBlock = `
+    <div class="save-meta">
+      <div class="meta-title">Cards</div>
+      <div>Loaded from <b style="color:${overrideActive ? '#ffd060' : '#a4e4a4'}">${
+        overrideActive ? 'live builder override' : (CARD_SOURCE === 'file' ? 'data/game-cards.json' : CARD_SOURCE)
+      }</b> · ${CARD_INDEX.size} cards</div>
+    </div>
+    <a class="menu-btn" href="card-builder.html" target="_blank" rel="noopener" style="text-decoration:none;text-align:center;">🛠 Open Card Builder ↗</a>
+    ${overrideActive ? `<button class="menu-btn danger" onclick="revertCardOverride();hideSaveMenu()">✕ Revert to shipped cards</button>` : ""}
+  `;
+
   menu.innerHTML = `
     <h2>💾 Save &amp; Load</h2>
     <button class="menu-btn" onclick="exportSaveFile()">⬇ Export save to file…</button>
     <button class="menu-btn" onclick="document.getElementById('save-file-input').click()">⬆ Import save from file…</button>
     ${autosaveBlock}
+    ${cardsBlock}
     <div id="save-status" class="save-status${lastSaveStatus ? "" : ""}">${lastSaveStatus || ""}</div>
     <button class="menu-btn secondary" onclick="hideSaveMenu()">Close</button>
   `;
@@ -6248,19 +6361,24 @@ function confirmLoadSave(data, sourceLabel) {
 // ═══════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════
+// Boot is async so card data (data/game-cards.json or localStorage override)
+// finishes loading before anything that touches templates runs.
+(async function boot() {
+await loadCardData();
+updateCardSourceBadge();
 initResearch();
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 const homeStar = generateGalaxy();
 // Helper to clone a ship template by id
 function cloneShip(id, nameOverride) {
-  const t = SHIP_TEMPLATES.find(s => s.id === id);
+  const t = getCardById(id);
   const c = { ...t, stats: { ...t.stats } };
   if (nameOverride) c.name = nameOverride;
   return c;
 }
 function cloneAdmiral(id) {
-  const t = ADMIRAL_TEMPLATES.find(a => a.id === id);
+  const t = getCardById(id);
   return { ...t, stats: { ...t.stats } };
 }
 // Start with 3 admiral-led fleets, each with a high-sensor ship, offset from home star
@@ -6341,6 +6459,7 @@ window.addEventListener("beforeunload", doAutosave);
 })();
 
 requestAnimationFrame(gameLoop);
+})();
 </script>
 </body>
 </html>

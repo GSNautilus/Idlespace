@@ -30,6 +30,39 @@ body {
 #header h1 { font-size: 16px; font-weight: 600; color: #8090b0; }
 #header h1 span { color: #4a7ac0; }
 #header-actions { display: flex; gap: 8px; align-items: center; }
+#live-link-status {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  margin-right: 4px;
+  background: linear-gradient(135deg, #3a2a10, #503a15);
+  border: 1px solid #c0a020;
+  border-radius: 4px;
+  color: #ffe8a0;
+  font-size: 11px;
+  font-weight: 600;
+}
+#live-link-status.visible { display: flex; }
+#live-link-status .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #ffd040;
+  box-shadow: 0 0 5px #ffd040;
+  animation: live-dot-pulse 1.8s ease-in-out infinite;
+}
+@keyframes live-dot-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+#live-link-status .clear-link {
+  background: transparent; border: none; color: #ffe8a0;
+  cursor: pointer; font-size: 11px; text-decoration: underline;
+  padding: 0 0 0 2px;
+}
+#live-link-status .clear-link:hover { color: #ffbb40; }
+.header-btn-apply {
+  background: linear-gradient(135deg, #402a10, #604010) !important;
+  border-color: #c0a020 !important;
+  color: #ffe8a0 !important;
+}
+.header-btn-apply:hover { background: linear-gradient(135deg, #503818, #704818) !important; }
 #new-card-btn, .header-btn {
   padding: 8px 20px;
   background: linear-gradient(135deg, #2a4080, #3a5ab0);
@@ -679,8 +712,15 @@ select.editor-input { cursor: pointer; }
 <div id="header">
   <h1><span>IdleSpace</span> Card Builder</h1>
   <div id="header-actions">
+    <div id="live-link-status">
+      <span class="dot"></span>
+      <span>Live-linked to game</span>
+      <button class="clear-link" id="clear-override-btn" title="Remove override; game reverts to data/game-cards.json">clear</button>
+    </div>
     <button id="import-btn" class="header-btn header-btn-subtle">Import JSON</button>
     <button id="export-btn" class="header-btn header-btn-subtle">Export JSON</button>
+    <button id="export-bundle-btn" class="header-btn header-btn-subtle">Export Bundle</button>
+    <button id="apply-live-btn" class="header-btn header-btn-apply" title="Push current catalog to any open starmap as a live override">Apply to Live</button>
     <button id="new-card-btn">+ New Card</button>
   </div>
   <input type="file" id="import-file" accept=".json" style="display:none">
@@ -707,6 +747,7 @@ select.editor-input { cursor: pointer; }
           <option value="admiral">Admiral</option>
           <option value="star">Star</option>
           <option value="planet">Planet</option>
+          <option value="pirate">Pirate</option>
         </select>
       </div>
       <div>
@@ -764,18 +805,22 @@ select.editor-input { cursor: pointer; }
         <option value="admiral">Admiral</option>
         <option value="star">Star</option>
         <option value="planet">Planet</option>
+        <option value="pirate">Pirate (NPC)</option>
       </select>
     </div>
 
     <div class="editor-section">
-      <label class="editor-label">Rarity</label>
-      <select class="editor-input" id="edit-rarity">
-        <option value="common">Common</option>
-        <option value="uncommon">Uncommon</option>
-        <option value="rare">Rare</option>
-        <option value="epic">Epic</option>
-        <option value="legendary">Legendary</option>
-      </select>
+      <label class="editor-label">Rarity / Weight</label>
+      <div style="display:flex; gap:6px;">
+        <select class="editor-input" id="edit-rarity" style="flex:1;">
+          <option value="common">Common</option>
+          <option value="uncommon">Uncommon</option>
+          <option value="rare">Rare</option>
+          <option value="epic">Epic</option>
+          <option value="legendary">Legendary</option>
+        </select>
+        <input type="number" class="editor-input" id="edit-weight" value="1" min="0" step="0.5" style="width:72px;" title="Within-rarity pick weight. Default 1. 0 = never drawn.">
+      </div>
     </div>
 
     <div class="editor-section">
@@ -788,16 +833,39 @@ select.editor-input { cursor: pointer; }
       <input type="file" id="image-file-input" accept="image/*">
     </div>
 
-    <div class="editor-section">
-      <label class="editor-label">Stats</label>
+    <!-- Stats section — visible for building/leader/admiral/ship. Planet sees "Bonuses (%)" here; star hides it. -->
+    <div class="editor-section" id="stats-section">
+      <label class="editor-label" id="stats-label">Stats</label>
       <div class="stat-rows" id="stat-rows"></div>
       <button class="add-row-btn" id="add-stat-btn">+ Add Stat</button>
+    </div>
+
+    <!-- Planet Generation — star-only -->
+    <div class="editor-section" id="planetgen-section" style="display:none;">
+      <label class="editor-label">Planet Generation</label>
+      <div style="display:flex; gap:6px; align-items:center; font-size:11px; color:#506888;">
+        <span>count</span>
+        <input type="number" class="editor-input" id="edit-pg-count-min" value="1" min="0" style="width:56px;" placeholder="min">
+        <span>to</span>
+        <input type="number" class="editor-input" id="edit-pg-count-max" value="3" min="0" style="width:56px;" placeholder="max">
+        <span>bonus</span>
+        <input type="number" class="editor-input" id="edit-pg-bonus" value="0" min="0" style="width:56px;" placeholder="0">
+      </div>
+      <label class="editor-label" style="margin-top:6px;">Guaranteed rarities</label>
+      <input type="text" class="editor-input" id="edit-pg-guaranteed" placeholder="e.g. uncommon, rare, epic" style="font-size:12px;">
+      <div style="font-size:10px; color:#384868; margin-top:3px;">Comma-separated rarity names. Shift remaining slots via "bonus".</div>
     </div>
 
     <div class="editor-section">
       <label class="editor-label">Cost</label>
       <div class="stat-rows" id="cost-rows"></div>
       <button class="add-row-btn" id="add-cost-btn">+ Add Cost</button>
+    </div>
+
+    <div class="editor-section">
+      <label class="editor-label">Upkeep</label>
+      <div class="stat-rows" id="upkeep-rows"></div>
+      <button class="add-row-btn" id="add-upkeep-btn">+ Add Upkeep</button>
     </div>
 
     <div class="editor-section">
@@ -818,6 +886,13 @@ select.editor-input { cursor: pointer; }
         <button id="add-tag-btn">+</button>
         <div id="tag-autocomplete"></div>
       </div>
+    </div>
+
+    <div class="editor-section">
+      <label class="editor-label">Attributes</label>
+      <div class="stat-rows" id="attr-rows"></div>
+      <button class="add-row-btn" id="add-attr-btn">+ Add Attribute</button>
+      <div style="font-size:10px; color:#384868; margin-top:3px;">Typed metadata (race, faction, alignment...). Free-form key/value.</div>
     </div>
 
     <div class="editor-section">
@@ -854,6 +929,7 @@ const CATEGORY_DEFAULT_STATS = {
   admiral:  ["commandBonus","maxFleetSize"],
   star:     [],
   planet:   [],
+  pirate:   ["shields","armor","speed","sensorRange","energyDmg","energyRange","kineticDmg","kineticRange","missileDmg","missileRange","stealth","pointDefense"],
 };
 
 // Stats that use a dropdown instead of a number input
@@ -864,6 +940,12 @@ const DROPDOWN_STATS = {
 };
 
 const STORAGE_KEY = "idlespace_cards";
+const SCHEMA_VERSION = 1;
+// Shared with starmap.html — must match CARDS_OVERRIDE_KEY there.
+const CARDS_OVERRIDE_KEY = "idlespace_gameCards_override";
+const CARDS_BROADCAST = (typeof BroadcastChannel !== "undefined")
+  ? new BroadcastChannel("idlespace-cards")
+  : null;
 
 // ═══════════════════════════════════════════
 //  STATE
@@ -874,46 +956,92 @@ let editingCardId = null; // null = new card
 // ═══════════════════════════════════════════
 //  STORAGE
 // ═══════════════════════════════════════════
+// Storage format: { version, cards: [...] } — matches game's data/game-cards.json.
+// Accepts legacy flat-array localStorage too (pre-Phase 2 catalogs).
 function loadCatalog() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;                    // legacy
+    if (Array.isArray(raw.cards)) return raw.cards;         // { version, cards }
+    return [];
   } catch { return []; }
 }
 
 function saveCatalog() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(catalog));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, cards: catalog }));
 }
 
 // ═══════════════════════════════════════════
 //  EDITOR STATE HELPERS
 // ═══════════════════════════════════════════
-function getEditorData() {
-  const stats = {};
-  document.querySelectorAll("#stat-rows .stat-row").forEach(row => {
+// Read key/value rows from a container. Numeric unless the key is in
+// DROPDOWN_STATS or forceString is set.
+function readKvRows(containerId, { forceString = false } = {}) {
+  const out = {};
+  document.querySelectorAll(`#${containerId} .stat-row`).forEach(row => {
     const key = row.querySelector(".stat-key").value.trim().toLowerCase().replace(/\s+/g, "_");
+    if (!key) return;
     const valEl = row.querySelector(".stat-val");
-    const val = DROPDOWN_STATS[key] ? valEl.value : (parseFloat(valEl.value) || 0);
-    if (key) stats[key] = val;
+    let val;
+    if (forceString) val = valEl.value.trim();
+    else if (DROPDOWN_STATS[key]) val = valEl.value;
+    else val = parseFloat(valEl.value) || 0;
+    out[key] = val;
   });
+  return out;
+}
 
-  const cost = {};
-  document.querySelectorAll("#cost-rows .stat-row").forEach(row => {
-    const key = row.querySelector(".stat-key").value.trim().toLowerCase().replace(/\s+/g, "_");
-    const val = parseFloat(row.querySelector(".stat-val").value) || 0;
-    if (key) cost[key] = val;
-  });
+function readPlanetGen() {
+  const minV = parseInt(document.getElementById("edit-pg-count-min").value);
+  const maxV = parseInt(document.getElementById("edit-pg-count-max").value);
+  const bonus = parseInt(document.getElementById("edit-pg-bonus").value) || 0;
+  const gRaw = document.getElementById("edit-pg-guaranteed").value.trim();
+  const guaranteed = gRaw ? gRaw.split(",").map(s => s.trim().toLowerCase()).filter(Boolean) : [];
+  if (Number.isNaN(minV) && Number.isNaN(maxV) && !bonus && guaranteed.length === 0) return null;
+  return {
+    count: [Number.isNaN(minV) ? 0 : minV, Number.isNaN(maxV) ? (Number.isNaN(minV) ? 0 : minV) : maxV],
+    guaranteed,
+    bonus,
+  };
+}
+
+function getEditorData() {
+  const category = document.getElementById("edit-category").value;
+  const statsOrBonuses = readKvRows("stat-rows");
+  const cost = readKvRows("cost-rows");
+  const upkeep = readKvRows("upkeep-rows");
+  const attributes = readKvRows("attr-rows", { forceString: true });
+
+  // Category-specific data lives under categoryData.
+  const categoryData = {};
+  if (category === "star") {
+    const pg = readPlanetGen();
+    if (pg) categoryData.planetGen = pg;
+  } else if (category === "planet") {
+    if (Object.keys(statsOrBonuses).length > 0) categoryData.bonuses = statsOrBonuses;
+  }
+
+  // Planets store their values in categoryData.bonuses, not stats.
+  const stats = (category === "planet") ? {} : statsOrBonuses;
+
+  const weight = parseFloat(document.getElementById("edit-weight").value);
 
   return {
     name: document.getElementById("edit-name").value.trim(),
-    category: document.getElementById("edit-category").value,
+    category,
     rarity: document.getElementById("edit-rarity").value,
+    weight: Number.isFinite(weight) ? weight : 1,
     image: currentImage,
     stats,
     cost,
+    upkeep,
     special: document.getElementById("edit-special").value.trim(),
     flavor: document.getElementById("edit-flavor").value.trim(),
     notes: document.getElementById("edit-notes").value.trim(),
     tags: [...currentTags],
+    attributes,
+    categoryData,
   };
 }
 
@@ -922,6 +1050,7 @@ function loadCardIntoEditor(card) {
   document.getElementById("edit-name").value = card.name;
   document.getElementById("edit-category").value = card.category;
   document.getElementById("edit-rarity").value = card.rarity;
+  document.getElementById("edit-weight").value = (typeof card.weight === "number") ? card.weight : 1;
   document.getElementById("edit-special").value = card.special || "";
   document.getElementById("edit-flavor").value = card.flavor || "";
   document.getElementById("edit-notes").value = card.notes || "";
@@ -932,17 +1061,55 @@ function loadCardIntoEditor(card) {
   currentTags = [...(card.tags || [])];
   renderTags();
 
-  // Build stat rows
-  const defaultStats = CATEGORY_DEFAULT_STATS[card.category] || [];
-  const allStatKeys = [...new Set([...defaultStats, ...Object.keys(card.stats || {})])];
-  buildStatRows("stat-rows", allStatKeys, card.stats || {}, defaultStats);
+  applyCategoryLayout(card.category);
 
-  // Build cost rows
+  // Stats / bonuses: planets store in categoryData.bonuses; fall back to legacy stats
+  // so pre-Phase-2 planet catalogs keep their values visible.
+  const bonuses = card.categoryData && card.categoryData.bonuses;
+  const statSource = (card.category === "planet")
+    ? (bonuses || card.stats || {})
+    : (card.stats || {});
+  const defaultStats = CATEGORY_DEFAULT_STATS[card.category] || [];
+  const allStatKeys = [...new Set([...defaultStats, ...Object.keys(statSource)])];
+  buildStatRows("stat-rows", allStatKeys, statSource, defaultStats);
+
+  // Cost / upkeep
   buildCostRows(card.cost || {});
+  buildKvRowsGeneric("upkeep-rows", card.upkeep || {});
+
+  // Attributes (string values)
+  buildKvRowsGeneric("attr-rows", card.attributes || {}, { stringValues: true });
+
+  // Planet generation (star-only)
+  const pg = (card.categoryData && card.categoryData.planetGen) || {};
+  const [pgMin, pgMax] = Array.isArray(pg.count) ? pg.count : [1, 3];
+  document.getElementById("edit-pg-count-min").value = pgMin ?? 1;
+  document.getElementById("edit-pg-count-max").value = pgMax ?? 3;
+  document.getElementById("edit-pg-bonus").value = pg.bonus ?? 0;
+  document.getElementById("edit-pg-guaranteed").value = Array.isArray(pg.guaranteed) ? pg.guaranteed.join(", ") : "";
 
   document.getElementById("delete-btn").disabled = false;
   updatePreview();
   highlightCatalogItem(card.id);
+}
+
+// Show/hide category-dependent editor sections and relabel the stats section.
+function applyCategoryLayout(category) {
+  const statsSec = document.getElementById("stats-section");
+  const statsLabel = document.getElementById("stats-label");
+  const pgSec = document.getElementById("planetgen-section");
+  if (category === "star") {
+    statsSec.style.display = "none";
+    pgSec.style.display = "";
+  } else if (category === "planet") {
+    statsSec.style.display = "";
+    statsLabel.textContent = "Resource Bonuses (%)";
+    pgSec.style.display = "none";
+  } else {
+    statsSec.style.display = "";
+    statsLabel.textContent = "Stats";
+    pgSec.style.display = "none";
+  }
 }
 
 function resetEditor() {
@@ -950,6 +1117,7 @@ function resetEditor() {
   document.getElementById("edit-name").value = "";
   document.getElementById("edit-category").value = "building";
   document.getElementById("edit-rarity").value = "common";
+  document.getElementById("edit-weight").value = 1;
   document.getElementById("edit-special").value = "";
   document.getElementById("edit-flavor").value = "";
   document.getElementById("edit-notes").value = "";
@@ -960,9 +1128,18 @@ function resetEditor() {
   currentTags = [];
   renderTags();
 
+  applyCategoryLayout("building");
+
   const defaultStats = CATEGORY_DEFAULT_STATS["building"];
   buildStatRows("stat-rows", defaultStats, {}, defaultStats);
   buildCostRows({});
+  buildKvRowsGeneric("upkeep-rows", {});
+  buildKvRowsGeneric("attr-rows", {}, { stringValues: true });
+
+  document.getElementById("edit-pg-count-min").value = 1;
+  document.getElementById("edit-pg-count-max").value = 3;
+  document.getElementById("edit-pg-bonus").value = 0;
+  document.getElementById("edit-pg-guaranteed").value = "";
 
   document.getElementById("delete-btn").disabled = true;
   updatePreview();
@@ -981,14 +1158,20 @@ function buildStatRows(containerId, keys, values, defaultKeys) {
 }
 
 function buildCostRows(costObj) {
-  const container = document.getElementById("cost-rows");
+  buildKvRowsGeneric("cost-rows", costObj);
+}
+
+// Generic key/value row builder. Use { stringValues: true } for attributes etc.
+function buildKvRowsGeneric(containerId, obj, opts = {}) {
+  const container = document.getElementById(containerId);
   container.innerHTML = "";
-  for (const [key, val] of Object.entries(costObj)) {
-    addStatRow(container, key, val, false);
+  for (const [key, val] of Object.entries(obj)) {
+    addStatRow(container, key, val, false, opts);
   }
 }
 
-function addStatRow(container, key, value, isDefault) {
+function addStatRow(container, key, value, isDefault, opts = {}) {
+  const { stringValues = false } = opts;
   const row = document.createElement("div");
   row.className = "stat-row";
 
@@ -996,13 +1179,12 @@ function addStatRow(container, key, value, isDefault) {
   keyInput.className = `stat-key${isDefault ? " default" : ""}`;
   keyInput.type = "text";
   keyInput.value = key;
-  keyInput.placeholder = "resource...";
+  keyInput.placeholder = stringValues ? "name..." : "resource...";
   if (isDefault) keyInput.readOnly = true;
   keyInput.addEventListener("input", updatePreview);
 
   let valEl;
-  if (DROPDOWN_STATS[key]) {
-    // Dropdown for range-type stats
+  if (!stringValues && DROPDOWN_STATS[key]) {
     valEl = document.createElement("select");
     valEl.className = "stat-val";
     for (const opt of DROPDOWN_STATS[key]) {
@@ -1016,9 +1198,9 @@ function addStatRow(container, key, value, isDefault) {
   } else {
     valEl = document.createElement("input");
     valEl.className = "stat-val";
-    valEl.type = "number";
+    valEl.type = stringValues ? "text" : "number";
     valEl.value = value;
-    valEl.placeholder = "0";
+    valEl.placeholder = stringValues ? "value" : "0";
     valEl.addEventListener("input", updatePreview);
   }
 
@@ -1205,6 +1387,7 @@ const CATEGORY_ICONS = {
   admiral: "⭐",
   star: "☀️",
   planet: "🪐",
+  pirate: "🏴‍☠️",
 };
 
 // Icon lookup for known stat/cost keys
@@ -1272,12 +1455,20 @@ function updatePreview() {
     specialEl.style.display = "none";
   }
 
-  // Stats — ship cards get combat layout, others get generic
+  // Stats — ship cards get combat layout, others get generic. Planets read from
+  // categoryData.bonuses, stars show a planetGen summary.
   const statsEl = document.getElementById("preview-stats");
   statsEl.innerHTML = "";
   const isShip = data.category === "ship";
   const isAdmiral = data.category === "admiral";
+  const isPlanet = data.category === "planet";
+  const isStar = data.category === "star";
   statsEl.className = `card-stats${(!hasSpecial && !isShip && !isAdmiral) ? " expanded" : ""}`;
+
+  // Planets: render bonuses from categoryData.bonuses as percent modifiers
+  const previewStats = isPlanet
+    ? (data.categoryData && data.categoryData.bonuses) || {}
+    : data.stats;
 
   if (isAdmiral) {
     const s = data.stats;
@@ -1334,11 +1525,25 @@ function updatePreview() {
       utilHtml += `</div>`;
     }
     statsEl.innerHTML = defHtml + weapHtml + utilHtml;
+  } else if (isStar) {
+    // Summarize planet generation on the card face.
+    const pg = (data.categoryData && data.categoryData.planetGen) || {};
+    const [cMin, cMax] = Array.isArray(pg.count) ? pg.count : [0, 0];
+    const range = (cMin === cMax) ? `${cMin}` : `${cMin}-${cMax}`;
+    const guaranteed = Array.isArray(pg.guaranteed) && pg.guaranteed.length > 0
+      ? `${pg.guaranteed.length}× ${pg.guaranteed.join("/")}`
+      : "—";
+    statsEl.innerHTML = `
+      <div class="card-stat"><span class="card-stat-icon">🪐</span><span class="card-stat-value">${range}</span></div>
+      <div class="card-stat" style="font-size:9px;color:#506888"><span>guaranteed: ${guaranteed}</span></div>
+      ${pg.bonus ? `<div class="card-stat" style="font-size:9px;color:#c0a020"><span>+${pg.bonus} rarity bias</span></div>` : ""}
+    `;
   } else {
-    for (const [key, val] of Object.entries(data.stats)) {
+    for (const [key, val] of Object.entries(previewStats)) {
       const div = document.createElement("div");
       div.className = "card-stat";
-      div.innerHTML = `<span class="card-stat-icon">${getStatIcon(key)}</span><span class="card-stat-value ${val === 0 ? "zero" : ""}">${val}</span>`;
+      const display = isPlanet ? `+${val}%` : val;
+      div.innerHTML = `<span class="card-stat-icon">${getStatIcon(key)}</span><span class="card-stat-value ${val === 0 ? "zero" : ""}">${display}</span>`;
       statsEl.appendChild(div);
     }
   }
@@ -1403,19 +1608,32 @@ function highlightCatalogItem(id) {
 // ═══════════════════════════════════════════
 //  SAVE / DELETE
 // ═══════════════════════════════════════════
+// Known categoryData sub-keys per category. Used to ensure editor values
+// for these keys take precedence over the previously-stored value (including
+// clearing them), while still preserving any *unknown* sub-keys for
+// forward-compatibility.
+const CATEGORY_DATA_KEYS = { star: ["planetGen"], planet: ["bonuses"] };
+
+function mergeCategoryData(existing, fresh, category) {
+  const result = { ...(existing || {}) };
+  for (const k of (CATEGORY_DATA_KEYS[category] || [])) delete result[k];
+  return { ...result, ...(fresh || {}) };
+}
+
 function saveCard() {
   const data = getEditorData();
   if (!data.name) { showToast("Card needs a name!"); return; }
 
   const now = new Date().toISOString();
   if (editingCardId) {
-    // Update existing
     const idx = catalog.findIndex(c => c.id === editingCardId);
     if (idx !== -1) {
-      catalog[idx] = { ...catalog[idx], ...data, updatedAt: now };
+      const existing = catalog[idx];
+      const merged = { ...existing, ...data, updatedAt: now };
+      merged.categoryData = mergeCategoryData(existing.categoryData, data.categoryData, data.category);
+      catalog[idx] = merged;
     }
   } else {
-    // Create new
     const card = {
       id: crypto.randomUUID(),
       ...data,
@@ -1460,15 +1678,20 @@ function showToast(msg) {
 // Editor inputs → live preview
 document.getElementById("edit-name").addEventListener("input", updatePreview);
 document.getElementById("edit-rarity").addEventListener("change", updatePreview);
+document.getElementById("edit-weight").addEventListener("input", updatePreview);
 document.getElementById("edit-special").addEventListener("input", updatePreview);
 document.getElementById("edit-flavor").addEventListener("input", updatePreview);
+// Planet-gen inputs affect the preview for star cards.
+for (const id of ["edit-pg-count-min", "edit-pg-count-max", "edit-pg-bonus", "edit-pg-guaranteed"]) {
+  document.getElementById(id).addEventListener("input", updatePreview);
+}
 
-// Category change → rebuild default stats
+// Category change → swap layout, rebuild default stats, preserve custom entries
 document.getElementById("edit-category").addEventListener("change", () => {
   const cat = document.getElementById("edit-category").value;
   const defaultStats = CATEGORY_DEFAULT_STATS[cat] || [];
 
-  // Preserve custom (non-default) stat rows from current category
+  // Preserve custom (non-default) stat rows from the current category.
   const currentCustom = {};
   const oldCat = editingCardId
     ? (catalog.find(c => c.id === editingCardId)?.category || "building")
@@ -1483,18 +1706,26 @@ document.getElementById("edit-category").addEventListener("change", () => {
     }
   });
 
+  applyCategoryLayout(cat);
+
   const allKeys = [...defaultStats, ...Object.keys(currentCustom)];
   const values = { ...currentCustom };
   buildStatRows("stat-rows", allKeys, values, defaultStats);
   updatePreview();
 });
 
-// Add stat / cost buttons
+// Add stat / cost / upkeep / attribute buttons
 document.getElementById("add-stat-btn").addEventListener("click", () => {
   addStatRow(document.getElementById("stat-rows"), "", 0, false);
 });
 document.getElementById("add-cost-btn").addEventListener("click", () => {
   addStatRow(document.getElementById("cost-rows"), "", 0, false);
+});
+document.getElementById("add-upkeep-btn").addEventListener("click", () => {
+  addStatRow(document.getElementById("upkeep-rows"), "", 0, false);
+});
+document.getElementById("add-attr-btn").addEventListener("click", () => {
+  addStatRow(document.getElementById("attr-rows"), "", "", false, { stringValues: true });
 });
 
 // Zoom toggle
@@ -1596,14 +1827,235 @@ document.getElementById("filter-tag").addEventListener("change", renderCatalog);
 //  IMPORT / EXPORT
 // ═══════════════════════════════════════════
 document.getElementById("export-btn").addEventListener("click", () => {
-  const json = JSON.stringify(catalog, null, 2);
+  const bundle = { version: SCHEMA_VERSION, cards: catalog };
+  const json = JSON.stringify(bundle, null, 2);
   const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "idlespace-cards.json";
+  a.download = "game-cards.json";
   a.click();
   URL.revokeObjectURL(url);
+});
+
+// ═══════════════════════════════════════════
+//  BUNDLE EXPORT (.zip with game-cards.json + sidecar PNGs)
+// ═══════════════════════════════════════════
+// Produces an archive laid out so unzipping at the repo root drops
+// data/game-cards.json plus assets/cards/<category>/<id>.<ext> files
+// in place. Base64 card images become sidecar files; the JSON's image
+// field is rewritten to reference the path. Already-pathed images pass
+// through untouched (the files are expected to already exist in the repo).
+
+const CRC32_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC32_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function dosDateTime(d) {
+  const time = ((d.getHours() & 31) << 11) | ((d.getMinutes() & 63) << 5) | ((d.getSeconds() >> 1) & 31);
+  const date = (((d.getFullYear() - 1980) & 127) << 9) | (((d.getMonth() + 1) & 15) << 5) | (d.getDate() & 31);
+  return { time: time & 0xFFFF, date: date & 0xFFFF };
+}
+
+// Minimal STORE-only zip writer. PNGs are already compressed; DEFLATE is
+// not worth the dependency.
+function buildZip(files) {
+  const parts = [];
+  const central = [];
+  let offset = 0;
+  const { time, date } = dosDateTime(new Date());
+
+  for (const f of files) {
+    const name = new TextEncoder().encode(f.path);
+    const crc = crc32(f.bytes);
+    const size = f.bytes.length;
+
+    const lfh = new Uint8Array(30 + name.length);
+    const lv = new DataView(lfh.buffer);
+    lv.setUint32(0, 0x04034B50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0, true);
+    lv.setUint16(8, 0, true);           // method = STORE
+    lv.setUint16(10, time, true);
+    lv.setUint16(12, date, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, size, true);
+    lv.setUint32(22, size, true);
+    lv.setUint16(26, name.length, true);
+    lv.setUint16(28, 0, true);
+    lfh.set(name, 30);
+    parts.push(lfh, f.bytes);
+
+    const cdh = new Uint8Array(46 + name.length);
+    const cv = new DataView(cdh.buffer);
+    cv.setUint32(0, 0x02014B50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, time, true);
+    cv.setUint16(14, date, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, size, true);
+    cv.setUint32(24, size, true);
+    cv.setUint16(28, name.length, true);
+    cv.setUint16(30, 0, true); cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true); cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
+    cdh.set(name, 46);
+    central.push(cdh);
+
+    offset += lfh.length + size;
+  }
+
+  const cdStart = offset;
+  let cdSize = 0;
+  for (const c of central) { parts.push(c); cdSize += c.length; }
+
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054B50, true);
+  ev.setUint16(4, 0, true); ev.setUint16(6, 0, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, cdStart, true);
+  ev.setUint16(20, 0, true);
+  parts.push(eocd);
+
+  let total = 0;
+  for (const p of parts) total += p.length;
+  const out = new Uint8Array(total);
+  let pos = 0;
+  for (const p of parts) { out.set(p, pos); pos += p.length; }
+  return out;
+}
+
+function dataUrlToBytes(url) {
+  const comma = url.indexOf(",");
+  if (comma === -1) return null;
+  const header = url.slice(0, comma);
+  if (!header.includes("base64")) return null;
+  const bin = atob(url.slice(comma + 1));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function extFromDataUrl(url) {
+  const m = /^data:image\/([a-z0-9+]+)/i.exec(url || "");
+  if (!m) return "png";
+  const raw = m[1].toLowerCase();
+  return raw === "jpeg" ? "jpg" : (raw === "svg+xml" ? "svg" : raw);
+}
+
+// ═══════════════════════════════════════════
+//  LIVE LINK — localStorage override + BroadcastChannel
+// ═══════════════════════════════════════════
+// Apply the current catalog as a live override. Any open starmap tab sees
+// the BroadcastChannel message and hot-reloads; a newly-opened starmap reads
+// the override from localStorage at boot. This is the edit loop between
+// card-builder and the game without a rebuild/commit step.
+
+function isOverrideActive() {
+  try { return !!localStorage.getItem(CARDS_OVERRIDE_KEY); }
+  catch { return false; }
+}
+
+function updateLiveLinkStatus() {
+  const el = document.getElementById("live-link-status");
+  if (!el) return;
+  el.classList.toggle("visible", isOverrideActive());
+}
+
+function applyToLiveGame() {
+  try {
+    const bundle = { version: SCHEMA_VERSION, cards: catalog };
+    localStorage.setItem(CARDS_OVERRIDE_KEY, JSON.stringify(bundle));
+  } catch (e) {
+    showToast("Apply failed: " + e.message);
+    return;
+  }
+  if (CARDS_BROADCAST) CARDS_BROADCAST.postMessage({ type: "cards-updated" });
+  updateLiveLinkStatus();
+  showToast(`Applied to live game · ${catalog.length} cards`);
+}
+
+function clearLiveOverride() {
+  try { localStorage.removeItem(CARDS_OVERRIDE_KEY); } catch (_) {}
+  if (CARDS_BROADCAST) CARDS_BROADCAST.postMessage({ type: "override-cleared" });
+  updateLiveLinkStatus();
+  showToast("Live override cleared — game reverts to shipped cards");
+}
+
+document.getElementById("apply-live-btn").addEventListener("click", applyToLiveGame);
+document.getElementById("clear-override-btn").addEventListener("click", clearLiveOverride);
+
+// Sync status if the other tab clears the override.
+if (CARDS_BROADCAST) {
+  CARDS_BROADCAST.onmessage = (ev) => {
+    const msg = ev && ev.data;
+    if (msg && msg.type === "override-cleared") updateLiveLinkStatus();
+  };
+}
+// Also react to another tab writing the storage directly.
+window.addEventListener("storage", (e) => {
+  if (e.key === CARDS_OVERRIDE_KEY) updateLiveLinkStatus();
+});
+
+document.getElementById("export-bundle-btn").addEventListener("click", () => {
+  const files = [];
+  const outCards = [];
+  let imageCount = 0;
+  let passThroughPaths = 0;
+
+  for (const card of catalog) {
+    const copy = { ...card };
+    if (copy.image && typeof copy.image === "string" && copy.image.startsWith("data:")) {
+      const bytes = dataUrlToBytes(copy.image);
+      if (bytes) {
+        const ext = extFromDataUrl(copy.image);
+        const path = `assets/cards/${copy.category}/${copy.id}.${ext}`;
+        files.push({ path, bytes });
+        copy.image = path;
+        imageCount++;
+      }
+    } else if (copy.image && typeof copy.image === "string" && copy.image.startsWith("assets/")) {
+      passThroughPaths++;
+    }
+    outCards.push(copy);
+  }
+
+  const bundle = { version: SCHEMA_VERSION, cards: outCards };
+  const jsonBytes = new TextEncoder().encode(JSON.stringify(bundle, null, 2));
+  // JSON first so it's easy to inspect at the top of an archive listing.
+  files.unshift({ path: "data/game-cards.json", bytes: jsonBytes });
+
+  const zipBytes = buildZip(files);
+  const blob = new Blob([zipBytes], { type: "application/zip" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "idlespace-cards-bundle.zip";
+  a.click();
+  URL.revokeObjectURL(url);
+
+  const parts = [`${catalog.length} cards`, `${imageCount} image${imageCount === 1 ? "" : "s"} bundled`];
+  if (passThroughPaths > 0) parts.push(`${passThroughPaths} pass-through path${passThroughPaths === 1 ? "" : "s"}`);
+  showToast("Bundle exported — " + parts.join(" · "));
 });
 
 const importFileInput = document.getElementById("import-file");
@@ -1614,34 +2066,36 @@ importFileInput.addEventListener("change", (e) => {
   const reader = new FileReader();
   reader.onload = () => {
     try {
-      const incoming = JSON.parse(reader.result);
-      if (!Array.isArray(incoming)) { alert("Invalid format: expected a JSON array of cards."); return; }
+      const parsed = JSON.parse(reader.result);
+      // Accept { version, cards } or legacy flat array.
+      let incoming;
+      if (Array.isArray(parsed)) incoming = parsed;
+      else if (parsed && Array.isArray(parsed.cards)) incoming = parsed.cards;
+      else { alert("Invalid format: expected a JSON array or { version, cards }."); return; }
+
       const now = new Date().toISOString();
-      const existingIds = new Set(catalog.map(c => c.id));
       let added = 0, updated = 0;
       for (const card of incoming) {
-        // Ensure required fields
-        if (!card.name) continue;
+        if (!card || typeof card !== "object") continue;
+        if (!card.name || !card.category || !card.rarity) continue;
         if (!card.id) card.id = crypto.randomUUID();
         if (!card.createdAt) card.createdAt = now;
         card.updatedAt = now;
+        // Schema defaults — only fill if missing, preserve unknown fields.
         if (!card.tags) card.tags = [];
         if (!card.stats) card.stats = {};
         if (!card.cost) card.cost = {};
-        if (!card.category) card.category = "building";
-        if (!card.rarity) card.rarity = "common";
+        if (!card.upkeep) card.upkeep = {};
+        if (!card.attributes) card.attributes = {};
+        if (!card.categoryData) card.categoryData = {};
+        if (typeof card.weight !== "number") card.weight = 1;
         if (!card.special) card.special = "";
         if (!card.flavor) card.flavor = "";
         if (!card.image) card.image = "";
 
         const existing = catalog.findIndex(c => c.id === card.id);
-        if (existing >= 0) {
-          catalog[existing] = card;
-          updated++;
-        } else {
-          catalog.push(card);
-          added++;
-        }
+        if (existing >= 0) { catalog[existing] = card; updated++; }
+        else { catalog.push(card); added++; }
       }
       saveCatalog();
       renderCatalog();
@@ -1660,6 +2114,7 @@ importFileInput.addEventListener("change", (e) => {
 // ═══════════════════════════════════════════
 resetEditor();
 renderCatalog();
+updateLiveLinkStatus();
 </script>
 </body>
 </html>

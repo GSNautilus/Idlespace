@@ -6,6 +6,7 @@
 <title>IdleSpace — Card Builder</title>
 <link rel="stylesheet" href="ui/colors_and_type.css">
 <link rel="stylesheet" href="ui/chrome.css">
+<link rel="stylesheet" href="ui/ship-card.css">
 <style>
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -710,6 +711,22 @@ select.editor-input { cursor: pointer; }
 </head>
 <body>
 
+<!-- SVG icon sprite (hidden, injected synchronously so <use href="#i-..."/> resolves immediately) -->
+<div id="ui-sprite-slot" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"></div>
+<script>
+(function loadSprite(){
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', 'ui/icons.html', false);
+    xhr.send();
+    document.getElementById('ui-sprite-slot').innerHTML = xhr.responseText;
+  } catch(e) {
+    fetch('ui/icons.html').then(r => r.text())
+      .then(t => { document.getElementById('ui-sprite-slot').innerHTML = t; });
+  }
+})();
+</script>
+
 <!-- Header -->
 <div id="header">
   <h1><span>IdleSpace</span> Card Builder</h1>
@@ -1413,6 +1430,132 @@ const STAT_ICONS = {
 const RANGE_LABELS = { short: "S", medium: "M", long: "L" };
 const RANGE_COLORS = { short: "#e0a040", medium: "#a0c0e0", long: "#60d060" };
 
+// SVG sprite ids for resource keys — used by the ship card renderer below.
+const RES_ICON_BY_KEY = {
+  credits: "i-credits", energy: "i-energy", minerals: "i-minerals",
+  research: "i-research", food: "i-food",
+};
+
+// Original inner HTML of #card-preview. Saved here so we can restore the
+// legacy preview DOM when switching back from ship to a non-ship category
+// (ship rendering replaces the container's innerHTML wholesale).
+const LEGACY_PREVIEW_HTML = `
+      <div class="card-bg"></div>
+      <div class="card-cost-badge" id="preview-cost"></div>
+      <div class="card-header">
+        <div class="card-name" id="preview-name">New Card</div>
+      </div>
+      <div class="card-image" id="preview-image">No image</div>
+      <div class="card-stats" id="preview-stats"></div>
+      <div class="card-special" id="preview-special" style="display:none"></div>
+      <div class="card-flavor" id="preview-flavor"></div>
+      <div class="card-watermark" id="preview-watermark"></div>`;
+
+// Abbreviate big numbers: 500 → "500", 1200 → "1.2K", 5000 → "5K", 16000 → "16K".
+// Mirrors formatResourceValue in starmap.html.
+function formatResourceValue(val) {
+  const v = Math.floor(val);
+  const strip = (s) => s.replace(/\.0$/, "");
+  if (v >= 1e12) return strip((v / 1e12).toFixed(1)) + "T";
+  if (v >= 1e9)  return strip((v / 1e9).toFixed(1))  + "B";
+  if (v >= 1e6)  return strip((v / 1e6).toFixed(1))  + "M";
+  if (v >= 1e4)  return Math.round(v / 1e3) + "K";
+  if (v >= 1e3)  return strip((v / 1e3).toFixed(1))  + "K";
+  return v.toString();
+}
+
+// readKvRows() lowercases every stat key, so a ship card coming from the
+// editor has s.sensorrange / s.energydmg etc — but the data file (and the
+// starmap renderer) use camelCase. This map restores the camelCase names
+// our template expects.
+const SHIP_STAT_KEY_ALIASES = {
+  sensorrange: "sensorRange",
+  pointdefense: "pointDefense",
+  energydmg: "energyDmg",   energyrange: "energyRange",
+  kineticdmg: "kineticDmg", kineticrange: "kineticRange",
+  missiledmg: "missileDmg", missilerange: "missileRange",
+};
+function normalizeShipStats(raw) {
+  const out = {};
+  for (const [k, v] of Object.entries(raw || {})) {
+    out[SHIP_STAT_KEY_ALIASES[k] || k] = v;
+  }
+  return out;
+}
+
+// Ship/pirate card — returns INNER HTML for the #card-preview container.
+// Mirrors buildShipCardHtml in starmap.html; kept in sync manually.
+// See CARDS_STYLING_GUIDE.md for what each section does.
+function buildShipCardHtml(data) {
+  const s = normalizeShipStats(data.stats);
+  const subLabel = `${data.rarity || "common"} · ${data.category === "pirate" ? "Pirate" : "Ship"}`;
+
+  let costHtml = "";
+  if (data.cost && Object.keys(data.cost).length > 0) {
+    const parts = Object.entries(data.cost).map(([key, val]) => {
+      const iconId = RES_ICON_BY_KEY[key];
+      const icon = iconId ? `<svg class="ico ${key}"><use href="#${iconId}"/></svg>` : "";
+      return `<span class="cost-part">${icon}${formatResourceValue(val)}</span>`;
+    });
+    costHtml = `<div class="cost">${parts.join("")}</div>`;
+  }
+
+  const defenseDefs = [
+    { key: "shields", icon: "i-shield", cls: "shield" },
+    { key: "armor",   icon: "i-armor",  cls: "armor" },
+    { key: "speed",   icon: "i-speed",  cls: "speed" },
+  ].filter(d => s[d.key] != null);
+  const defenseRow = defenseDefs.length === 0 ? "" :
+    `<div class="row">${defenseDefs.map(d =>
+      `<div class="stat"><svg class="ico ${d.cls}"><use href="#${d.icon}"/></svg><span class="sv">${formatResourceValue(s[d.key] || 0)}</span></div>`
+    ).join("")}</div>`;
+
+  const weaponDefs = [
+    { dmg: "energyDmg",  range: "energyRange",  cls: "energy",  icon: "i-beam",    cvar: "var(--wpn-energy)" },
+    { dmg: "kineticDmg", range: "kineticRange", cls: "kinetic", icon: "i-kinetic", cvar: "var(--wpn-kinetic)" },
+    { dmg: "missileDmg", range: "missileRange", cls: "missile", icon: "i-missile", cvar: "var(--wpn-missile)" },
+  ].filter(w => s[w.dmg] && s[w.dmg] > 0);
+  const weaponsHtml = weaponDefs.length === 0 ? "" :
+    `<div class="weap">${weaponDefs.map(w => {
+      const range = s[w.range] || "medium";
+      const rBadge = range === "short" ? "S" : range === "long" ? "L" : "M";
+      return `<div class="wr" style="--wr-c:${w.cvar}"><svg class="ico ${w.cls}"><use href="#${w.icon}"/></svg><span class="sv">${formatResourceValue(s[w.dmg])}</span><span class="rb ${rBadge}">${rBadge}</span></div>`;
+    }).join("")}</div>`;
+
+  const utilDefs = [
+    { key: "sensorRange",  icon: "i-sensor",  cls: "sensor" },
+    { key: "pointDefense", icon: "i-pd",      cls: "pd" },
+    { key: "stealth",      icon: "i-stealth", cls: "stealth" },
+  ].filter(u => s[u.key]);
+  const utilRow = utilDefs.length === 0 ? "" :
+    `<div class="row u">${utilDefs.map(u =>
+      `<div class="stat"><svg class="ico ${u.cls}"><use href="#${u.icon}"/></svg><span class="sv">${formatResourceValue(s[u.key])}</span></div>`
+    ).join("")}</div>`;
+
+  const specialHtml = (data.special && data.special.length > 0)
+    ? `<div class="special"><span class="sn">Special</span>${data.special}</div>` : "";
+  const flavorHtml = data.flavor ? `<div class="flv">${data.flavor}</div>` : "";
+
+  const imgSrc = data.image || "assets/ships/rustfang_corsair.png";
+  const imageHtml = `<div class="img"><img src="${imgSrc}" alt="${data.name || ''}"></div>`;
+
+  return `
+      <div class="bg"></div>
+      <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
+      <div class="c">
+        ${costHtml}
+        <div class="hdr"><span class="hdr-name">${data.name || "New Card"}</span></div>
+        ${imageHtml}
+        <div class="subtype">${subLabel}</div>
+        ${defenseRow}
+        ${weaponsHtml}
+        ${utilRow}
+        ${specialHtml}
+        ${flavorHtml}
+        <div class="wm"><svg viewBox="0 0 24 24"><use href="#i-solo-ship"/></svg></div>
+      </div>`;
+}
+
 function getStatIcon(key) {
   return STAT_ICONS[key] || "◆";
 }
@@ -1420,10 +1563,23 @@ function getStatIcon(key) {
 function updatePreview() {
   const data = getEditorData();
   const preview = document.getElementById("card-preview");
-
-  // Rarity class
   const isZoomed = preview.classList.contains("zoomed");
-  preview.className = `card-preview ${data.rarity}${isZoomed ? " zoomed" : ""}`;
+  const zoomedClass = isZoomed ? " zoomed" : "";
+
+  // Ships/pirates use the metallic Rustfang template (ui/ship-card.css).
+  // Replaces the container innerHTML wholesale — legacy DOM restored below
+  // when switching back to a non-ship category.
+  if (data.category === "ship" || data.category === "pirate") {
+    preview.className = `card-preview is-ship ${data.rarity}${zoomedClass}`;
+    preview.innerHTML = buildShipCardHtml(data);
+    return;
+  }
+
+  // Non-ship: restore legacy DOM if we were just in ship mode
+  preview.className = `card-preview ${data.rarity}${zoomedClass}`;
+  if (!document.getElementById("preview-name")) {
+    preview.innerHTML = LEGACY_PREVIEW_HTML;
+  }
 
   // Name
   document.getElementById("preview-name").textContent = data.name || "New Card";

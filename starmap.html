@@ -3658,6 +3658,14 @@ function buildGenericStatsHtml(card) {
 // (gunmetal body, rarity halo, corner brackets, SVG icons, chip stats,
 // ARMAMENTS block, special gradient pill). Scoped by `.is-ship` so
 // other card types keep the legacy renderer.
+// Labels used in ship-card `title` tooltips. Kept adjacent to buildShipCardHtml
+// so the data-definition array below can reference them without extra lookups.
+const RESOURCE_LABELS = {
+  credits: "Credits", energy: "Energy", minerals: "Minerals",
+  research: "Research", food: "Food",
+};
+const RANGE_NAMES = { short: "Short", medium: "Medium", long: "Long" };
+
 function buildShipCardHtml(card) {
   const s = card.stats || {};
   const qc = (key, val) => card.statRanges && card.statRanges[key]
@@ -3671,41 +3679,43 @@ function buildShipCardHtml(card) {
     const parts = Object.entries(card.cost).map(([key, val]) => {
       const iconId = RES_ICON_BY_KEY[key];
       const icon = iconId ? `<svg class="ico ${key}"><use href="#${iconId}"/></svg>` : "";
-      return `<span class="cost-part">${icon}${formatResourceValue(val)}</span>`;
+      const label = RESOURCE_LABELS[key] || key;
+      return `<span class="cost-part" title="${label}: ${formatResourceValue(val)}">${icon}${formatResourceValue(val)}</span>`;
     });
     costHtml = `<div class="cost">${parts.join("")}</div>`;
   }
 
   const defenseDefs = [
-    { key: "shields", icon: "i-shield", cls: "shield" },
-    { key: "armor",   icon: "i-armor",  cls: "armor" },
-    { key: "speed",   icon: "i-speed",  cls: "speed" },
+    { key: "shields", icon: "i-shield", cls: "shield", label: "Shields" },
+    { key: "armor",   icon: "i-armor",  cls: "armor",  label: "Armor" },
+    { key: "speed",   icon: "i-speed",  cls: "speed",  label: "Speed" },
   ].filter(d => s[d.key] != null);
   const defenseRow = defenseDefs.length === 0 ? "" :
     `<div class="row">${defenseDefs.map(d =>
-      `<div class="stat"><svg class="ico ${d.cls}"><use href="#${d.icon}"/></svg><span class="sv"${colored(qc(d.key, s[d.key]))}>${formatResourceValue(s[d.key])}</span></div>`
+      `<div class="stat" title="${d.label}: ${formatResourceValue(s[d.key])}"><svg class="ico ${d.cls}"><use href="#${d.icon}"/></svg><span class="sv"${colored(qc(d.key, s[d.key]))}>${formatResourceValue(s[d.key])}</span></div>`
     ).join("")}</div>`;
 
   const weaponDefs = [
-    { dmg: "energyDmg",  range: "energyRange",  cls: "energy",  icon: "i-beam",    cvar: "var(--wpn-energy)" },
-    { dmg: "kineticDmg", range: "kineticRange", cls: "kinetic", icon: "i-kinetic", cvar: "var(--wpn-kinetic)" },
-    { dmg: "missileDmg", range: "missileRange", cls: "missile", icon: "i-missile", cvar: "var(--wpn-missile)" },
+    { dmg: "energyDmg",  range: "energyRange",  cls: "energy",  icon: "i-beam",    cvar: "var(--wpn-energy)",  name: "Energy" },
+    { dmg: "kineticDmg", range: "kineticRange", cls: "kinetic", icon: "i-kinetic", cvar: "var(--wpn-kinetic)", name: "Kinetic" },
+    { dmg: "missileDmg", range: "missileRange", cls: "missile", icon: "i-missile", cvar: "var(--wpn-missile)", name: "Missile" },
   ].filter(w => s[w.dmg] && s[w.dmg] > 0);
   const weaponsHtml = weaponDefs.length === 0 ? "" :
     `<div class="weap">${weaponDefs.map(w => {
       const range = s[w.range] || "medium";
       const rBadge = range === "short" ? "S" : range === "long" ? "L" : "M";
-      return `<div class="wr" style="--wr-c:${w.cvar}"><svg class="ico ${w.cls}"><use href="#${w.icon}"/></svg><span class="sv"${colored(qc(w.dmg, s[w.dmg]))}>${formatResourceValue(s[w.dmg])}</span><span class="rb ${rBadge}">${rBadge}</span></div>`;
+      const title = `${w.name} weapon · ${RANGE_NAMES[range]} range · ${formatResourceValue(s[w.dmg])} dmg`;
+      return `<div class="wr" style="--wr-c:${w.cvar}" title="${title}"><svg class="ico ${w.cls}"><use href="#${w.icon}"/></svg><span class="sv"${colored(qc(w.dmg, s[w.dmg]))}>${formatResourceValue(s[w.dmg])}</span><span class="rb ${rBadge}">${rBadge}</span></div>`;
     }).join("")}</div>`;
 
   const utilDefs = [
-    { key: "sensorRange",  icon: "i-sensor",  cls: "sensor" },
-    { key: "pointDefense", icon: "i-pd",      cls: "pd" },
-    { key: "stealth",      icon: "i-stealth", cls: "stealth" },
+    { key: "sensorRange",  icon: "i-sensor",  cls: "sensor",  label: "Sensor range" },
+    { key: "pointDefense", icon: "i-pd",      cls: "pd",      label: "Point defense" },
+    { key: "stealth",      icon: "i-stealth", cls: "stealth", label: "Stealth" },
   ].filter(u => s[u.key]);
   const utilRow = utilDefs.length === 0 ? "" :
     `<div class="row u">${utilDefs.map(u =>
-      `<div class="stat"><svg class="ico ${u.cls}"><use href="#${u.icon}"/></svg><span class="sv"${colored(qc(u.key, s[u.key]))}>${formatResourceValue(s[u.key])}</span></div>`
+      `<div class="stat" title="${u.label}: ${formatResourceValue(s[u.key])}"><svg class="ico ${u.cls}"><use href="#${u.icon}"/></svg><span class="sv"${colored(qc(u.key, s[u.key]))}>${formatResourceValue(s[u.key])}</span></div>`
     ).join("")}</div>`;
 
   const specialHtml = (card.special && card.special.length > 0)

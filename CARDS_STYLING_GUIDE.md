@@ -110,6 +110,10 @@ Defense uses `.row`; utility uses `.row.u` (extra top-border divider with rarity
 ### Watermark (`.wm`)
 Faint rarity-colored ship silhouette (from `#i-solo-ship` sprite) behind the flavor. `opacity: 0.09` by default.
 
+## Tooltips
+
+Every stat chip, weapon chip, and cost-part carries a native `title="..."` attribute for hover tooltips. Renderer defs carry a `label` field (defense / utility) or a `name` field (weapons); `RESOURCE_LABELS` maps resource keys → display names for costs; `RANGE_NAMES` maps `short/medium/long` → full text for weapon tooltips. Mirror the same pattern when you build variants for other card types.
+
 ## Numeric formatting
 
 `formatResourceValue(val)` (defined in both starmap.html and card-builder.html, kept in sync) abbreviates large numbers:

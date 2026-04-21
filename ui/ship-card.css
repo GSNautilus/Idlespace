@@ -137,18 +137,23 @@
   opacity: .6;
 }
 
-/* Rarity/type sub-label, positioned under the image */
+/* Rarity/type sub-label — overlaid on the image, bottom-left,
+   aligned with the image's corner-tick chevrons. */
 .card-preview.is-ship .subtype {
+  position: absolute;
+  left: 8px;
+  bottom: 5px;
+  z-index: 3;
   font-size: 8px;
   font-weight: 700;
-  letter-spacing: 1.4px;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
-  text-align: center;
-  color: color-mix(in oklab, var(--rc) 75%, white 15%);
-  padding: 0 10px;
-  margin: -3px 0 3px;
-  line-height: 1.2;
-  flex-shrink: 0;
+  color: color-mix(in oklab, var(--rc) 80%, white 20%);
+  text-shadow:
+    0 1px 2px rgba(0,0,0,.95),
+    0 0 6px rgba(0,0,0,.7);
+  line-height: 1;
+  pointer-events: none;
 }
 
 /* Cost chip */
@@ -177,10 +182,12 @@
   gap: 2px;
 }
 
-/* Image — framed portal with inner glow */
+/* Image — framed portal with inner glow. flex-shrink:0 so the art stays a
+   consistent 128px tall no matter how much content sits below it. */
 .card-preview.is-ship .img {
   width: calc(100% - 16px);
   height: 128px;
+  flex-shrink: 0;
   margin: 2px 8px 6px;
   border-radius: 4px;
   background: #0a0d18;
@@ -272,13 +279,15 @@
   text-shadow: 0 0 6px rgba(255,255,255,.15);
 }
 
-/* Armaments block */
+/* Armaments — single horizontal row of weapon chips. Each chip keeps its
+   weapon-type left accent; range badge sits inline at the end of the chip. */
 .card-preview.is-ship .weap {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  justify-content: center;
+  gap: 4px;
   padding: 5px 10px 3px;
-  margin-top: 5px;
+  margin-top: 4px;
   position: relative;
   border-top: 1px solid color-mix(in oklab, var(--rc) 18%, transparent);
 }
@@ -286,7 +295,8 @@
   content: 'ARMAMENTS';
   position: absolute;
   top: -5px;
-  left: 13px;
+  left: 50%;
+  transform: translateX(-50%);
   font-size: 7px;
   letter-spacing: 1.2px;
   color: color-mix(in oklab, var(--rc) 70%, white 15%);
@@ -297,7 +307,7 @@
 .card-preview.is-ship .wr {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 3px;
   font-size: 12px;
   padding: 2px 5px;
   border-radius: 3px;
@@ -312,10 +322,9 @@
 .card-preview.is-ship .rb {
   font-size: 8px;
   font-weight: 700;
-  padding: 1px 4px;
+  padding: 1px 3px;
   border-radius: 2px;
-  margin-left: auto;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
 }
 .card-preview.is-ship .rb.S { background: rgba(224,160,64,0.12);  color: var(--range-short);  border: 1px solid rgba(224,160,64,0.28); }
 .card-preview.is-ship .rb.M { background: rgba(160,192,224,0.12); color: var(--range-medium); border: 1px solid rgba(160,192,224,0.28); }
@@ -338,13 +347,13 @@
               0 0 14px color-mix(in oklab, var(--rc) 22%, transparent);
 }
 .card-preview.is-ship .special .sn {
-  display: block;
+  display: inline;
   font-size: 7px;
   font-weight: 700;
   letter-spacing: 1.4px;
   text-transform: uppercase;
   color: color-mix(in oklab, var(--rc) 85%, white 20%);
-  margin-bottom: 2px;
+  margin-right: 5px;
   text-shadow: 0 0 8px color-mix(in oklab, var(--rc) 60%, transparent);
 }
 

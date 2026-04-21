@@ -1537,7 +1537,10 @@ function buildShipCardHtml(data) {
   const flavorHtml = data.flavor ? `<div class="flv">${data.flavor}</div>` : "";
 
   const imgSrc = data.image || "assets/ships/rustfang_corsair.png";
-  const imageHtml = `<div class="img"><img src="${imgSrc}" alt="${data.name || ''}"></div>`;
+  const imageHtml = `<div class="img">`
+    + `<img src="${imgSrc}" alt="${data.name || ''}">`
+    + `<div class="subtype">${subLabel}</div>`
+    + `</div>`;
 
   return `
       <div class="bg"></div>
@@ -1546,7 +1549,6 @@ function buildShipCardHtml(data) {
         ${costHtml}
         <div class="hdr"><span class="hdr-name">${data.name || "New Card"}</span></div>
         ${imageHtml}
-        <div class="subtype">${subLabel}</div>
         ${defenseRow}
         ${weaponsHtml}
         ${utilRow}

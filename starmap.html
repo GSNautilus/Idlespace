@@ -622,15 +622,41 @@ body {
 .combat-side h3 {
   font-size: 13px; color: #b0c0e0; margin: 0 0 8px 0; font-weight: 600;
 }
-.combat-ship-entry {
-  display: flex; align-items: center; gap: 8px; padding: 3px 0;
-  font-size: 11px; color: #8090b0;
+/* Per-ship tiles in combat overlay: rarity stripe + name + HP bar.
+   Click opens a magnified card view. */
+.combat-ship-tile {
+  display: flex; align-items: stretch; gap: 0;
+  margin-bottom: 4px;
+  background: #0a0c14; border: 1px solid #151a2a; border-radius: 4px;
+  overflow: hidden; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
-.combat-ship-entry.dead { opacity: 0.35; text-decoration: line-through; }
-.combat-ship-name { min-width: 100px; }
+.combat-ship-tile:hover { background: #111628; border-color: #2a3460; }
+.combat-ship-tile.dead { opacity: 0.35; filter: grayscale(0.6); }
+.combat-ship-tile.dead:hover { background: #0a0c14; }
+.combat-ship-tile-stripe {
+  width: 5px; flex-shrink: 0;
+}
+.combat-ship-tile-body {
+  flex: 1; padding: 5px 8px; display: flex; flex-direction: column;
+  gap: 3px; min-width: 0;
+}
+.combat-ship-tile-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px; font-size: 11px;
+}
+.combat-ship-tile-name {
+  color: #c8d0e0; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0; flex: 1;
+}
+.combat-ship-tile-hp {
+  color: #6a7a9b; font-size: 9.5px; flex-shrink: 0;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
 .combat-hp-bar {
-  flex: 1; height: 6px; background: rgba(20,26,48,0.8); border-radius: 3px;
-  overflow: hidden; display: flex;
+  height: 5px; background: rgba(20,26,48,0.8); border-radius: 2px;
+  overflow: hidden; display: flex; flex: none;
 }
 .combat-hp-shields {
   height: 100%; background: #4a7ac0; transition: width 0.3s;
@@ -2588,6 +2614,18 @@ function startCombat(entityA, entityB) {
   const combat = createCombat(entityA, entityB);
   entityA.inCombat = combat.id;
   entityB.inCombat = combat.id;
+  // Abandon any prior travel destination — otherwise drawEntities keeps
+  // re-reading it and overwrites the combat-facing heading every frame,
+  // so ships keep pointing at the old waypoint instead of the enemy.
+  entityA.destX = null; entityA.destY = null;
+  entityB.destX = null; entityB.destY = null;
+  // Face each other immediately so the first rendered frame is correct.
+  const dx = entityB.x - entityA.x;
+  const dy = entityB.y - entityA.y;
+  if (dx !== 0 || dy !== 0) {
+    entityA.lastHeadingAngle = Math.atan2(dy, dx);
+    entityB.lastHeadingAngle = Math.atan2(-dy, -dx);
+  }
   activeCombats.push(combat);
 }
 
@@ -2742,15 +2780,23 @@ function fireShot(combat, turnEntry) {
     return;
   }
 
-  // Determine world positions for particles
-  const attackerEnt = turnEntry.side === "a" ? combat.sideA.entity : combat.sideB.entity;
-  const defenderEnt = turnEntry.side === "a" ? combat.sideB.entity : combat.sideA.entity;
-  const midPx = (attackerEnt.x + defenderEnt.x) / 2;
-  const midPy = (attackerEnt.y + defenderEnt.y) / 2;
+  // World positions for the weapon visual: specific firing ship's slot and
+  // specific target ship's slot in the formation, so volleys visibly travel
+  // from the right emitter to the right target.
+  const attackerSide = turnEntry.side === "a" ? combat.sideA : combat.sideB;
+  const attackerEnt  = attackerSide.entity;
+  const defenderEnt  = enemySide.entity;
+  const firerIdx  = Math.max(0, attackerSide.ships.indexOf(ship));
+  const targetIdx = Math.max(0, enemySide.ships.indexOf(target));
+  const firerPos  = getShipWorldPos(attackerEnt, firerIdx, 0);
+  const targetPos = getShipWorldPos(defenderEnt, targetIdx, 0);
+  const midPx = (firerPos.x + targetPos.x) / 2;
+  const midPy = (firerPos.y + targetPos.y) / 2;
 
   // Roll to hit
   const hitChance = calcHitChance(ship.card, target.card);
   if (Math.random() > hitChance) {
+    spawnWeaponVisual(firerPos.x, firerPos.y, targetPos.x, targetPos.y, firedWeapon.type);
     spawnCombatParticle(midPx, midPy, firedWeapon.type, false);
     combat.log.push({ time: combat.gameTime, text: `${ship.card.name} fires ${firedWeapon.type} at ${target.card.name} — MISS`, type: "miss" });
     return;
@@ -2760,6 +2806,7 @@ function fireShot(combat, turnEntry) {
   if (firedWeapon.type === "missile") {
     const pdChance = calcPDInterceptChance(enemySide);
     if (Math.random() < pdChance) {
+      spawnWeaponVisual(firerPos.x, firerPos.y, targetPos.x, targetPos.y, firedWeapon.type);
       spawnCombatParticle(midPx, midPy, firedWeapon.type, false);
       combat.log.push({ time: combat.gameTime, text: `${ship.card.name} fires missile at ${target.card.name} — INTERCEPTED`, type: "intercept" });
       return;
@@ -2769,7 +2816,8 @@ function fireShot(combat, turnEntry) {
   // Apply damage
   applyDamage(target, firedWeapon.type, firedWeapon.dmg);
   const killText = target.alive ? "" : " — DESTROYED";
-  spawnCombatParticle(defenderEnt.x, defenderEnt.y, firedWeapon.type, true);
+  spawnWeaponVisual(firerPos.x, firerPos.y, targetPos.x, targetPos.y, firedWeapon.type);
+  spawnCombatParticle(targetPos.x, targetPos.y, firedWeapon.type, true);
   combat.log.push({
     time: combat.gameTime,
     text: `${ship.card.name} fires ${firedWeapon.type} at ${target.card.name} — HIT ${firedWeapon.dmg} dmg${killText}`,
@@ -2866,6 +2914,13 @@ function tickCombats(rawDt) {
     const dy = entB.y - entA.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     combat.distance = dist;
+
+    // Face each other throughout the engagement (ships would otherwise
+    // keep their pre-combat heading from lastHeadingAngle).
+    if (dx !== 0 || dy !== 0) {
+      entA.lastHeadingAngle = Math.atan2(dy, dx);
+      entB.lastHeadingAngle = Math.atan2(-dy, -dx);
+    }
 
     if (dist > ENGAGED_DISTANCE) {
       const nx = dx / dist;
@@ -3205,6 +3260,149 @@ function drawCombatParticles(ctx) {
   }
 }
 
+// ── Weapon visuals (volley shots) ──
+// A separate, short-lived visual system for the actual shot rendering —
+// beams for energy, projectile swarms for kinetic, glowing missiles for
+// missile. Impact particles (spawnCombatParticle) still render on top for
+// the hit/miss flash. Each visual stores firer + target WORLD positions
+// so camera pan / zoom don't disturb them.
+const weaponVisuals = [];
+
+function spawnWeaponVisual(fwx, fwy, twx, twy, weaponType) {
+  // Weapon visuals tick on scaledDt while combat runs on scaledDt *
+  // COMBAT_TIME_SCALE. One combat-time SHOT_INTERVAL therefore equals
+  // SHOT_INTERVAL / COMBAT_TIME_SCALE scaledDt-seconds — that's the
+  // "volley window" each shot event gets to fill with visual activity.
+  const VOLLEY = SHOT_INTERVAL / COMBAT_TIME_SCALE;
+
+  if (weaponType === "energy") {
+    // One continuous beam covering ~90% of the window.
+    weaponVisuals.push({
+      kind: "beam", fx: fwx, fy: fwy, tx: twx, ty: twy,
+      life: VOLLEY * 0.9, maxLife: VOLLEY * 0.9,
+      continuous: true,
+    });
+  } else if (weaponType === "kinetic") {
+    // 3 bursts of 4 projectiles each, spaced across the window.
+    const bursts = 3;
+    const perBurst = 4;
+    for (let b = 0; b < bursts; b++) {
+      const burstDelay = b * (VOLLEY / bursts) + Math.random() * 0.4;
+      for (let i = 0; i < perBurst; i++) {
+        const spread = (Math.random() - 0.5) * 18;
+        const travel = 0.55 + Math.random() * 0.15;
+        weaponVisuals.push({
+          kind: "kinetic", fx: fwx, fy: fwy, tx: twx, ty: twy,
+          spread,
+          delay: burstDelay,
+          life: travel, maxLife: travel,
+        });
+      }
+    }
+  } else if (weaponType === "missile") {
+    // 2-3 missiles launching at random moments within the window.
+    const count = 2 + Math.floor(Math.random() * 2);
+    const travel = 1.05;
+    for (let i = 0; i < count; i++) {
+      const delay = Math.random() * (VOLLEY - travel);
+      weaponVisuals.push({
+        kind: "missile", fx: fwx, fy: fwy, tx: twx, ty: twy,
+        delay,
+        life: travel, maxLife: travel,
+      });
+    }
+  }
+}
+
+function tickWeaponVisuals(dt) {
+  for (let i = weaponVisuals.length - 1; i >= 0; i--) {
+    const v = weaponVisuals[i];
+    if (v.delay !== undefined && v.delay > 0) {
+      v.delay -= dt;
+      continue;
+    }
+    v.life -= dt;
+    if (v.life <= 0) weaponVisuals.splice(i, 1);
+  }
+}
+
+function drawWeaponVisuals(ctx) {
+  for (const v of weaponVisuals) {
+    if (v.delay !== undefined && v.delay > 0) continue;  // queued, not yet firing
+    const progress = 1 - (v.life / v.maxLife);   // 0..1 over lifetime
+    // Alpha stays near-full until the last ~35% of life, then fades.
+    // Continuous beams hold alpha longer (fade only in last 12%).
+    const fadePoint = v.continuous ? 0.12 : 0.35;
+    const alpha = v.life > v.maxLife * fadePoint
+      ? 1
+      : Math.max(0, v.life / (v.maxLife * fadePoint));
+
+    if (v.kind === "beam") {
+      // Energy — full-length beam from firer to target, gradient fade.
+      const pf = worldToScreen(v.fx, v.fy);
+      const pt = worldToScreen(v.tx, v.ty);
+      ctx.save();
+      ctx.shadowColor = "#80c0ff";
+      ctx.shadowBlur = Math.max(6, 10 * camera.zoom);
+      const grad = ctx.createLinearGradient(pf.x, pf.y, pt.x, pt.y);
+      grad.addColorStop(0.00, `rgba(220,240,255,${(0.95 * alpha).toFixed(3)})`);
+      grad.addColorStop(0.25, `rgba(120,200,255,${(0.90 * alpha).toFixed(3)})`);
+      grad.addColorStop(1.00, `rgba(80,160,255,${(0.65 * alpha).toFixed(3)})`);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = Math.max(1.6, 2.4 * camera.zoom);
+      ctx.beginPath();
+      ctx.moveTo(pf.x, pf.y);
+      ctx.lineTo(pt.x, pt.y);
+      ctx.stroke();
+      ctx.restore();
+    } else if (v.kind === "kinetic") {
+      // Projectile advances along the vector. `spread` is a perpendicular
+      // offset in world units so multi-projectile volleys fan slightly.
+      const dxw = v.tx - v.fx;
+      const dyw = v.ty - v.fy;
+      const len = Math.hypot(dxw, dyw) || 1;
+      const px = -dyw / len, py = dxw / len;
+      const wx = v.fx + dxw * progress + px * v.spread;
+      const wy = v.fy + dyw * progress + py * v.spread;
+      const pos = worldToScreen(wx, wy);
+      ctx.save();
+      ctx.shadowColor = "#ffc040";
+      ctx.shadowBlur = Math.max(3, 5 * camera.zoom);
+      ctx.fillStyle = `rgba(255,220,90,${alpha.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, Math.max(1.2, 2 * camera.zoom), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (v.kind === "missile") {
+      // Head advances firer→target over life. Short glowing trail behind
+      // it: white-hot front, orange plume.
+      const dxw = v.tx - v.fx;
+      const dyw = v.ty - v.fy;
+      const hwx = v.fx + dxw * progress;
+      const hwy = v.fy + dyw * progress;
+      const trail = Math.max(0, progress - 0.18);
+      const twxT = v.fx + dxw * trail;
+      const twyT = v.fy + dyw * trail;
+      const phead = worldToScreen(hwx, hwy);
+      const ptail = worldToScreen(twxT, twyT);
+      ctx.save();
+      ctx.shadowColor = "#ff8040";
+      ctx.shadowBlur = Math.max(4, 7 * camera.zoom);
+      const grad = ctx.createLinearGradient(ptail.x, ptail.y, phead.x, phead.y);
+      grad.addColorStop(0.0, `rgba(255,100,30,0)`);
+      grad.addColorStop(0.5, `rgba(255,150,60,${(0.85 * alpha).toFixed(3)})`);
+      grad.addColorStop(1.0, `rgba(255,245,220,${alpha.toFixed(3)})`);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = Math.max(1.5, 2.2 * camera.zoom);
+      ctx.beginPath();
+      ctx.moveTo(ptail.x, ptail.y);
+      ctx.lineTo(phead.x, phead.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
 function drawCombatIndicators(ctx, time) {
   for (const combat of activeCombats) {
     if (combat.phase === "resolved") continue;
@@ -3288,24 +3486,31 @@ function hideCombatOverlay() {
   setTimeout(() => { overlay.style.display = "none"; }, 300);
 }
 
-function renderCombatSide(container, side, label) {
+function renderCombatSide(container, side, label, sideKey) {
   const aCount = side.ships.filter(s => s.alive).length;
   const tCount = side.ships.length;
   let html = `<h3>${label} (${aCount}/${tCount})</h3>`;
-  for (const s of side.ships) {
+  for (let i = 0; i < side.ships.length; i++) {
+    const s = side.ships[i];
     const maxS = (s.card.stats.shields || 0) * COMBAT_HP_SCALE;
     const maxA = (s.card.stats.armor || 0) * COMBAT_HP_SCALE;
     const totalMax = maxS + maxA;
     const sPct = totalMax > 0 ? (s.currentShields / totalMax * 100) : 0;
     const aPct = totalMax > 0 ? (s.currentArmor / totalMax * 100) : 0;
+    const rarityCol = RARITY_COLORS[s.card.rarity] || "#6a7a9b";
     const deadClass = s.alive ? "" : " dead";
-    html += `<div class="combat-ship-entry${deadClass}">
-      <span class="combat-ship-name">${s.card.name}</span>
-      <div class="combat-hp-bar">
-        <div class="combat-hp-shields" style="width:${sPct}%"></div>
-        <div class="combat-hp-armor" style="width:${aPct}%"></div>
+    html += `<div class="combat-ship-tile${deadClass}" onclick="showCombatCardMagnified('${sideKey}', ${i})">
+      <div class="combat-ship-tile-stripe" style="background:${rarityCol}"></div>
+      <div class="combat-ship-tile-body">
+        <div class="combat-ship-tile-head">
+          <span class="combat-ship-tile-name">${s.card.name}</span>
+          <span class="combat-ship-tile-hp">${Math.ceil(s.currentShields)}s ${Math.ceil(s.currentArmor)}a</span>
+        </div>
+        <div class="combat-hp-bar">
+          <div class="combat-hp-shields" style="width:${sPct}%"></div>
+          <div class="combat-hp-armor" style="width:${aPct}%"></div>
+        </div>
       </div>
-      <span style="font-size:10px;min-width:50px;text-align:right">${Math.ceil(s.currentShields)}s ${Math.ceil(s.currentArmor)}a</span>
     </div>`;
   }
   container.innerHTML = html;
@@ -3315,8 +3520,8 @@ function refreshCombatOverlay() {
   if (!viewedCombat) return;
   const c = viewedCombat;
 
-  renderCombatSide(document.getElementById("combat-side-a"), c.sideA, c.sideA.entity.label);
-  renderCombatSide(document.getElementById("combat-side-b"), c.sideB, c.sideB.entity.label);
+  renderCombatSide(document.getElementById("combat-side-a"), c.sideA, c.sideA.entity.label, "a");
+  renderCombatSide(document.getElementById("combat-side-b"), c.sideB, c.sideB.entity.label, "b");
 
   // Status
   const phaseNames = { closing: "Closing...", engaged: "Engaged!", resolved: "Resolved" };
@@ -3860,6 +4065,7 @@ function render() {
   // Probes/fleets drawn above stars but below fog
   drawEntities(ctx, animTime);
   drawCombatIndicators(ctx, animTime);
+  drawWeaponVisuals(ctx);
   drawCombatParticles(ctx);
 
   // Fog of war on top — covers unexplored areas, detected stars peek through
@@ -4949,9 +5155,10 @@ window.addEventListener("mouseup", (e) => {
       const entIdx = getEntityAtScreen(sx, sy);
 
       if (selectedEntityIdx !== null && entIdx !== selectedEntityIdx) {
-        // Entity is selected — click sets destination (unless in combat)
+        // Entity is selected — click sets destination. Gated to player-owned
+        // non-combat entities; NPC fleets ignore player click commands.
         const selEnt = mapEntities[selectedEntityIdx];
-        if (selEnt && !selEnt.inCombat) {
+        if (selEnt && selEnt.owner === "player" && !selEnt.inCombat) {
           const world = screenToWorld(sx, sy);
           selEnt.destX = world.x;
           selEnt.destY = world.y;
@@ -6326,9 +6533,33 @@ function dismissMagnifiedCard() {
   if (magnifiedEl) { magnifiedEl.remove(); magnifiedEl = null; }
 }
 
+// Combat-overlay card magnify: inspect-only, just a Close button. Reuses
+// the queue-card-magnified styling and the shared magnifiedEl slot.
+function showCombatCardMagnified(sideKey, shipIdx) {
+  if (!viewedCombat) return;
+  const side = (sideKey === "a") ? viewedCombat.sideA : viewedCombat.sideB;
+  const ship = side && side.ships[shipIdx];
+  if (!ship) return;
+  dismissMagnifiedCard();
+  const mag = document.createElement("div");
+  mag.className = "queue-card-magnified";
+  mag.innerHTML = buildCardHtml(ship.card) +
+    `<div class="magnify-actions">
+      <button class="magnify-close-btn">Close</button>
+    </div>`;
+  mag.querySelector(".magnify-close-btn").addEventListener("click", dismissMagnifiedCard);
+  document.body.appendChild(mag);
+  magnifiedEl = mag;
+}
+
 // Dismiss magnified card on click outside
 document.getElementById("colony-overlay").addEventListener("click", (e) => {
   if (magnifiedEl && !e.target.closest(".queue-card-magnified") && !e.target.closest(".queue-card") && !e.target.closest(".building-slot.occupied") && !e.target.closest("#colony-leader")) {
+    dismissMagnifiedCard();
+  }
+});
+document.getElementById("combat-overlay").addEventListener("click", (e) => {
+  if (magnifiedEl && !e.target.closest(".queue-card-magnified") && !e.target.closest(".combat-ship-tile")) {
     dismissMagnifiedCard();
   }
 });
@@ -6410,6 +6641,7 @@ function gameLoop(timestamp) {
   tickEntities(scaledDt);
   tickCombats(scaledDt);
   tickParticles(scaledDt);
+  tickWeaponVisuals(scaledDt);
   if (viewedCombat) refreshCombatOverlay();
   // Lightweight updates when colony screen is open (no full DOM rebuild)
   if (colonyViewStar && colonyViewPlanetIdx != null) {

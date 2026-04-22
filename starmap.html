@@ -468,15 +468,18 @@ body {
 }
 
 /* ── Colonies List Overlay ── */
-#colonies-backdrop {
+#colonies-backdrop,
+#fleets-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(0,0,0,0.5);
   z-index: 30;
   display: none;
 }
-#colonies-backdrop.visible { display: block; }
-#colonies-list-overlay {
+#colonies-backdrop.visible,
+#fleets-backdrop.visible { display: block; }
+#colonies-list-overlay,
+#fleets-list-overlay {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -492,14 +495,17 @@ body {
   padding: 16px;
   overflow: hidden;
 }
-#colonies-list-overlay.visible { display: flex; }
-#colonies-list-overlay h2 {
+#colonies-list-overlay.visible,
+#fleets-list-overlay.visible { display: flex; }
+#colonies-list-overlay h2,
+#fleets-list-overlay h2 {
   font-size: 14px;
   color: #8090b0;
   margin-bottom: 12px;
   font-weight: 600;
 }
-#colonies-list-close {
+#colonies-list-close,
+#fleets-list-close {
   position: absolute;
   top: 10px;
   right: 12px;
@@ -511,8 +517,10 @@ body {
   padding: 4px 8px;
   border-radius: 4px;
 }
-#colonies-list-close:hover { color: #c8d0e0; background: #0c0e18; }
-#colonies-list-items {
+#colonies-list-close:hover,
+#fleets-list-close:hover { color: #c8d0e0; background: #0c0e18; }
+#colonies-list-items,
+#fleets-list-items {
   overflow-y: auto;
   flex: 1;
   display: flex;
@@ -1335,6 +1343,10 @@ body {
         <svg class="ico sm"><use href="#i-research-tree"/></svg>
         <span>Research</span>
       </button>
+      <button id="fleets-btn" class="metal-btn tb-nav-btn" onclick="showFleetsList()">
+        <svg class="ico sm"><use href="#i-fleet"/></svg>
+        <span>Fleets</span>
+      </button>
     </div>
   </div>
 
@@ -1423,6 +1435,13 @@ body {
     <button id="colonies-list-close"><svg class="ico"><use href="#i-close"/></svg></button>
     <h2><svg class="ico lg"><use href="#i-colony"/></svg> Colonies</h2>
     <div id="colonies-list-items"></div>
+  </div>
+  <!-- Fleets List -->
+  <div id="fleets-backdrop"></div>
+  <div id="fleets-list-overlay">
+    <button id="fleets-list-close"><svg class="ico"><use href="#i-close"/></svg></button>
+    <h2><svg class="ico lg"><use href="#i-fleet"/></svg> Fleets</h2>
+    <div id="fleets-list-items"></div>
   </div>
   <!-- Colony Screen -->
   <div id="colony-backdrop"></div>
@@ -2402,6 +2421,79 @@ function recalcFleetStats(ent) {
   }
 }
 
+// ── Fleet formation layout ──
+// Per-ship polar offsets from the fleet center. Used to place miniature
+// ship icons around the main fleet mark and to source weapon-origin
+// positions for combat visuals. Offsets are in WORLD units so they stay
+// consistent across zoom. Lazy-computed and cached on the entity; derived
+// from ships.length so it doesn't need to round-trip through save files.
+const FORMATION_RING_CAPS  = [6, 12, 18, 24];   // max ships per ring
+const FORMATION_RING_RADII = [18, 32, 46, 60];  // world units per ring
+
+// Miniature ship triangle size (at zoom 1.0), by rarity. Wide spread so a
+// legendary flagship in the formation visually dominates common escorts.
+const MINI_SHIP_SIZES = {
+  common:    2.5,
+  uncommon:  3.5,
+  rare:      5.0,
+  epic:      7.0,
+  legendary: 9.0,
+};
+
+function _formationHash(i, salt) {
+  // Deterministic per-ship jitter; returns 0..1.
+  let x = (i * 374761393 + salt * 668265263) | 0;
+  x = (x ^ (x >>> 13)) * 1274126177;
+  return ((x ^ (x >>> 16)) >>> 0) / 4294967296;
+}
+
+function computeFormation(n) {
+  const offsets = [];
+  let idx = 0;
+  for (let ring = 0; ring < FORMATION_RING_CAPS.length && idx < n; ring++) {
+    const count = Math.min(FORMATION_RING_CAPS[ring], n - idx);
+    const baseRadius = FORMATION_RING_RADII[ring];
+    const ringPhase = ring * 0.35;
+    for (let k = 0; k < count; k++) {
+      const evenAngle = (k / count) * Math.PI * 2 + ringPhase;
+      const jitterA = (_formationHash(idx, 1) - 0.5) * (Math.PI * 2 / count) * 0.25;
+      const jitterR = (_formationHash(idx, 2) - 0.5) * 0.18;
+      offsets.push({
+        angle: evenAngle + jitterA,
+        radius: baseRadius * (1 + jitterR),
+      });
+      idx++;
+    }
+  }
+  return offsets;
+}
+
+function getFormation(ent) {
+  if (ent.type !== "fleet") return null;
+  const n = ent.ships ? ent.ships.length : 0;
+  if (!ent._formation || ent._formationN !== n) {
+    ent._formation = computeFormation(n);
+    ent._formationN = n;
+  }
+  return ent._formation;
+}
+
+// World coordinates for a given ship. For solo ships, returns the entity's
+// position. For fleets, adds the ship's formation offset to the fleet
+// center. The `_time` argument is reserved for future formation sway.
+function getShipWorldPos(ent, shipIdx, _time) {
+  if (ent.type !== "fleet") {
+    return { x: ent.x, y: ent.y };
+  }
+  const formation = getFormation(ent);
+  const slot = formation[shipIdx];
+  if (!slot) return { x: ent.x, y: ent.y };
+  return {
+    x: ent.x + Math.cos(slot.angle) * slot.radius,
+    y: ent.y + Math.sin(slot.angle) * slot.radius,
+  };
+}
+
 function getMaxFleetShips(admiral) {
   return admiral ? (admiral.stats.maxFleetSize || 4) : 3;
 }
@@ -2870,28 +2962,154 @@ function drawEntities(ctx, time) {
     }
 
     if (isFleet) {
-      // Fleet icon — chevron/shield shape
-      ctx.fillStyle = isSelected ? lightenColor(rarityColor, 30) : rarityColor;
+      // Main fleet mark — mostly transparent, glowy. Layered:
+      //   outer halo → thin ring → inner core glow → count text.
+      // Subtle shimmer animation ties alpha to animTime.
+      const r = parseInt(rarityColor.slice(1,3), 16);
+      const g = parseInt(rarityColor.slice(3,5), 16);
+      const b = parseInt(rarityColor.slice(5,7), 16);
+      const col = `${r},${g},${b}`;
+      const shimmer = 0.85 + 0.15 * Math.sin(time * 2.2 + ent.x * 0.01);
+
+      // Outer halo
+      const haloR = size * 3.2;
+      const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, haloR);
+      halo.addColorStop(0.0,  `rgba(${col},${(0.32 * shimmer).toFixed(3)})`);
+      halo.addColorStop(0.35, `rgba(${col},${(0.12 * shimmer).toFixed(3)})`);
+      halo.addColorStop(1.0,  `rgba(${col},0)`);
+      ctx.fillStyle = halo;
       ctx.beginPath();
-      ctx.moveTo(0, -size);
-      ctx.lineTo(size * 0.8, -size * 0.2);
-      ctx.lineTo(size * 0.8, size * 0.5);
-      ctx.lineTo(0, size);
-      ctx.lineTo(-size * 0.8, size * 0.5);
-      ctx.lineTo(-size * 0.8, -size * 0.2);
-      ctx.closePath();
+      ctx.arc(0, 0, haloR, 0, Math.PI * 2);
       ctx.fill();
-      // Ship count badge
+
+      // Thin ring
+      ctx.strokeStyle = `rgba(${col},${(0.75 * shimmer).toFixed(3)})`;
+      ctx.lineWidth = Math.max(1, 1.4 * camera.zoom);
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 1.1, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner core — bright white center fading to rarity color
+      const coreR = size * 0.55;
+      const core = ctx.createRadialGradient(0, 0, 0, 0, 0, coreR);
+      core.addColorStop(0.0, `rgba(255,255,255,${(0.55 * shimmer).toFixed(3)})`);
+      core.addColorStop(0.5, `rgba(${col},${(0.45 * shimmer).toFixed(3)})`);
+      core.addColorStop(1.0, `rgba(${col},0)`);
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(0, 0, coreR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ship count — glowing white over the core
       if (camera.zoom > 0.4) {
         const countText = `${ent.ships.length}`;
         ctx.font = `bold ${Math.max(7, 8 * camera.zoom)}px 'Segoe UI', system-ui, sans-serif`;
         ctx.fillStyle = "#fff";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
+        ctx.shadowColor = `rgba(${col},0.9)`;
+        ctx.shadowBlur = 4;
         ctx.fillText(countText, 0, 0);
+        ctx.shadowBlur = 0;
+      }
+
+      // Miniature ship triangles around the main mark, one per ship,
+      // sized & colored by ship rarity. Hidden at very low zoom to keep
+      // the starmap readable; first ring only at medium zoom.
+      //
+      // When the fleet is traveling, each ship:
+      //   - rotates to point along the fleet's heading (with a light per-
+      //     ship wobble so rotations don't lock-step)
+      //   - gets a perpendicular sway added to its formation slot so its
+      //     individual trajectory curves instead of running a rigid rail
+      // When stationary, ships point radially outward from the fleet
+      // center, suggesting the formation "facing out".
+      if (ent.ships.length > 0 && camera.zoom > 0.45) {
+        const formation = getFormation(ent);
+        const shipCap = camera.zoom < 1.0 ? 6 : 18;
+        const visibleShips = Math.min(ent.ships.length, shipCap);
+
+        const moving = (ent.destX !== null && ent.destY !== null);
+        let currentHeading = null;
+        if (moving) {
+          const dxh = ent.destX - ent.x;
+          const dyh = ent.destY - ent.y;
+          if (dxh !== 0 || dyh !== 0) currentHeading = Math.atan2(dyh, dxh);
+        }
+        // Remember the last heading so ships retain their facing after stopping.
+        if (currentHeading !== null) ent.lastHeadingAngle = currentHeading;
+        // Perpendicular unit vector to CURRENT heading (used for sway — only
+        // while actually moving, so stationary ships don't drift sideways).
+        let perpX = 0, perpY = 0;
+        if (currentHeading !== null) {
+          perpX = -Math.sin(currentHeading);
+          perpY =  Math.cos(currentHeading);
+        }
+
+        for (let si = 0; si < visibleShips; si++) {
+          const ship = ent.ships[si];
+          const slot = formation[si];
+          if (!slot) continue;
+          const phase = si * 1.31;  // prime-ish spacing so ships don't sync
+
+          // Formation offset (world units) with sway only while actually moving.
+          let offWX = Math.cos(slot.angle) * slot.radius;
+          let offWY = Math.sin(slot.angle) * slot.radius;
+          if (currentHeading !== null) {
+            const sway = Math.sin(time * 1.4 + phase) * 3.5;  // world units
+            offWX += perpX * sway;
+            offWY += perpY * sway;
+          }
+          const fx = offWX * camera.zoom;
+          const fy = offWY * camera.zoom;
+
+          // Orientation: last known heading if available (persists after
+          // stopping), else radial-outward default for brand-new formations.
+          // Wobble only while actively moving.
+          let triAngle;
+          if (ent.lastHeadingAngle !== undefined) {
+            const wobble = (currentHeading !== null)
+              ? Math.sin(time * 2.1 + phase * 0.7) * 0.12
+              : 0;
+            triAngle = ent.lastHeadingAngle + Math.PI / 2 + wobble;
+          } else {
+            triAngle = slot.angle + Math.PI / 2;
+          }
+
+          const shipRarity = ship.rarity || "common";
+          const shipCol = ent.owner === "npc"
+            ? "#c04040"
+            : (RARITY_COLORS[shipRarity] || "#4a7ac0");
+          const ts = (MINI_SHIP_SIZES[shipRarity] || 3.5) * camera.zoom;
+          ctx.save();
+          ctx.translate(fx, fy);
+          ctx.rotate(triAngle);
+          ctx.fillStyle = shipCol;
+          ctx.strokeStyle = "rgba(0,0,0,0.45)";
+          ctx.lineWidth = Math.max(0.5, 0.6 * camera.zoom);
+          ctx.beginPath();
+          ctx.moveTo(0, -ts);
+          ctx.lineTo(ts * 0.75, ts * 0.6);
+          ctx.lineTo(-ts * 0.75, ts * 0.6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
       }
     } else {
-      // Solo ship icon — triangle pointing up-right (movement direction feel)
+      // Solo ship icon — triangle rotated to heading. Retains its last
+      // heading after stopping; defaults to "up" only if it's never moved.
+      if (ent.destX !== null && ent.destY !== null) {
+        const dxh = ent.destX - ent.x;
+        const dyh = ent.destY - ent.y;
+        if (dxh !== 0 || dyh !== 0) ent.lastHeadingAngle = Math.atan2(dyh, dxh);
+      }
+      const soloAngle = (ent.lastHeadingAngle !== undefined)
+        ? ent.lastHeadingAngle + Math.PI / 2
+        : 0;
+      ctx.save();
+      ctx.rotate(soloAngle);
       ctx.fillStyle = isSelected ? lightenColor(rarityColor, 30) : rarityColor;
       ctx.beginPath();
       ctx.moveTo(0, -size);
@@ -2899,14 +3117,12 @@ function drawEntities(ctx, time) {
       ctx.lineTo(-size * 0.7, size * 0.6);
       ctx.closePath();
       ctx.fill();
-    }
-
-    // Bright core
-    if (!isFleet) {
+      // Bright core — draw inside the rotated frame so it stays centered.
       ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
       ctx.beginPath();
       ctx.arc(0, 0, size * 0.2, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     }
 
     // Stance indicator badge
@@ -4648,7 +4864,7 @@ const canvasEl = document.getElementById("starmap");
 const tooltip = document.getElementById("tooltip");
 
 container.addEventListener("mousedown", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#system-backdrop") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colony-backdrop") || e.target.closest("#colonies-list-overlay") || e.target.closest("#colonies-backdrop") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#combat-overlay") || e.target.closest("#combat-backdrop")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#system-backdrop") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colony-backdrop") || e.target.closest("#colonies-list-overlay") || e.target.closest("#colonies-backdrop") || e.target.closest("#fleets-list-overlay") || e.target.closest("#fleets-backdrop") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#combat-overlay") || e.target.closest("#combat-backdrop")) return;
   isDragging = true;
   dragMoved = false;
   dragStart = { x: e.clientX, y: e.clientY };
@@ -4760,7 +4976,7 @@ window.addEventListener("mouseup", (e) => {
 
 // Suppress context menu on the map entirely
 container.addEventListener("contextmenu", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#combat-overlay")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#combat-overlay")) return;
   e.preventDefault();
   if (selectedEntityIdx !== null) {
     selectedEntityIdx = null;
@@ -4781,7 +4997,7 @@ canvasEl.addEventListener("dblclick", (e) => {
 });
 
 container.addEventListener("wheel", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#combat-overlay")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#combat-overlay")) return;
   e.preventDefault();
   const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
   const newZoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomFactor));
@@ -5383,6 +5599,74 @@ function selectColonyFromList(idx) {
 
 document.getElementById("colonies-list-close").addEventListener("click", hideColoniesList);
 document.getElementById("colonies-backdrop").addEventListener("click", hideColoniesList);
+
+// ── Fleets List ──
+// Mirrors the Colonies list pattern. Includes every player-owned entity
+// (both multi-ship fleets and solo ships). Clicking an entry centers the
+// camera on the entity and selects it. Cached array is rebuilt on every
+// show so it reflects current fleet composition.
+let _fleetsListCache = [];
+
+function showFleetsList() {
+  const backdrop = document.getElementById("fleets-backdrop");
+  const overlay = document.getElementById("fleets-list-overlay");
+  const items = document.getElementById("fleets-list-items");
+
+  backdrop.classList.add("visible");
+  overlay.classList.add("visible");
+
+  _fleetsListCache = mapEntities.filter(e => e.owner === "player");
+
+  if (_fleetsListCache.length === 0) {
+    items.innerHTML = `<div class="colonies-empty">No fleets or ships deployed. Build and deploy ships from a colony.</div>`;
+    return;
+  }
+
+  items.innerHTML = _fleetsListCache.map((ent, i) => {
+    let rarityColor, subtype;
+    if (ent.type === "fleet") {
+      rarityColor = ent.admiral ? (RARITY_COLORS[ent.admiral.rarity] || "#6a7a9b") : "#6a7a9b";
+      const shipCount = ent.ships.length;
+      subtype = `Fleet — ${shipCount} ship${shipCount === 1 ? "" : "s"}`;
+    } else {
+      rarityColor = RARITY_COLORS[ent.card.rarity] || "#4a7ac0";
+      subtype = ent.card.type || "Ship";
+    }
+    const traveling = (ent.destX !== null && ent.destY !== null && ent.speed > 0);
+    let etaStr = "";
+    if (traveling) {
+      const dist = Math.sqrt((ent.destX - ent.x) ** 2 + (ent.destY - ent.y) ** 2);
+      etaStr = ` · ${formatETA(dist / ent.speed)}`;
+    } else if (ent.inCombat) {
+      etaStr = " · in combat";
+    }
+    return `<div class="colony-list-item" onclick="selectFleetFromList(${i})">
+      <div class="colony-list-rarity" style="background:${rarityColor}"></div>
+      <div class="colony-list-name">${ent.label}</div>
+      <div class="colony-list-type">${subtype}${etaStr}</div>
+    </div>`;
+  }).join("");
+}
+
+function hideFleetsList() {
+  document.getElementById("fleets-backdrop").classList.remove("visible");
+  document.getElementById("fleets-list-overlay").classList.remove("visible");
+}
+
+function selectFleetFromList(idx) {
+  const ent = _fleetsListCache[idx];
+  if (!ent) return;
+  hideFleetsList();
+  const entIdx = mapEntities.indexOf(ent);
+  if (entIdx < 0) return;
+  selectedEntityIdx = entIdx;
+  camera.x = ent.x;
+  camera.y = ent.y;
+  showEntityPanel(entIdx);
+}
+
+document.getElementById("fleets-list-close").addEventListener("click", hideFleetsList);
+document.getElementById("fleets-backdrop").addEventListener("click", hideFleetsList);
 
 // ── Colony Screen ──
 let colonyViewStar = null;

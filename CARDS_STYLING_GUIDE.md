@@ -1,28 +1,29 @@
 # Card Styling Guide
 
-Short reference for the card visual system in IdleSpace. **Ships and pirates** currently use the new metallic template; **stars, planets, admirals, buildings, leaders** still render with the legacy layout and need variants designed against this same vocabulary.
+Short reference for the card visual system in IdleSpace. All six card types (star, planet, building, leader, ship/pirate, admiral) render through the metallic "Rustfang" template. Shared chrome lives in `ui/card-chrome.css`; each type has its own thin CSS file for middle-content rules.
 
-The ship renderer is the reference implementation — use it as the model when building variants for the other types.
+The ship renderer remains the reference implementation — use it as the model when adding new card fields or tweaking layouts.
 
 ## File map
 
 | File | What it does |
 |---|---|
-| [ui/ship-card.css](ui/ship-card.css) | All `.card-preview.is-ship` styles (shared) |
+| [ui/card-chrome.css](ui/card-chrome.css) | Shared metallic chrome — activated by `.card-preview.tpl-metal`. Owns rarity halo, gunmetal body, corner brackets, `.hdr`, `.img`, `.subtype`, `.cost`, `.row / .stat / .sv`, `.special`, `.flv`, `.wm`. |
+| [ui/ship-card.css](ui/ship-card.css) | Ship-specific middle only — `.is-ship` weapon block, range badges, defense/utility icon colorings |
 | [ui/colors_and_type.css](ui/colors_and_type.css) | Rarity, resource, weapon, range palettes + type tokens |
-| [ui/chrome.css](ui/chrome.css) | Shared `.metal` surface helpers, `.ico` sprite helper |
+| [ui/chrome.css](ui/chrome.css) | Global `.metal` surface helpers, `.ico` sprite helper |
 | [ui/icons.html](ui/icons.html) | SVG sprite — add `<symbol id="i-...">` for new icons |
-| [starmap.html](starmap.html) | In-game rendering. `buildShipCardHtml(card)` lives here. Other types go through `buildCardHtml` → `buildAdmiralStatsHtml` / `buildStarStatsHtml` / `buildPlanetStatsHtml` / `buildGenericStatsHtml` |
-| [card-builder.html](card-builder.html) | Card editor preview. `buildShipCardHtml(data)` mirrored here; keep in sync |
+| [starmap.html](starmap.html) | In-game rendering. `buildCardHtml(card)` dispatches to `buildShipCardHtml` / `buildStarCardHtml` / `buildPlanetCardHtml` / `buildBuildingCardHtml` / `buildLeaderCardHtml` / `buildAdmiralCardHtml` |
+| [card-builder.html](card-builder.html) | Card editor preview. Each `build<Type>CardHtml(data)` is mirrored here (returns inner HTML); `updatePreview()` dispatches via `CATEGORY_RENDERERS`. Keep in sync with starmap. |
 
-Both HTMLs load [ui/ship-card.css](ui/ship-card.css) — edit once, applies everywhere.
+A card opts into the metallic template by emitting `class="card-preview tpl-metal is-<type> <rarity>"`. Chrome (frame, halo, img slot, chip rows, special pill, flavor, watermark) activates automatically; the per-type CSS only needs to style the middle content unique to that type.
 
 The SVG sprite is injected synchronously into both pages via an XHR near the top of `<body>`, so `<use href="#i-..."/>` references resolve before first paint.
 
 ## Ship card anatomy (top to bottom)
 
 ```
-.card-preview.is-ship             ← outer container, drop-shadow rarity glow
+.card-preview.tpl-metal.is-ship   ← outer container, drop-shadow rarity glow
 ├── .bg                           ← gunmetal gradient + brushed streaks + glint
 ├── .frame-corners                ← 4 L-shaped corner brackets
 └── .c                            ← content wrapper (position: absolute, inset: 0)
@@ -49,14 +50,14 @@ The card's logical size is **220×320px** (set by the parent `.card-preview` rul
 ## Levers
 
 ### Rarity — single source of truth
-Every rarity-tinted element reads the CSS variable `--rc`, set per rarity on the root:
+Every rarity-tinted element reads the CSS variable `--rc`, set per rarity on the root (in [ui/card-chrome.css](ui/card-chrome.css)):
 
 ```css
-.card-preview.is-ship.common    { --rc: var(--rarity-common); }
-.card-preview.is-ship.uncommon  { --rc: var(--rarity-uncommon); }
-.card-preview.is-ship.rare      { --rc: var(--rarity-rare); }
-.card-preview.is-ship.epic      { --rc: var(--rarity-epic); }
-.card-preview.is-ship.legendary { --rc: var(--rarity-legendary); }
+.card-preview.tpl-metal.common    { --rc: var(--rarity-common); }
+.card-preview.tpl-metal.uncommon  { --rc: var(--rarity-uncommon); }
+.card-preview.tpl-metal.rare      { --rc: var(--rarity-rare); }
+.card-preview.tpl-metal.epic      { --rc: var(--rarity-epic); }
+.card-preview.tpl-metal.legendary { --rc: var(--rarity-legendary); }
 ```
 
 Rarity palette lives in [ui/colors_and_type.css](ui/colors_and_type.css) as `--rarity-common` through `--rarity-legendary`. Change there and every card updates.
@@ -128,18 +129,17 @@ Use it everywhere a user-visible number can grow large (stats, costs, weapon dam
 
 When adapting a new type (planet, star, admiral, building, leader):
 
-1. **Keep the outer class `.card-preview`** — many JS call sites select on it.
-2. **Add a new type flag class** (e.g. `.is-planet`, `.is-star`, …) alongside the rarity class.
-3. **Put type-specific styles in a new shared CSS file** (`ui/planet-card.css` etc.) scoped under `.card-preview.is-planet`, and link it from both HTMLs. Share chrome with `.is-ship` where it makes sense.
-4. **Write a `buildPlanetCardHtml(card)` (or equivalent)** mirroring `buildShipCardHtml`. Put it in both starmap.html and card-builder.html.
-5. **Route from `buildCardHtml` in starmap.html** and from `updatePreview` in card-builder.html, branching on `card.category`.
-6. **Data shapes to render per type** (see `data/game-cards.json` for examples):
+1. **Emit `class="card-preview tpl-metal is-<type> <rarity>"`** on the root. `tpl-metal` activates all shared chrome from [ui/card-chrome.css](ui/card-chrome.css) automatically.
+2. **Put type-specific styles in a new shared CSS file** (`ui/planet-card.css` etc.) scoped under `.card-preview.is-planet`, and link it from both HTMLs after card-chrome.css.
+3. **Write a `buildPlanetCardHtml(card)` (or equivalent)** mirroring `buildShipCardHtml`. Put it in both starmap.html and card-builder.html.
+4. **Route from `buildCardHtml` in starmap.html** and from `updatePreview` in card-builder.html, branching on `card.category`.
+5. **Data shapes to render per type** (see `data/game-cards.json` for examples):
    - `star` → `categoryData.planetGen.{count, guaranteed, bonus}` (no `stats`/`cost`)
    - `planet` → `categoryData.bonuses` (map of resource → % bonus)
    - `admiral` → `stats.commandBonus`, `stats.maxFleetSize`, plus optional stat bonuses
    - `building` → `stats` (production), `upkeep`, `cost`
    - `leader` → `stats` (mixed leadership attributes), `cost`
-7. **Reuse the ship vocabulary** where it fits — `.row`/`.stat` for value chips, `.special` for abilities, `.flv` for flavor. Only introduce new structures where the type actually needs them.
+6. **Reuse the chrome vocabulary** where it fits — `.row`/`.stat`/`.sv` for value chips, `.special` for abilities, `.flv` for flavor, `.wm` for a silhouette watermark. Only introduce new structures where the type actually needs them (e.g. the ship `.weap` armaments block).
 
 The visual goal is a consistent family: same rarity border, same gunmetal body, same corner brackets, same flavor style. Only the middle (image area + body stats) changes per type.
 

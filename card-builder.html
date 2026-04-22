@@ -6,7 +6,13 @@
 <title>IdleSpace — Card Builder</title>
 <link rel="stylesheet" href="ui/colors_and_type.css">
 <link rel="stylesheet" href="ui/chrome.css">
+<link rel="stylesheet" href="ui/card-chrome.css">
 <link rel="stylesheet" href="ui/ship-card.css">
+<link rel="stylesheet" href="ui/star-card.css">
+<link rel="stylesheet" href="ui/planet-card.css">
+<link rel="stylesheet" href="ui/building-card.css">
+<link rel="stylesheet" href="ui/leader-card.css">
+<link rel="stylesheet" href="ui/admiral-card.css">
 <style>
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -175,12 +181,11 @@ body {
   transition: all 0.15s;
 }
 #zoom-btn:hover { border-color: #4060c0; color: #c0d0f0; }
-.card-preview.zoomed {
-  transform: scale(3);
-  transform-origin: center center;
-}
 
-/* ── Card Preview (larger version) ── */
+/* ── Card Preview shell ──
+   All card rendering goes through the metallic template (ui/card-chrome.css
+   and the per-type files). This file only owns the outer sizing + the 3×
+   zoom toggle wired to #zoom-btn. */
 .card-preview {
   width: 220px;
   height: 320px;
@@ -189,194 +194,12 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow: hidden;
-}
-.card-preview::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 10px;
-  padding: 3px;
-  background: var(--rarity-color);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-.card-preview .card-bg {
-  position: absolute;
-  inset: 3px;
-  border-radius: 7px;
-  background: #141a30;
-  z-index: 0;
-}
-.card-preview > * { position: relative; z-index: 1; }
-
-/* Header row: name + cost badge */
-.card-preview .card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 7px 8px 4px 8px;
-}
-.card-preview .card-name {
-  font-size: 12px;
-  font-weight: 700;
-  color: #fff;
-  flex: 1;
-  min-height: 16px;
-  line-height: 1.2;
-}
-.card-preview .card-cost-badge {
-  position: absolute;
-  top: 7px;
-  right: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 2px 4px;
-  border: 1px solid #2a3460;
-  border-radius: 3px;
-  background: rgba(15,20,40,0.85);
-  min-width: 30px;
-  align-items: flex-end;
-  z-index: 3;
-}
-.card-preview .card-cost-badge:empty { display: none; }
-.card-preview .cost-badge-row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 9px;
-}
-.cost-badge-icon { font-size: 9px; }
-.cost-badge-val { color: #e09060; font-weight: 600; font-size: 10px; }
-
-/* Image — 1024x872 input, displayed at 205x175 */
-.card-preview .card-image {
-  width: 205px;
-  height: 175px;
-  border-radius: 4px;
-  background: #1a2040;
-  margin: 0 auto 4px auto;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #2a3460;
-  font-size: 11px;
   flex-shrink: 0;
 }
-.card-preview .card-image img {
-  width: 205px;
-  height: 175px;
+.card-preview.zoomed {
+  transform: scale(3);
+  transform-origin: center center;
 }
-
-/* Stats row — compact, icon-only. Grows when no special text */
-.card-preview .card-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px 8px;
-  padding: 2px 8px;
-  justify-content: center;
-  align-items: center;
-  align-content: center;
-}
-.card-preview .card-stats.expanded {
-  flex: 1;
-  gap: 4px 12px;
-}
-.card-preview .card-stat {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 11px;
-}
-.card-preview .card-stats.expanded .card-stat { font-size: 13px; }
-.card-preview .card-stat-icon { font-size: 12px; }
-.card-preview .card-stats.expanded .card-stat-icon { font-size: 15px; }
-.card-preview .card-stat-value { font-weight: 600; color: #fff; }
-.card-preview .card-stat-value.zero { color: #2a3460; }
-/* Ship card layout */
-.ship-stat-row {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  align-items: center;
-  padding: 1px 0;
-}
-.ship-stat-row.ship-utils {
-  margin-top: 2px;
-  padding-top: 3px;
-  border-top: 1px solid rgba(100,130,180,0.15);
-}
-.ship-weapons {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 3px 8px;
-  margin-top: 2px;
-  border-top: 1px solid rgba(100,130,180,0.15);
-}
-.ship-weapon-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-}
-.ship-weapon-row .card-stat-icon { font-size: 12px; }
-.ship-weapon-row .card-stat-value { font-weight: 600; }
-.ship-range-badge {
-  font-size: 9px;
-  font-weight: 700;
-  padding: 0 4px;
-  border-radius: 3px;
-  margin-left: auto;
-  letter-spacing: 0.5px;
-}
-
-/* Special ability */
-.card-preview .card-special {
-  font-size: 11px;
-  color: #a0b0d0;
-  text-align: center;
-  margin: 2px 7px 0 7px;
-  padding: 3px 4px;
-  background: rgba(40,60,120,0.2);
-  border-radius: 3px;
-  line-height: 1.2;
-}
-
-/* Flavor text */
-.card-preview .card-flavor {
-  font-size: 10px;
-  color: #4a5a7b;
-  font-style: italic;
-  text-align: center;
-  padding: 2px 8px 7px 8px;
-  line-height: 1.3;
-  margin-top: auto;
-}
-
-/* Category watermark — centered in bottom 1/3 area behind stats/text */
-.card-preview .card-watermark {
-  position: absolute;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 60px;
-  opacity: 0.08;
-  z-index: 1;
-  pointer-events: none;
-  line-height: 1;
-}
-
-/* Rarity colors */
-.card-preview.common    { --rarity-color: #6a7a9b; }
-.card-preview.uncommon  { --rarity-color: #4a9b5a; }
-.card-preview.rare      { --rarity-color: #4a7ac0; }
-.card-preview.epic      { --rarity-color: #8a4ac0; }
-.card-preview.legendary { --rarity-color: #c0a020; }
 
 /* ── Right Panel: Editor ── */
 #editor {
@@ -794,18 +617,8 @@ select.editor-input { cursor: pointer; }
   <!-- Center: Preview -->
   <div id="preview-panel">
     <button id="zoom-btn">3× Zoom</button>
-    <div class="card-preview common" id="card-preview">
-      <div class="card-bg"></div>
-      <div class="card-cost-badge" id="preview-cost"></div>
-      <div class="card-header">
-        <div class="card-name" id="preview-name">New Card</div>
-      </div>
-      <div class="card-image" id="preview-image">No image</div>
-      <div class="card-stats" id="preview-stats"></div>
-      <div class="card-special" id="preview-special" style="display:none"></div>
-      <div class="card-flavor" id="preview-flavor"></div>
-      <div class="card-watermark" id="preview-watermark"></div>
-    </div>
+    <!-- Empty shell. updatePreview() populates className + innerHTML on load. -->
+    <div class="card-preview tpl-metal is-ship common" id="card-preview"></div>
   </div>
 
   <!-- Right: Editor -->
@@ -1397,36 +1210,6 @@ document.getElementById("tag-input").addEventListener("keydown", (e) => {
 
 // ═══════════════════════════════════════════
 //  LIVE PREVIEW
-// ═══════════════════════════════════════════
-// Category watermark icons
-const CATEGORY_ICONS = {
-  building: "🏗️",
-  ship: "🚀",
-  leader: "👑",
-  admiral: "⭐",
-  star: "☀️",
-  planet: "🪐",
-  pirate: "🏴‍☠️",
-};
-
-// Icon lookup for known stat/cost keys
-const STAT_ICONS = {
-  energy: "⚡", minerals: "⛏️", research: "🔬", food: "🌾", credits: "💰",
-  attack: "⚔️", defense: "🛡️", speed: "💨", hull: "🔩",
-  combat: "⚔️", navigation: "🧭", diplomacy: "🤝", engineering: "🔧",
-  morale: "💪", efficiency: "⚙️", research_bonus: "🔬", growth: "📈",
-  fleet_size: "🚀", tactics: "🎯", logistics: "📦", charisma: "✨",
-  luminosity: "☀️", stability: "⚖️", planets_max: "🪐",
-  ecology: "🌿", gravity: "🌀", atmosphere: "💨", size: "📐",
-  // Ship combat stats
-  shields: "🔷", armor: "🛡️", sensorRange: "📡",
-  stealth: "👁️", pointDefense: "🎯",
-  energyDmg: "⚡", kineticDmg: "💥", missileDmg: "🚀",
-  energyRange: "⚡", kineticRange: "💥", missileRange: "🚀",
-  // Admiral stats
-  commandBonus: "⭐", maxFleetSize: "⚓",
-};
-
 const RANGE_LABELS = { short: "S", medium: "M", long: "L" };
 const RANGE_COLORS = { short: "#e0a040", medium: "#a0c0e0", long: "#60d060" };
 
@@ -1436,20 +1219,32 @@ const RES_ICON_BY_KEY = {
   research: "i-research", food: "i-food",
 };
 
-// Original inner HTML of #card-preview. Saved here so we can restore the
-// legacy preview DOM when switching back from ship to a non-ship category
-// (ship rendering replaces the container's innerHTML wholesale).
-const LEGACY_PREVIEW_HTML = `
-      <div class="card-bg"></div>
-      <div class="card-cost-badge" id="preview-cost"></div>
-      <div class="card-header">
-        <div class="card-name" id="preview-name">New Card</div>
-      </div>
-      <div class="card-image" id="preview-image">No image</div>
-      <div class="card-stats" id="preview-stats"></div>
-      <div class="card-special" id="preview-special" style="display:none"></div>
-      <div class="card-flavor" id="preview-flavor"></div>
-      <div class="card-watermark" id="preview-watermark"></div>`;
+// Stat-key → SVG sprite id. Mirrors STAT_ICON_IDS in starmap.html; keep in sync.
+const STAT_ICON_IDS = {
+  // Resources
+  credits: "i-credits", energy: "i-energy", minerals: "i-minerals",
+  research: "i-research", food: "i-food",
+  // Ship combat
+  shields: "i-shield", armor: "i-armor", speed: "i-speed",
+  sensorRange: "i-sensor", stealth: "i-stealth", pointDefense: "i-pd",
+  energyDmg: "i-beam", kineticDmg: "i-kinetic", missileDmg: "i-missile",
+  // Admiral / command
+  commandBonus: "i-command", maxFleetSize: "i-fleet-cap",
+  // Leader attributes
+  growth: "i-growth", morale: "i-morale", efficiency: "i-settings",
+  engineering: "i-engineering", charisma: "i-charisma",
+  logistics: "i-logistics", diplomacy: "i-diplomacy", tactics: "i-tactics",
+  // Legacy aliases (same sprite, different key)
+  attack: "i-swords", hull: "i-armor", navigation: "i-sensor",
+  fleet_size: "i-fleet-cap", research_bonus: "i-research", defense: "i-shield",
+};
+
+// Category → watermark sprite id. Mirrors CATEGORY_WATERMARK_IDS in starmap.html.
+const CATEGORY_WATERMARK_IDS = {
+  ship: "i-solo-ship", pirate: "i-solo-ship",
+  star: "i-star", planet: "i-planet",
+  building: "i-building", leader: "i-leader", admiral: "i-admiral",
+};
 
 // Abbreviate big numbers: 500 → "500", 1200 → "1.2K", 5000 → "5K", 16000 → "16K".
 // Mirrors formatResourceValue in starmap.html.
@@ -1464,21 +1259,24 @@ function formatResourceValue(val) {
   return v.toString();
 }
 
-// readKvRows() lowercases every stat key, so a ship card coming from the
-// editor has s.sensorrange / s.energydmg etc — but the data file (and the
-// starmap renderer) use camelCase. This map restores the camelCase names
-// our template expects.
-const SHIP_STAT_KEY_ALIASES = {
+// readKvRows() lowercases every stat key, so any camelCase stat coming from
+// the editor loses its case (sensorRange → sensorrange). The data file and
+// the starmap renderer use camelCase, so this map restores them before render.
+const STAT_KEY_ALIASES = {
+  // Ship combat
   sensorrange: "sensorRange",
   pointdefense: "pointDefense",
   energydmg: "energyDmg",   energyrange: "energyRange",
   kineticdmg: "kineticDmg", kineticrange: "kineticRange",
   missiledmg: "missileDmg", missilerange: "missileRange",
+  // Admiral
+  commandbonus: "commandBonus",
+  maxfleetsize: "maxFleetSize",
 };
-function normalizeShipStats(raw) {
+function normalizeStatKeys(raw) {
   const out = {};
   for (const [k, v] of Object.entries(raw || {})) {
-    out[SHIP_STAT_KEY_ALIASES[k] || k] = v;
+    out[STAT_KEY_ALIASES[k] || k] = v;
   }
   return out;
 }
@@ -1495,7 +1293,7 @@ const RANGE_NAMES = { short: "Short", medium: "Medium", long: "Long" };
 // Mirrors buildShipCardHtml in starmap.html; kept in sync manually.
 // See CARDS_STYLING_GUIDE.md for what each section does.
 function buildShipCardHtml(data) {
-  const s = normalizeShipStats(data.stats);
+  const s = normalizeStatKeys(data.stats);
   const subLabel = `${data.rarity || "common"} · ${data.category === "pirate" ? "Pirate" : "Ship"}`;
 
   let costHtml = "";
@@ -1568,161 +1366,329 @@ function buildShipCardHtml(data) {
       </div>`;
 }
 
-function getStatIcon(key) {
-  return STAT_ICONS[key] || "◆";
+// ─── Shared helpers for all card renderers ───────────────────────
+const STAT_LABELS = {
+  shields: "Shields", armor: "Armor", speed: "Speed",
+  sensorRange: "Sensor range", stealth: "Stealth", pointDefense: "Point defense",
+  energyDmg: "Energy damage", kineticDmg: "Kinetic damage", missileDmg: "Missile damage",
+  commandBonus: "Command bonus", maxFleetSize: "Max fleet size",
+  efficiency: "Efficiency", morale: "Morale", engineering: "Engineering",
+  charisma: "Charisma", logistics: "Logistics", diplomacy: "Diplomacy",
+  tactics: "Tactics", growth: "Growth",
+  research_bonus: "Research bonus",
+  attack: "Attack", defense: "Defense", hull: "Hull",
+};
+function statLabelFor(key) {
+  return STAT_LABELS[key] || RESOURCE_LABELS[key] || (key[0].toUpperCase() + key.slice(1));
 }
+function planetBiomeIconId(name) {
+  const n = (name || "").toLowerCase();
+  if (/volcan|magma|fire/.test(n))                        return "i-planet-fire";
+  if (/froz|tundra|\bice\b/.test(n))                      return "i-planet-ice";
+  if (/ocean|water/.test(n))                              return "i-planet-ocean";
+  if (/gaia|jungle|verdant|temperate|forest/.test(n))     return "i-planet-verdant";
+  if (/desert|arid/.test(n))                              return "i-planet-desert";
+  if (/\bgas\b|giant/.test(n))                            return "i-planet-gas";
+  if (/crystal/.test(n))                                  return "i-planet-crystal";
+  if (/barren|rock|moon\b/.test(n))                       return "i-planet-barren";
+  return "i-planet";
+}
+function buildCostPillHtml(cost) {
+  if (!cost || Object.keys(cost).length === 0) return "";
+  const parts = Object.entries(cost).map(([key, val]) => {
+    const iconId = RES_ICON_BY_KEY[key];
+    const icon = iconId ? `<svg class="ico ${key}"><use href="#${iconId}"/></svg>` : "";
+    const label = RESOURCE_LABELS[key] || key;
+    return `<span class="cost-part" title="${label}: ${formatResourceValue(val)}">${icon}${formatResourceValue(val)}</span>`;
+  });
+  return `<div class="cost">${parts.join("")}</div>`;
+}
+function buildSpecialHtml(text)  { return text ? `<div class="special"><span class="sn">Special</span>${text}</div>` : ""; }
+function buildFlavorHtml(text)   { return text ? `<div class="flv">${text}</div>` : ""; }
+function buildWatermarkHtml(id)  { return `<div class="wm"><svg viewBox="0 0 24 24"><use href="#${id}"/></svg></div>`; }
+
+// Color a rolled stat by where it lands in its ±25% range. Mirrors
+// getStatQualityColor in starmap.html — kept in sync.
+function getStatQualityColor(value, min, max) {
+  if (min >= max) return "#c0a020";
+  const pct = (value - min) / (max - min);
+  if (pct >= 0.8) return "#c0a020";
+  if (pct >= 0.6) return "#8a4ac0";
+  if (pct >= 0.4) return "#4a7ac0";
+  if (pct >= 0.2) return "#4a9b5a";
+  return "#6a7a9b";
+}
+// ` style="color:..."` when the card carries per-stat ranges, else
+// `defaultColor` (or empty, if none given). Template cards in the builder
+// usually lack ranges, so chips fall through to the default.
+function statColorStyle(card, rangesField, key, val, defaultColor) {
+  const ranges = card[rangesField];
+  if (ranges && ranges[key]) {
+    return ` style="color:${getStatQualityColor(val, ranges[key][0], ranges[key][1])}"`;
+  }
+  return defaultColor ? ` style="color:${defaultColor}"` : "";
+}
+function buildArtImageHtml(src, subLabel, alt) {
+  return `<div class="img"><img src="${src}" alt="${alt || ""}"><div class="subtype">${subLabel}</div></div>`;
+}
+function buildGlyphImageHtml(glyphId, subLabel) {
+  return `<div class="img"><div class="glyph"><svg viewBox="0 0 24 24"><use href="#${glyphId}"/></svg></div><div class="subtype">${subLabel}</div></div>`;
+}
+
+// ═══════════════════════════════════════════
+//  STAR CARD (inner HTML — mirrors starmap's buildStarCardHtml)
+// ═══════════════════════════════════════════
+function buildStarCardHtml(data) {
+  const rarity = data.rarity || "common";
+  const subLabel = `${rarity} · Star`;
+
+  // In-game cards carry `planetSlots` (actual rolled rarities). Template cards
+  // in the builder only have the planetGen spec — summarise that instead.
+  let mainRow = "", pipsHtml = "";
+  if (Array.isArray(data.planetSlots)) {
+    const slots = data.planetSlots;
+    const n = slots.length;
+    const countChip = `<div class="stat" title="${n} planet${n === 1 ? "" : "s"} in this system">`
+      + `<svg class="ico planet"><use href="#i-planet"/></svg>`
+      + `<span class="sv">${n}</span></div>`;
+    mainRow = `<div class="row">${countChip}</div>`;
+    pipsHtml = n === 0 ? "" :
+      `<div class="pip-row" data-label="PLANETS">${slots.map(r =>
+        `<span class="pip ${r}" title="${r} planet"></span>`
+      ).join("")}</div>`;
+  } else {
+    const gen = (data.categoryData && data.categoryData.planetGen) || {};
+    const count = gen.count || [0, 0];
+    const guaranteed = gen.guaranteed || [];
+    const bonus = gen.bonus || 0;
+    const countLabel = count[0] === count[1] ? `${count[0]}` : `${count[0]}–${count[1]}`;
+    const countChip = `<div class="stat" title="Planets generated: ${count[0]}–${count[1]}">`
+      + `<svg class="ico planet"><use href="#i-planet"/></svg>`
+      + `<span class="sv">${countLabel}</span></div>`;
+    const bonusChip = bonus > 0
+      ? `<div class="stat" title="Rarity bonus: +${bonus} tier${bonus > 1 ? "s" : ""}">`
+        + `<svg class="ico"><use href="#i-spark"/></svg>`
+        + `<span class="sv">+${bonus}</span></div>`
+      : "";
+    mainRow = `<div class="row">${countChip}${bonusChip}</div>`;
+    pipsHtml = guaranteed.length === 0 ? "" :
+      `<div class="pip-row" data-label="GUARANTEED">${guaranteed.map(r =>
+        `<span class="pip ${r}" title="Guaranteed ${r} planet"></span>`
+      ).join("")}</div>`;
+  }
+
+  return `
+      <div class="bg"></div>
+      <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
+      <div class="c">
+        <div class="hdr"><span class="hdr-name">${data.name || "New Card"}</span></div>
+        ${buildGlyphImageHtml("i-star", subLabel)}
+        ${mainRow}
+        ${pipsHtml}
+        ${buildSpecialHtml(data.special)}
+        ${buildFlavorHtml(data.flavor)}
+        ${buildWatermarkHtml("i-star")}
+      </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  PLANET CARD
+// ═══════════════════════════════════════════
+function buildPlanetCardHtml(data) {
+  const rarity = data.rarity || "common";
+  const subLabel = `${rarity} · Planet`;
+  const bonuses = (data.categoryData && data.categoryData.bonuses) || {};
+  const entries = Object.entries(bonuses);
+  const bonusRow = entries.length === 0 ? "" :
+    `<div class="row">${entries.map(([key, val]) => {
+      const iconId = STAT_ICON_IDS[key] || "i-spark";
+      const label = statLabelFor(key);
+      const colorStyle = statColorStyle(data, "bonusRanges", key, val, "var(--success-fg)");
+      return `<div class="stat" title="${label}: +${val}%">`
+        + `<svg class="ico ${key}"><use href="#${iconId}"/></svg>`
+        + `<span class="sv"${colorStyle}>+${val}%</span></div>`;
+    }).join("")}</div>`;
+
+  const glyphId = planetBiomeIconId(data.name);
+
+  return `
+      <div class="bg"></div>
+      <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
+      <div class="c">
+        <div class="hdr"><span class="hdr-name">${data.name || "New Card"}</span></div>
+        ${buildGlyphImageHtml(glyphId, subLabel)}
+        ${bonusRow}
+        ${buildSpecialHtml(data.special)}
+        ${buildFlavorHtml(data.flavor)}
+        ${buildWatermarkHtml("i-planet")}
+      </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  BUILDING CARD
+// ═══════════════════════════════════════════
+function buildBuildingCardHtml(data) {
+  const rarity = data.rarity || "common";
+  const subLabel = `${rarity} · Building`;
+
+  const prodEntries = Object.entries(data.stats || {});
+  const prodRow = prodEntries.length === 0 ? "" :
+    `<div class="row">${prodEntries.map(([key, val]) => {
+      const iconId = STAT_ICON_IDS[key] || "i-spark";
+      const label = statLabelFor(key);
+      const colorStyle = statColorStyle(data, "statRanges", key, val);
+      return `<div class="stat" title="${label} produced: +${formatResourceValue(val)}/tick">`
+        + `<svg class="ico ${key}"><use href="#${iconId}"/></svg>`
+        + `<span class="sv"${colorStyle}>+${formatResourceValue(val)}</span></div>`;
+    }).join("")}</div>`;
+
+  // Upkeep is always bad — kept uniformly red via CSS, no quality coloring.
+  const upkeepEntries = Object.entries(data.upkeep || {});
+  const upkeepRow = upkeepEntries.length === 0 ? "" :
+    `<div class="row u">${upkeepEntries.map(([key, val]) => {
+      const iconId = STAT_ICON_IDS[key] || "i-spark";
+      const label = statLabelFor(key);
+      return `<div class="stat" title="${label} upkeep: -${formatResourceValue(val)}/tick">`
+        + `<svg class="ico ${key}"><use href="#${iconId}"/></svg>`
+        + `<span class="sv">-${formatResourceValue(val)}</span></div>`;
+    }).join("")}</div>`;
+
+  const imageHtml = data.image
+    ? buildArtImageHtml(data.image, subLabel, data.name)
+    : buildGlyphImageHtml("i-building", subLabel);
+
+  return `
+      <div class="bg"></div>
+      <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
+      <div class="c">
+        ${buildCostPillHtml(data.cost)}
+        <div class="hdr"><span class="hdr-name">${data.name || "New Card"}</span></div>
+        ${imageHtml}
+        ${prodRow}
+        ${upkeepRow}
+        ${buildSpecialHtml(data.special)}
+        ${buildFlavorHtml(data.flavor)}
+        ${buildWatermarkHtml("i-building")}
+      </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  LEADER CARD
+// ═══════════════════════════════════════════
+function buildLeaderCardHtml(data) {
+  const rarity = data.rarity || "common";
+  const subLabel = `${rarity} · Leader`;
+
+  const entries = Object.entries(data.stats || {});
+  const row = entries.length === 0 ? "" :
+    `<div class="row">${entries.map(([key, val]) => {
+      const iconId = STAT_ICON_IDS[key] || "i-spark";
+      const label = statLabelFor(key);
+      const colorStyle = statColorStyle(data, "statRanges", key, val);
+      return `<div class="stat" title="${label}: ${formatResourceValue(val)}">`
+        + `<svg class="ico"><use href="#${iconId}"/></svg>`
+        + `<span class="sv"${colorStyle}>${formatResourceValue(val)}</span></div>`;
+    }).join("")}</div>`;
+
+  const imageHtml = data.image
+    ? buildArtImageHtml(data.image, subLabel, data.name)
+    : buildGlyphImageHtml("i-leader", subLabel);
+
+  return `
+      <div class="bg"></div>
+      <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
+      <div class="c">
+        ${buildCostPillHtml(data.cost)}
+        <div class="hdr"><span class="hdr-name">${data.name || "New Card"}</span></div>
+        ${imageHtml}
+        ${row}
+        ${buildSpecialHtml(data.special)}
+        ${buildFlavorHtml(data.flavor)}
+        ${buildWatermarkHtml("i-leader")}
+      </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  ADMIRAL CARD
+// ═══════════════════════════════════════════
+const SHIP_ICO_CLS = {
+  shields: "shield", armor: "armor", sensorRange: "sensor",
+  kineticDmg: "kinetic", missileDmg: "missile", energyDmg: "energy",
+};
+function buildAdmiralCardHtml(data) {
+  const rarity = data.rarity || "common";
+  const subLabel = `${rarity} · Admiral`;
+  const s = normalizeStatKeys(data.stats);
+  const cmd = s.commandBonus || 0;
+  const cap = s.maxFleetSize || 0;
+
+  const heroRow = `<div class="row hero">`
+    + `<div class="stat" title="Command bonus: +${cmd}%">`
+    + `<svg class="ico command"><use href="#i-command"/></svg>`
+    + `<span class="sv">+${cmd}%</span></div>`
+    + `<div class="stat" title="Max fleet size: ${cap}">`
+    + `<svg class="ico fleet-cap"><use href="#i-fleet-cap"/></svg>`
+    + `<span class="sv">${cap}</span></div>`
+    + `</div>`;
+
+  const bonusKeys = Object.keys(s).filter(k => k !== "commandBonus" && k !== "maxFleetSize");
+  const bonusRow = bonusKeys.length === 0 ? "" :
+    `<div class="row u bonuses">${bonusKeys.map(key => {
+      const iconId = STAT_ICON_IDS[key] || "i-spark";
+      const cls = SHIP_ICO_CLS[key] || "";
+      const label = statLabelFor(key);
+      return `<div class="stat" title="${label}: +${formatResourceValue(s[key])}">`
+        + `<svg class="ico ${cls}"><use href="#${iconId}"/></svg>`
+        + `<span class="sv">+${formatResourceValue(s[key])}</span></div>`;
+    }).join("")}</div>`;
+
+  const imageHtml = data.image
+    ? buildArtImageHtml(data.image, subLabel, data.name)
+    : buildGlyphImageHtml("i-admiral", subLabel);
+
+  return `
+      <div class="bg"></div>
+      <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
+      <div class="c">
+        ${buildCostPillHtml(data.cost)}
+        <div class="hdr"><span class="hdr-name">${data.name || "New Card"}</span></div>
+        ${imageHtml}
+        ${heroRow}
+        ${bonusRow}
+        ${buildSpecialHtml(data.special)}
+        ${buildFlavorHtml(data.flavor)}
+        ${buildWatermarkHtml("i-admiral")}
+      </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  PREVIEW DISPATCH — every category uses the metallic template
+//  (ship renderer still has its own signature; others share the helpers above).
+// ═══════════════════════════════════════════
+const CATEGORY_RENDERERS = {
+  ship:     buildShipCardHtml,
+  pirate:   buildShipCardHtml,
+  star:     buildStarCardHtml,
+  planet:   buildPlanetCardHtml,
+  building: buildBuildingCardHtml,
+  leader:   buildLeaderCardHtml,
+  admiral:  buildAdmiralCardHtml,
+};
+// Pirate cards share ship CSS (.is-ship), so both map to the same marker class.
+const CATEGORY_CSS_TYPE = {
+  ship: "ship", pirate: "ship",
+  star: "star", planet: "planet",
+  building: "building", leader: "leader", admiral: "admiral",
+};
 
 function updatePreview() {
   const data = getEditorData();
   const preview = document.getElementById("card-preview");
-  const isZoomed = preview.classList.contains("zoomed");
-  const zoomedClass = isZoomed ? " zoomed" : "";
-
-  // Ships/pirates use the metallic Rustfang template (ui/ship-card.css).
-  // Replaces the container innerHTML wholesale — legacy DOM restored below
-  // when switching back to a non-ship category.
-  if (data.category === "ship" || data.category === "pirate") {
-    preview.className = `card-preview is-ship ${data.rarity}${zoomedClass}`;
-    preview.innerHTML = buildShipCardHtml(data);
-    return;
-  }
-
-  // Non-ship: restore legacy DOM if we were just in ship mode
-  preview.className = `card-preview ${data.rarity}${zoomedClass}`;
-  if (!document.getElementById("preview-name")) {
-    preview.innerHTML = LEGACY_PREVIEW_HTML;
-  }
-
-  // Name
-  document.getElementById("preview-name").textContent = data.name || "New Card";
-
-  // Image
-  const imgEl = document.getElementById("preview-image");
-  if (data.image) {
-    imgEl.innerHTML = `<img src="${data.image}" alt="card">`;
-  } else {
-    imgEl.innerHTML = "No image";
-  }
-
-  // Cost badge (top-right)
-  const costEl = document.getElementById("preview-cost");
-  const costEntries = Object.entries(data.cost);
-  if (costEntries.length > 0) {
-    costEl.innerHTML = costEntries.map(([key, val]) =>
-      `<div class="cost-badge-row"><span class="cost-badge-icon">${getStatIcon(key)}</span><span class="cost-badge-val">${val}</span></div>`
-    ).join("");
-  } else {
-    costEl.innerHTML = "";
-  }
-
-  // Special (check first so we know whether to expand stats)
-  const specialEl = document.getElementById("preview-special");
-  const hasSpecial = !!data.special;
-  if (hasSpecial) {
-    specialEl.style.display = "block";
-    specialEl.textContent = data.special;
-  } else {
-    specialEl.style.display = "none";
-  }
-
-  // Stats — ship cards get combat layout, others get generic. Planets read from
-  // categoryData.bonuses, stars show a planetGen summary.
-  const statsEl = document.getElementById("preview-stats");
-  statsEl.innerHTML = "";
-  const isShip = data.category === "ship";
-  const isAdmiral = data.category === "admiral";
-  const isPlanet = data.category === "planet";
-  const isStar = data.category === "star";
-  statsEl.className = `card-stats${(!hasSpecial && !isShip && !isAdmiral) ? " expanded" : ""}`;
-
-  // Planets: render bonuses from categoryData.bonuses as percent modifiers
-  const previewStats = isPlanet
-    ? (data.categoryData && data.categoryData.bonuses) || {}
-    : data.stats;
-
-  if (isAdmiral) {
-    const s = data.stats;
-    // Command row: command bonus + fleet size
-    let html = `<div class="ship-stat-row">`;
-    html += `<div class="card-stat"><span class="card-stat-icon">⭐</span><span class="card-stat-value" style="color:#f0d060">+${s.commandBonus || 0}%</span></div>`;
-    html += `<div class="card-stat"><span class="card-stat-icon">⚓</span><span class="card-stat-value">${s.maxFleetSize || 0}</span></div>`;
-    html += `</div>`;
-    // Stat bonuses
-    const bonusKeys = Object.keys(s).filter(k => k !== "commandBonus" && k !== "maxFleetSize");
-    if (bonusKeys.length > 0) {
-      html += `<div class="ship-stat-row ship-utils">`;
-      for (const key of bonusKeys) {
-        html += `<div class="card-stat"><span class="card-stat-icon">${getStatIcon(key)}</span><span class="card-stat-value" style="color:#8ac0ff">+${s[key]}%</span></div>`;
-      }
-      html += `</div>`;
-    }
-    statsEl.innerHTML = html;
-  } else if (isShip) {
-    const s = data.stats;
-    // Defense row
-    let defHtml = `<div class="ship-stat-row">`;
-    defHtml += `<div class="card-stat"><span class="card-stat-icon">🔷</span><span class="card-stat-value">${s.shields || 0}</span></div>`;
-    defHtml += `<div class="card-stat"><span class="card-stat-icon">🛡️</span><span class="card-stat-value">${s.armor || 0}</span></div>`;
-    defHtml += `<div class="card-stat"><span class="card-stat-icon">💨</span><span class="card-stat-value">${s.speed || 0}</span></div>`;
-    defHtml += `</div>`;
-    // Weapons
-    const weapons = [
-      { key:"energyDmg", rangeKey:"energyRange", icon:"⚡" },
-      { key:"kineticDmg", rangeKey:"kineticRange", icon:"💥" },
-      { key:"missileDmg", rangeKey:"missileRange", icon:"🚀" },
-    ];
-    const active = weapons.filter(w => s[w.key] && s[w.key] > 0);
-    let weapHtml = "";
-    if (active.length > 0) {
-      weapHtml = `<div class="ship-weapons">`;
-      for (const w of active) {
-        const range = s[w.rangeKey] || "medium";
-        const rl = RANGE_LABELS[range];
-        const rc = RANGE_COLORS[range];
-        weapHtml += `<div class="ship-weapon-row"><span class="card-stat-icon">${w.icon}</span><span class="card-stat-value">${s[w.key]}</span><span class="ship-range-badge" style="background:${rc}20;color:${rc};border:1px solid ${rc}40">${rl}</span></div>`;
-      }
-      weapHtml += `</div>`;
-    }
-    // Utility row
-    const utils = [];
-    if (s.sensorRange) utils.push({ icon:"📡", val:s.sensorRange });
-    if (s.pointDefense) utils.push({ icon:"🎯", val:s.pointDefense });
-    if (s.stealth) utils.push({ icon:"👁️", val:s.stealth });
-    let utilHtml = "";
-    if (utils.length > 0) {
-      utilHtml = `<div class="ship-stat-row ship-utils">`;
-      for (const u of utils) utilHtml += `<div class="card-stat"><span class="card-stat-icon">${u.icon}</span><span class="card-stat-value">${u.val}</span></div>`;
-      utilHtml += `</div>`;
-    }
-    statsEl.innerHTML = defHtml + weapHtml + utilHtml;
-  } else if (isStar) {
-    // Summarize planet generation on the card face.
-    const pg = (data.categoryData && data.categoryData.planetGen) || {};
-    const [cMin, cMax] = Array.isArray(pg.count) ? pg.count : [0, 0];
-    const range = (cMin === cMax) ? `${cMin}` : `${cMin}-${cMax}`;
-    const guaranteed = Array.isArray(pg.guaranteed) && pg.guaranteed.length > 0
-      ? `${pg.guaranteed.length}× ${pg.guaranteed.join("/")}`
-      : "—";
-    statsEl.innerHTML = `
-      <div class="card-stat"><span class="card-stat-icon">🪐</span><span class="card-stat-value">${range}</span></div>
-      <div class="card-stat" style="font-size:9px;color:#506888"><span>guaranteed: ${guaranteed}</span></div>
-      ${pg.bonus ? `<div class="card-stat" style="font-size:9px;color:#c0a020"><span>+${pg.bonus} rarity bias</span></div>` : ""}
-    `;
-  } else {
-    for (const [key, val] of Object.entries(previewStats)) {
-      const div = document.createElement("div");
-      div.className = "card-stat";
-      const display = isPlanet ? `+${val}%` : val;
-      div.innerHTML = `<span class="card-stat-icon">${getStatIcon(key)}</span><span class="card-stat-value ${val === 0 ? "zero" : ""}">${display}</span>`;
-      statsEl.appendChild(div);
-    }
-  }
-
-  // Flavor
-  document.getElementById("preview-flavor").textContent = data.flavor;
-
-  // Category watermark
-  document.getElementById("preview-watermark").textContent = CATEGORY_ICONS[data.category] || "";
+  const zoomedClass = preview.classList.contains("zoomed") ? " zoomed" : "";
+  const renderer = CATEGORY_RENDERERS[data.category] || buildShipCardHtml;
+  const cssType = CATEGORY_CSS_TYPE[data.category] || "ship";
+  preview.className = `card-preview tpl-metal is-${cssType} ${data.rarity || "common"}${zoomedClass}`;
+  preview.innerHTML = renderer(data);
 }
 
 // ═══════════════════════════════════════════

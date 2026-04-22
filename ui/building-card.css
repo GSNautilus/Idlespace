@@ -1,0 +1,27 @@
+/* ══════════════════════════════════════════════════
+   Building card middle — production + upkeep rows.
+   Chrome (frame, halo, img, hdr, flv, wm) from card-chrome.css.
+   ══════════════════════════════════════════════════ */
+
+/* Production values are colored inline by the renderer — quality-based when
+   statRanges exist, falling back to chrome's default white otherwise. */
+
+/* Upkeep row uses the .row.u divider; values are uniformly red regardless
+   of roll quality (upkeep is always bad). Override the divider tint to match. */
+.card-preview.is-building .row.u::before {
+  background: linear-gradient(to right, transparent, var(--danger), transparent);
+}
+.card-preview.is-building .row.u::after {
+  content: 'UPKEEP';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 7px;
+  letter-spacing: 1.2px;
+  color: color-mix(in oklab, var(--danger) 80%, white 15%);
+  background: #13151c;
+  padding: 0 4px;
+  font-weight: 700;
+}
+.card-preview.is-building .row.u .stat .sv { color: var(--danger-fg); }

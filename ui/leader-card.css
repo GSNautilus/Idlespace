@@ -1,0 +1,16 @@
+/* ══════════════════════════════════════════════════
+   Leader card middle — leadership attribute chips.
+   Chrome (frame, halo, img, hdr, flv, wm) from card-chrome.css.
+   ══════════════════════════════════════════════════ */
+
+/* Leader attribute icons — neutral tint accented by rarity */
+.card-preview.is-leader .stat .ico {
+  color: color-mix(in oklab, var(--rc) 60%, var(--fg-muted));
+}
+
+/* Allow wrapping when a leader has 4+ stats */
+.card-preview.is-leader .row {
+  flex-wrap: wrap;
+  gap: 5px 4px;
+  padding: 5px 8px;
+}

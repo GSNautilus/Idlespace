@@ -1,0 +1,45 @@
+/* ══════════════════════════════════════════════════
+   Star card middle — planet-gen summary.
+   Chrome (frame, halo, img, hdr, flv, wm) from card-chrome.css.
+   ══════════════════════════════════════════════════ */
+
+/* Planet-count chip + rarity pip row */
+.card-preview.is-star .stat .ico.planet { color: var(--res-research); }
+
+/* Guaranteed-rarity pip row — one colored dot per guaranteed planet tier */
+.card-preview.is-star .pip-row {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+  align-items: center;
+  padding: 9px 8px 4px;
+  position: relative;
+  margin-top: 3px;
+  border-top: 1px solid color-mix(in oklab, var(--rc) 18%, transparent);
+}
+.card-preview.is-star .pip-row::before {
+  content: attr(data-label);
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 7px;
+  letter-spacing: 1.2px;
+  color: color-mix(in oklab, var(--rc) 70%, white 15%);
+  background: #13151c;
+  padding: 0 4px;
+  font-weight: 700;
+}
+.card-preview.is-star .pip {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+.card-preview.is-star .pip.common    { color: var(--rarity-common); }
+.card-preview.is-star .pip.uncommon  { color: var(--rarity-uncommon); }
+.card-preview.is-star .pip.rare      { color: var(--rarity-rare); }
+.card-preview.is-star .pip.epic      { color: var(--rarity-epic); }
+.card-preview.is-star .pip.legendary { color: var(--rarity-legendary); }

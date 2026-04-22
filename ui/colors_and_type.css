@@ -49,9 +49,9 @@
 
   /* ── Resource palette (emoji tinting, UI accents) ── */
   --res-credits:   #d4af37;  /* gold */
-  --res-energy:    #e0a040;  /* amber */
-  --res-minerals:  #b0845a;  /* ochre */
-  --res-research:  #8ac0ff;  /* pale blue */
+  --res-energy:    #4ac0d0;  /* cyan */
+  --res-minerals:  #a0a4ac;  /* cool stone grey */
+  --res-research:  #d050c0;  /* magenta */
   --res-food:      #6ac46a;  /* sage green */
 
   /* ── Combat / weapon typing ────────────────────────── */

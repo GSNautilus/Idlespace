@@ -1,0 +1,35 @@
+/* ══════════════════════════════════════════════════
+   Admiral card middle — command hero row + ship-stat bonuses.
+   Chrome (frame, halo, img, hdr, flv, wm) from card-chrome.css.
+   ══════════════════════════════════════════════════ */
+
+/* Hero row — command bonus + fleet capacity, rendered larger than the bonus row */
+.card-preview.is-admiral .row.hero {
+  padding: 5px 8px 3px;
+  gap: 6px;
+}
+.card-preview.is-admiral .row.hero .stat {
+  padding: 3px 7px;
+  background: linear-gradient(145deg,
+    color-mix(in oklab, var(--rc) 28%, #13151c) 0%,
+    color-mix(in oklab, var(--rc) 10%, #0d0e13) 100%);
+  border: 1px solid color-mix(in oklab, var(--rc) 45%, transparent);
+}
+.card-preview.is-admiral .row.hero .ico { width: 14px; height: 14px; }
+.card-preview.is-admiral .row.hero .ico.command   { color: var(--res-credits); }
+.card-preview.is-admiral .row.hero .ico.fleet-cap { color: var(--fg-secondary); }
+.card-preview.is-admiral .row.hero .sv { font-size: 13px; }
+
+/* Secondary bonuses — ship combat stats shared with the ship card */
+.card-preview.is-admiral .stat .ico.shield { color: var(--wpn-energy); }
+.card-preview.is-admiral .stat .ico.armor  { color: var(--wpn-kinetic); }
+.card-preview.is-admiral .stat .ico.sensor { color: var(--res-research); }
+.card-preview.is-admiral .stat .ico.kinetic { color: var(--wpn-kinetic); }
+.card-preview.is-admiral .stat .ico.missile { color: var(--wpn-missile); }
+.card-preview.is-admiral .stat .ico.energy  { color: var(--wpn-energy); }
+
+.card-preview.is-admiral .row.bonuses {
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 8px 2px;
+}

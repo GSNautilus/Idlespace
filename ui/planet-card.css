@@ -1,0 +1,15 @@
+/* ══════════════════════════════════════════════════
+   Planet card middle — resource-bonus chips.
+   Chrome (frame, halo, img, hdr, flv, wm) from card-chrome.css.
+   Icon colorings come from chrome.css (.ico.credits / .energy / etc).
+   ══════════════════════════════════════════════════ */
+
+/* Slightly larger bonus chips — each is a resource icon + "+N%" value.
+   Value colors are inlined by the renderer (quality-based when bonusRanges
+   exist, falling back to success-fg green when not). */
+.card-preview.is-planet .row {
+  flex-wrap: wrap;
+  gap: 5px 4px;
+  padding: 5px 8px;
+}
+.card-preview.is-planet .stat { padding: 2px 6px; }

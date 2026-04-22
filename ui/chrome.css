@@ -169,6 +169,10 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   vertical-align: middle;
+  /* Default muted tint. Resource classes (.ico.credits / .energy / .minerals /
+     .research / .food below) and per-type card rules override at higher
+     specificity, so every resource icon stays color-coded. */
+  color: var(--fg-muted);
 }
 .ico.sm { width: 11px; height: 11px; }
 .ico.lg { width: 18px; height: 18px; }

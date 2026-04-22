@@ -207,9 +207,8 @@
 .card-preview.tpl-metal .img img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center 42%;
-  transform: scale(1.05);
+  object-fit: contain;
+  object-position: center center;
   filter: contrast(1.08) saturate(1.08);
 }
 /* Glyph fallback — same 128px frame as photo art, centered vector glyph

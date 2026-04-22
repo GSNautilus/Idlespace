@@ -2759,70 +2759,61 @@ function fireShot(combat, turnEntry) {
   const ship = turnEntry.ship;
   if (!ship.alive) return;
   const enemySide = turnEntry.enemySide;
-  const target = pickRandomAlive(enemySide.ships);
-  if (!target) return;
 
   const weapons = getWeaponInfo(ship.card);
   if (weapons.length === 0) return;
 
-  // Pick the best weapon that's in range
-  let firedWeapon = null;
-  for (const w of weapons) {
-    const threshold = RANGE_THRESHOLDS[w.range] ?? 0;
-    if (combat.distance <= threshold) {
-      firedWeapon = w;
-      break;
-    }
-  }
-
-  if (!firedWeapon) {
+  // Every weapon whose range covers the current distance fires this volley.
+  const inRange = weapons.filter(w => combat.distance <= (RANGE_THRESHOLDS[w.range] ?? 0));
+  if (inRange.length === 0) {
     combat.log.push({ time: combat.gameTime, text: `${ship.card.name} — out of range`, type: "range" });
     return;
   }
 
-  // World positions for the weapon visual: specific firing ship's slot and
-  // specific target ship's slot in the formation, so volleys visibly travel
-  // from the right emitter to the right target.
   const attackerSide = turnEntry.side === "a" ? combat.sideA : combat.sideB;
   const attackerEnt  = attackerSide.entity;
   const defenderEnt  = enemySide.entity;
   const firerIdx  = Math.max(0, attackerSide.ships.indexOf(ship));
-  const targetIdx = Math.max(0, enemySide.ships.indexOf(target));
   const firerPos  = getShipWorldPos(attackerEnt, firerIdx, 0);
-  const targetPos = getShipWorldPos(defenderEnt, targetIdx, 0);
-  const midPx = (firerPos.x + targetPos.x) / 2;
-  const midPy = (firerPos.y + targetPos.y) / 2;
 
-  // Roll to hit
-  const hitChance = calcHitChance(ship.card, target.card);
-  if (Math.random() > hitChance) {
-    spawnWeaponVisual(firerPos.x, firerPos.y, targetPos.x, targetPos.y, firedWeapon.type);
-    spawnCombatParticle(midPx, midPy, firedWeapon.type, false);
-    combat.log.push({ time: combat.gameTime, text: `${ship.card.name} fires ${firedWeapon.type} at ${target.card.name} — MISS`, type: "miss" });
-    return;
-  }
+  for (const firedWeapon of inRange) {
+    // Re-pick target per weapon so a kill mid-volley redirects remaining fire.
+    const target = pickRandomAlive(enemySide.ships);
+    if (!target) return;
 
-  // Missile PD interception
-  if (firedWeapon.type === "missile") {
-    const pdChance = calcPDInterceptChance(enemySide);
-    if (Math.random() < pdChance) {
+    const targetIdx = Math.max(0, enemySide.ships.indexOf(target));
+    const targetPos = getShipWorldPos(defenderEnt, targetIdx, 0);
+    const midPx = (firerPos.x + targetPos.x) / 2;
+    const midPy = (firerPos.y + targetPos.y) / 2;
+
+    const hitChance = calcHitChance(ship.card, target.card);
+    if (Math.random() > hitChance) {
       spawnWeaponVisual(firerPos.x, firerPos.y, targetPos.x, targetPos.y, firedWeapon.type);
       spawnCombatParticle(midPx, midPy, firedWeapon.type, false);
-      combat.log.push({ time: combat.gameTime, text: `${ship.card.name} fires missile at ${target.card.name} — INTERCEPTED`, type: "intercept" });
-      return;
+      combat.log.push({ time: combat.gameTime, text: `${ship.card.name} fires ${firedWeapon.type} at ${target.card.name} — MISS`, type: "miss" });
+      continue;
     }
-  }
 
-  // Apply damage
-  applyDamage(target, firedWeapon.type, firedWeapon.dmg);
-  const killText = target.alive ? "" : " — DESTROYED";
-  spawnWeaponVisual(firerPos.x, firerPos.y, targetPos.x, targetPos.y, firedWeapon.type);
-  spawnCombatParticle(targetPos.x, targetPos.y, firedWeapon.type, true);
-  combat.log.push({
-    time: combat.gameTime,
-    text: `${ship.card.name} fires ${firedWeapon.type} at ${target.card.name} — HIT ${firedWeapon.dmg} dmg${killText}`,
-    type: target.alive ? "hit" : "kill",
-  });
+    if (firedWeapon.type === "missile") {
+      const pdChance = calcPDInterceptChance(enemySide);
+      if (Math.random() < pdChance) {
+        spawnWeaponVisual(firerPos.x, firerPos.y, targetPos.x, targetPos.y, firedWeapon.type);
+        spawnCombatParticle(midPx, midPy, firedWeapon.type, false);
+        combat.log.push({ time: combat.gameTime, text: `${ship.card.name} fires missile at ${target.card.name} — INTERCEPTED`, type: "intercept" });
+        continue;
+      }
+    }
+
+    applyDamage(target, firedWeapon.type, firedWeapon.dmg);
+    const killText = target.alive ? "" : " — DESTROYED";
+    spawnWeaponVisual(firerPos.x, firerPos.y, targetPos.x, targetPos.y, firedWeapon.type);
+    spawnCombatParticle(targetPos.x, targetPos.y, firedWeapon.type, true);
+    combat.log.push({
+      time: combat.gameTime,
+      text: `${ship.card.name} fires ${firedWeapon.type} at ${target.card.name} — HIT ${firedWeapon.dmg} dmg${killText}`,
+      type: target.alive ? "hit" : "kill",
+    });
+  }
 }
 
 function checkCombatEnd(combat) {
@@ -5310,8 +5301,8 @@ let tickAccumulator = 0;
 const SHOT_INTERVAL = 0.5;       // game-seconds between each shot in a volley
 const COMBAT_TIME_SCALE = 1 / 10; // combat runs 10x slower than normal game time
 const COMBAT_HP_SCALE = 5;       // multiplier on shields/armor for combat durability
-const RANGE_THRESHOLDS = { long: 400, medium: 200, short: 60 };  // world-unit distance for weapon activation
-const ENGAGED_DISTANCE = 60;     // world units — entities stop closing at this distance
+const RANGE_THRESHOLDS = { long: 1000, medium: 650, short: 350 };  // world-unit distance for weapon activation
+const ENGAGED_DISTANCE = 200;    // world units — entities stop closing at this distance
 const COMBAT_TRIANGLE = {
   energy:  { vsShields: 2.0, vsArmor: 0.5 },
   kinetic: { vsShields: 0.5, vsArmor: 2.0 },

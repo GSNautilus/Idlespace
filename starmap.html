@@ -186,6 +186,27 @@ body {
   border-radius: 4px;
 }
 #select-panel-close:hover { color: #c8d0e0; background: #0c0e18; }
+#select-panel-ships {
+  margin-top: 14px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+#select-panel-ships .fleet-ship-card {
+  width: 165px;
+  height: 240px;
+  position: relative;
+  flex-shrink: 0;
+}
+#select-panel-ships .fleet-ship-card .card-preview {
+  transform: scale(0.75);
+  transform-origin: top left;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
 #select-panel-info {
   margin-top: 12px;
   width: 220px;
@@ -419,6 +440,22 @@ body {
 }
 
 /* ── Research Button idle-highlight (overrides .metal-btn base) ── */
+#research-btn {
+  position: relative;
+  overflow: hidden;
+  --research-progress: 0%;
+}
+#research-btn::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: var(--research-progress);
+  background: linear-gradient(90deg, rgba(74,223,122,0.10), rgba(74,223,122,0.28));
+  pointer-events: none;
+  transition: width 0.15s linear;
+  z-index: 0;
+}
+#research-btn > * { position: relative; z-index: 1; }
 #research-btn.idle {
   background: linear-gradient(145deg, rgba(74,160,106,0.22), rgba(74,160,106,0.10));
   border-color: #4aa06a;
@@ -781,7 +818,13 @@ body {
   flex: 1;
 }
 .building-slot {
-  width: 100%;
+  /* Slot matches the card's aspect ratio (220×320) plus a small margin, so
+     the dashed border sits just outside the card rather than leaving wide
+     empty columns on each side. */
+  aspect-ratio: 230 / 320;
+  max-width: 100%;
+  justify-self: center;
+  height: 100%;
   min-height: 0;
   border: 2px dashed #1e2744;
   border-radius: 8px;
@@ -825,6 +868,7 @@ body {
   flex-shrink: 0;
   cursor: pointer;
   align-self: center;
+  margin-top: -15px;
 }
 #colony-deck:hover .deck-card-back { border-color: #2a3a60; }
 .deck-pile {
@@ -859,9 +903,9 @@ body {
   right: -6px;
   background: #c04040;
   color: #fff;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 2px 7px;
   border-radius: 10px;
   z-index: 2;
 }
@@ -1356,6 +1400,7 @@ body {
     <div id="select-card-slot"></div>
     <div id="select-actions"></div>
     <div id="select-panel-info"></div>
+    <div id="select-panel-ships"></div>
   </div>
   <div id="system-backdrop"></div>
   <div id="system-overlay">
@@ -1703,6 +1748,8 @@ function showCardLoadError(detail) {
 // Pirate power tier 0..1 based on distance from home (origin).
 // Ramps over ~18000 world units — a long-term progression knob.
 const PIRATE_TIER_RANGE = 18000;
+// No pirate spawns within this radius of the home star (origin).
+const PIRATE_HOME_SAFE_RADIUS = 1500;
 function getPirateTier(x, y) {
   return Math.max(0, Math.min(1, Math.hypot(x, y) / PIRATE_TIER_RANGE));
 }
@@ -2111,6 +2158,42 @@ const generatedChunks = new Map();  // "cx,cy" -> true (already processed)
 let nextStarId = 1;
 const stars = new Map();            // id -> star node
 
+// ── Memory fog (per-chunk bitmap of "seen tiles") ──
+// Each chunk is divided into TILES_PER_CHUNK × TILES_PER_CHUNK tiles; each
+// tile's "has ever been in active sight" flag is one bit of a 16-bit integer
+// stored in chunkSeenBits. Any area within sensor range of a player ship or
+// colony marks its tiles here permanently, producing a persistent trail.
+const TILE_SIZE = 100;
+const TILES_PER_CHUNK = CHUNK_SIZE / TILE_SIZE; // = 4 → 16 bits per chunk
+const chunkSeenBits = new Map();
+
+function markSeenInRange(wx, wy, range) {
+  const r2 = range * range;
+  const minCx = Math.floor((wx - range) / CHUNK_SIZE);
+  const maxCx = Math.floor((wx + range) / CHUNK_SIZE);
+  const minCy = Math.floor((wy - range) / CHUNK_SIZE);
+  const maxCy = Math.floor((wy + range) / CHUNK_SIZE);
+  for (let cx = minCx; cx <= maxCx; cx++) {
+    for (let cy = minCy; cy <= maxCy; cy++) {
+      const key = `${cx},${cy}`;
+      let bits = chunkSeenBits.get(key) || 0;
+      if (bits === 0xFFFF) continue; // fully seen already
+      const origBits = bits;
+      for (let ty = 0; ty < TILES_PER_CHUNK; ty++) {
+        for (let tx = 0; tx < TILES_PER_CHUNK; tx++) {
+          const bitIdx = ty * TILES_PER_CHUNK + tx;
+          if (bits & (1 << bitIdx)) continue;
+          const centerX = cx * CHUNK_SIZE + (tx + 0.5) * TILE_SIZE;
+          const centerY = cy * CHUNK_SIZE + (ty + 0.5) * TILE_SIZE;
+          const ddx = centerX - wx, ddy = centerY - wy;
+          if (ddx * ddx + ddy * ddy <= r2) bits |= (1 << bitIdx);
+        }
+      }
+      if (bits !== origBits) chunkSeenBits.set(key, bits);
+    }
+  }
+}
+
 function createStar(x, y, visibility, card) {
   const id = `star_${nextStarId++}`;
   const star = { id, x, y, visibility, card };
@@ -2140,22 +2223,27 @@ function generateChunk(cx, cy) {
   if (rng() < pirateChance) {
     const px = cx * CHUNK_SIZE + rng() * CHUNK_SIZE;
     const py = cy * CHUNK_SIZE + rng() * CHUNK_SIZE;
-    const tier = getPirateTier(px, py);
-    // 1-3 ships near home, up to 1-9 at max tier.
-    const maxShips = 3 + Math.floor(tier * 6);
-    const shipCount = 1 + Math.floor(rng() * maxShips);
-    const pirateShips = [];
-    for (let pi = 0; pi < shipCount; pi++) {
-      const tpl = rollPirateShip(rng, tier);
-      pirateShips.push({ ...tpl, stats: { ...tpl.stats } });
+    // No pirate spawns too close to the player's home star.
+    if (Math.hypot(px, py) < PIRATE_HOME_SAFE_RADIUS) {
+      // fall through — skip pirate spawn for this chunk
+    } else {
+      const tier = getPirateTier(px, py);
+      // 1-3 ships near home, up to 1-9 at max tier.
+      const maxShips = 3 + Math.floor(tier * 6);
+      const shipCount = 1 + Math.floor(rng() * maxShips);
+      const pirateShips = [];
+      for (let pi = 0; pi < shipCount; pi++) {
+        const tpl = rollPirateShip(rng, tier);
+        pirateShips.push({ ...tpl, stats: { ...tpl.stats } });
+      }
+      mapEntities.push({
+        type: "fleet", owner: "npc", ships: pirateShips, admiral: null,
+        stance: "aggressive", x: px, y: py, destX: null, destY: null,
+        speed: Math.min(...pirateShips.map(s => s.stats.speed || 1)),
+        sensorRange: Math.max(...pirateShips.map(s => s.stats.sensorRange || 0)),
+        stealth: 0, label: "Pirates", inCombat: null,
+      });
     }
-    mapEntities.push({
-      type: "fleet", owner: "npc", ships: pirateShips, admiral: null,
-      stance: "aggressive", x: px, y: py, destX: null, destY: null,
-      speed: Math.min(...pirateShips.map(s => s.stats.speed || 1)),
-      sensorRange: Math.max(...pirateShips.map(s => s.stats.sensorRange || 0)),
-      stealth: 0, label: "Pirates", inCombat: null,
-    });
   }
 
   if (density < DENSITY_THRESHOLD) return; // void — no stars here
@@ -2236,6 +2324,7 @@ function generateGalaxy() {
 
   // Detect nearby stars around home
   detectStarsInRange(0, 0, BASE_SENSOR_RANGE);
+  markSeenInRange(0, 0, BASE_SENSOR_RANGE);
 
   return home;
 }
@@ -2368,7 +2457,11 @@ function tickEntities(dt) {
     }
 
     // Continuous fog reveal along travel path (player only)
-    if (ent.owner !== "npc") detectStarsInRange(ent.x, ent.y, ent.sensorRange * 50);
+    if (ent.owner !== "npc") {
+      const range = ent.sensorRange * 50;
+      detectStarsInRange(ent.x, ent.y, range);
+      markSeenInRange(ent.x, ent.y, range);
+    }
   }
 
   // NPC patrol behavior — idle NPCs wander randomly
@@ -3269,59 +3362,123 @@ function drawStar(ctx, star, time) {
   }
 }
 
+// Offscreen canvas for territory body/outline passes — created once, resized as needed.
+let territoryCanvas = null;
+let territoryCtx = null;
+
 function drawTerritoryContour(ctx) {
-  // Collect screen positions of all colonized stars
+  // Collect screen positions of all colonized stars.
   const colonizedPos = [];
   for (const star of stars.values()) {
     if (star.visibility === "explored" && star.planets && star.planets.some(p => p.colony)) {
-      const sp = worldToScreen(star.x, star.y);
-      colonizedPos.push(sp);
+      colonizedPos.push(worldToScreen(star.x, star.y));
     }
   }
   if (colonizedPos.length === 0) return;
 
-  const pad = 80 * camera.zoom;
+  // World-space padding around each colony; scaled with zoom so the territory
+  // feels the same size regardless of camera.
+  const pad = 140 * camera.zoom;
+  const FILL_RGB = "rgb(80,140,220)";
+  const OUTLINE_RGB = "rgb(120,180,240)";
+  const FILL_ALPHA = 0.08;
+  const OUTLINE_ALPHA = 0.45;
 
-  ctx.save();
-  ctx.fillStyle = "rgba(60,120,200,0.03)";
-  ctx.strokeStyle = "rgba(60,120,200,0.08)";
-  ctx.lineWidth = 1.5 * camera.zoom;
-
+  // Single colony: pulsing disc with thin outline.
   if (colonizedPos.length === 1) {
     const p = colonizedPos[0];
     const r = pad + Math.sin(animTime * 2) * 4 * camera.zoom;
+    ctx.save();
+    ctx.fillStyle = `rgba(80,140,220,${FILL_ALPHA})`;
+    ctx.strokeStyle = `rgba(120,180,240,${OUTLINE_ALPHA})`;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-  } else if (colonizedPos.length === 2) {
-    const [a, b] = colonizedPos;
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const angle = Math.atan2(dy, dx);
-    ctx.beginPath();
-    ctx.arc(a.x, a.y, pad, angle + Math.PI * 0.5, angle + Math.PI * 1.5);
-    ctx.arc(b.x, b.y, pad, angle - Math.PI * 0.5, angle + Math.PI * 0.5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  } else {
-    // 3+ stars: convex hull expanded along edge normals
-    const hull = convexHull(colonizedPos);
-    const n = hull.length;
-    const expanded = hull.map((p, i) => {
-      const prev = hull[(i - 1 + n) % n];
-      const next = hull[(i + 1) % n];
-      // Average outward normal of the two adjacent edges
-      let nx = (next.y - p.y) + (p.y - prev.y);
-      let ny = -(next.x - p.x) - (p.x - prev.x);
-      const len = Math.sqrt(nx * nx + ny * ny) || 1;
-      nx /= len; ny /= len;
-      return { x: p.x + nx * pad, y: p.y + ny * pad };
-    });
-    drawSmoothCurve(ctx, expanded);
-    ctx.fill();
-    ctx.stroke();
+    ctx.restore();
+    return;
   }
+
+  // 2+ colonies: take the convex hull and build a curvy path where each edge
+  // becomes a quadratic bulge outward. Stroking this curvy path with width
+  // pad*2 and lineJoin=round inflates it into the territory shape, and the
+  // bulged centerline makes the outer boundary curve instead of running
+  // straight between corners.
+  const hull = colonizedPos.length === 2 ? colonizedPos : convexHull(colonizedPos);
+  const cx0 = hull.reduce((s, p) => s + p.x, 0) / hull.length;
+  const cy0 = hull.reduce((s, p) => s + p.y, 0) / hull.length;
+  const bulge = pad * 1;
+
+  const curvyPath = (c) => {
+    c.beginPath();
+    if (hull.length === 2) {
+      c.moveTo(hull[0].x, hull[0].y);
+      c.lineTo(hull[1].x, hull[1].y);
+      return;
+    }
+    c.moveTo(hull[0].x, hull[0].y);
+    for (let i = 0; i < hull.length; i++) {
+      const a = hull[i];
+      const b = hull[(i + 1) % hull.length];
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      // Edge normal pointing away from centroid.
+      let nx = -(b.y - a.y), ny = b.x - a.x;
+      const nlen = Math.hypot(nx, ny) || 1;
+      nx /= nlen; ny /= nlen;
+      if ((mx - cx0) * nx + (my - cy0) * ny < 0) { nx = -nx; ny = -ny; }
+      c.quadraticCurveTo(mx + nx * bulge, my + ny * bulge, b.x, b.y);
+    }
+    c.closePath();
+  };
+
+  // Offscreen canvas used for both body and outline passes. Rendering at full
+  // opacity here and blitting with globalAlpha avoids the fill-vs-stroke
+  // alpha-stacking seam that otherwise appears just inside the hull.
+  const w = ctx.canvas.width, h = ctx.canvas.height;
+  if (!territoryCanvas || territoryCanvas.width !== w || territoryCanvas.height !== h) {
+    territoryCanvas = document.createElement("canvas");
+    territoryCanvas.width = w;
+    territoryCanvas.height = h;
+    territoryCtx = territoryCanvas.getContext("2d");
+  }
+  const tctx = territoryCtx;
+  tctx.lineJoin = "round";
+  tctx.lineCap = "round";
+
+  // ── BODY ── fill + thick stroke at solid opacity; blit at FILL_ALPHA.
+  tctx.clearRect(0, 0, w, h);
+  tctx.fillStyle = FILL_RGB;
+  tctx.strokeStyle = FILL_RGB;
+  tctx.lineWidth = pad * 2;
+  curvyPath(tctx);
+  if (hull.length > 2) tctx.fill();
+  tctx.stroke();
+  ctx.save();
+  ctx.globalAlpha = FILL_ALPHA;
+  ctx.drawImage(territoryCanvas, 0, 0);
+  ctx.restore();
+
+  // ── OUTLINE RING ── outer stroke at (pad*2+3), then destination-out a
+  // slightly narrower fill+stroke to carve the interior, leaving just a ring
+  // along the outer boundary. Blit at OUTLINE_ALPHA.
+  tctx.clearRect(0, 0, w, h);
+  tctx.strokeStyle = OUTLINE_RGB;
+  tctx.lineWidth = pad * 2 + 3;
+  curvyPath(tctx);
+  tctx.stroke();
+  tctx.globalCompositeOperation = "destination-out";
+  tctx.fillStyle = "#000";
+  tctx.strokeStyle = "#000";
+  tctx.lineWidth = pad * 2 - 1;
+  curvyPath(tctx);
+  if (hull.length > 2) tctx.fill();
+  tctx.stroke();
+  tctx.globalCompositeOperation = "source-over";
+  ctx.save();
+  ctx.globalAlpha = OUTLINE_ALPHA;
+  ctx.drawImage(territoryCanvas, 0, 0);
   ctx.restore();
 }
 
@@ -3345,68 +3502,108 @@ function convexHull(points) {
   return lower.concat(upper);
 }
 
-function drawSmoothCurve(ctx, points) {
-  if (points.length < 3) return;
-  const n = points.length;
-  ctx.beginPath();
-  ctx.moveTo(
-    (points[n - 1].x + points[0].x) / 2,
-    (points[n - 1].y + points[0].y) / 2
-  );
-  for (let i = 0; i < n; i++) {
-    const p = points[i];
-    const next = points[(i + 1) % n];
-    const mx = (p.x + next.x) / 2;
-    const my = (p.y + next.y) / 2;
-    ctx.quadraticCurveTo(p.x, p.y, mx, my);
-  }
-  ctx.closePath();
-}
-
 // Offscreen canvas for fog — created once, resized as needed
 let fogCanvas = null;
 let fogCtx = null;
+let memoryMaskCanvas = null;
+let memoryMaskCtx = null;
+
+// Alpha of fog left over in "seen but no active sight" tiles. 0 = fully cleared,
+// 1 = fully fogged. ~0.55 gives a visible memory-trail that's still clearly
+// distinct from both active sight (clear) and unknown space (black).
+const MEMORY_FOG_ALPHA = 0.55;
 
 function drawFogOfWar(ctx) {
   const w = ctx.canvas.width, h = ctx.canvas.height;
 
-  // Create or resize offscreen fog canvas
+  // Create or resize offscreen canvases
   if (!fogCanvas || fogCanvas.width !== w || fogCanvas.height !== h) {
     fogCanvas = document.createElement("canvas");
     fogCanvas.width = w;
     fogCanvas.height = h;
     fogCtx = fogCanvas.getContext("2d");
+    memoryMaskCanvas = document.createElement("canvas");
+    memoryMaskCanvas.width = w;
+    memoryMaskCanvas.height = h;
+    memoryMaskCtx = memoryMaskCanvas.getContext("2d");
   }
 
-  // Fill fog canvas fully opaque black
+  // Fill fog canvas fully opaque black.
   fogCtx.clearRect(0, 0, w, h);
   fogCtx.fillStyle = "#000";
   fogCtx.fillRect(0, 0, w, h);
 
-  // Collect all reveal zones — known stars + entities with sensor range
-  const revealZones = [];
+  // ── PASS 1: MEMORY MASK ──────────────────────────────────────────────
+  // Build a smooth silhouette of all on-screen seen tiles on the offscreen
+  // mask canvas, then use it to partially carve fog. Each tile renders as a
+  // radial gradient (center α=1 → edge α=0) with "lighter" compositing, so
+  // overlapping tiles sum their alpha (clamped at 1) — this gives solid
+  // coverage in the interior of marked regions AND smooth, feathered edges
+  // where marks thin out, rather than a union of visible hard circles.
+  memoryMaskCtx.clearRect(0, 0, w, h);
+  memoryMaskCtx.globalCompositeOperation = "lighter";
+  const viewTopLeft = screenToWorld(0, 0);
+  const viewBotRight = screenToWorld(w, h);
+  const minCx = Math.floor(viewTopLeft.x / CHUNK_SIZE) - 1;
+  const maxCx = Math.floor(viewBotRight.x / CHUNK_SIZE) + 1;
+  const minCy = Math.floor(viewTopLeft.y / CHUNK_SIZE) - 1;
+  const maxCy = Math.floor(viewBotRight.y / CHUNK_SIZE) + 1;
+  // Gradient radius well larger than a tile so neighbors' falloffs overlap
+  // and sum to ~1 across the interior.
+  const tileRadius = TILE_SIZE * 1.3 * camera.zoom;
+  for (let cx = minCx; cx <= maxCx; cx++) {
+    for (let cy = minCy; cy <= maxCy; cy++) {
+      const bits = chunkSeenBits.get(`${cx},${cy}`);
+      if (!bits) continue;
+      for (let ty = 0; ty < TILES_PER_CHUNK; ty++) {
+        for (let tx = 0; tx < TILES_PER_CHUNK; tx++) {
+          if (!(bits & (1 << (ty * TILES_PER_CHUNK + tx)))) continue;
+          const wx = cx * CHUNK_SIZE + (tx + 0.5) * TILE_SIZE;
+          const wy = cy * CHUNK_SIZE + (ty + 0.5) * TILE_SIZE;
+          const pos = worldToScreen(wx, wy);
+          const grad = memoryMaskCtx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, tileRadius);
+          grad.addColorStop(0, "rgba(255,255,255,1)");
+          grad.addColorStop(1, "rgba(255,255,255,0)");
+          memoryMaskCtx.fillStyle = grad;
+          memoryMaskCtx.beginPath();
+          memoryMaskCtx.arc(pos.x, pos.y, tileRadius, 0, Math.PI * 2);
+          memoryMaskCtx.fill();
+        }
+      }
+    }
+  }
+  memoryMaskCtx.globalCompositeOperation = "source-over";
+  // Apply mask: remove (1 - MEMORY_FOG_ALPHA) of fog wherever mask is opaque.
+  fogCtx.save();
+  fogCtx.globalCompositeOperation = "destination-out";
+  fogCtx.globalAlpha = 1 - MEMORY_FOG_ALPHA;
+  fogCtx.drawImage(memoryMaskCanvas, 0, 0);
+  fogCtx.restore();
+
+  // ── PASS 2: ACTIVE SIGHT ──────────────────────────────────────────────
+  // Full-clear holes from colonies, detected-star peeks, and entities.
+  const activeZones = [];
   for (const star of stars.values()) {
-    if (star.visibility === "explored") {
-      revealZones.push({ wx: star.x, wy: star.y, range: BASE_SENSOR_RANGE });
+    const hasColony = star.planets && star.planets.some(p => p.colony);
+    if (hasColony) {
+      activeZones.push({ wx: star.x, wy: star.y, range: BASE_SENSOR_RANGE });
     } else if (star.visibility === "detected") {
-      revealZones.push({ wx: star.x, wy: star.y, range: 30 });  // small peek to keep star visible
+      activeZones.push({ wx: star.x, wy: star.y, range: 30 });
     }
   }
   for (const ent of mapEntities) {
-    revealZones.push({ wx: ent.x, wy: ent.y, range: ent.sensorRange * 50 });
+    if (ent.owner === "npc") continue;
+    activeZones.push({ wx: ent.x, wy: ent.y, range: ent.sensorRange * 50 });
   }
 
-  // Punch soft circular holes using destination-out on the opaque surface
   fogCtx.globalCompositeOperation = "destination-out";
-  for (const zone of revealZones) {
+  for (const zone of activeZones) {
     const pos = worldToScreen(zone.wx, zone.wy);
     const radius = zone.range * camera.zoom;
-
     const grad = fogCtx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, radius);
     grad.addColorStop(0, "rgba(0, 0, 0, 1)");
     grad.addColorStop(0.7, "rgba(0, 0, 0, 1)");
     grad.addColorStop(1, "rgba(0, 0, 0, 0)");
-
     fogCtx.fillStyle = grad;
     fogCtx.beginPath();
     fogCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
@@ -3414,7 +3611,7 @@ function drawFogOfWar(ctx) {
   }
   fogCtx.globalCompositeOperation = "source-over";
 
-  // Draw fog onto main canvas with reduced opacity
+  // Blit fog onto main canvas.
   ctx.save();
   ctx.globalAlpha = 0.88;
   ctx.drawImage(fogCanvas, 0, 0);
@@ -3433,7 +3630,6 @@ function render() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   drawBgStars(ctx);
-  drawTerritoryContour(ctx);
 
   // Draw stars (detected first, then explored so they're on top)
   const detectedStars = [];
@@ -3452,6 +3648,10 @@ function render() {
 
   // Fog of war on top — covers unexplored areas, detected stars peek through
   drawFogOfWar(ctx);
+
+  // Empire territory contour renders above fog so the boundary is always
+  // visible, but it draws no stars — revealed space is still star-based.
+  drawTerritoryContour(ctx);
 }
 
 // ═══════════════════════════════════════════
@@ -4254,6 +4454,7 @@ function exploreSelectedStar() {
 
   // Detect nearby stars within sensor range
   detectStarsInRange(star.x, star.y, BASE_SENSOR_RANGE);
+  markSeenInRange(star.x, star.y, BASE_SENSOR_RANGE);
 
   // Transition to system view within overlay
   document.getElementById("system-detected").classList.remove("visible");
@@ -4280,6 +4481,8 @@ function showSelectPanel(star) {
   const slot = document.getElementById("select-card-slot");
   const actions = document.getElementById("select-actions");
   const info = document.getElementById("select-panel-info");
+  const shipsEl = document.getElementById("select-panel-ships");
+  if (shipsEl) shipsEl.innerHTML = "";
 
   panel.classList.add("visible");
 
@@ -4318,6 +4521,7 @@ function showEntityPanel(idx) {
   const slot = document.getElementById("select-card-slot");
   const actions = document.getElementById("select-actions");
   const info = document.getElementById("select-panel-info");
+  const shipsEl = document.getElementById("select-panel-ships");
   panel.classList.add("visible");
 
   // Show the primary card
@@ -4361,6 +4565,21 @@ function showEntityPanel(idx) {
     infoHtml += `<div style="color:#4a9b5a;margin-top:4px">At colony</div>`;
   }
   info.innerHTML = infoHtml;
+
+  // Fleet ships list — one card per ship, stacked vertically under the stats.
+  // For solo ships the primary card above already shows the ship, so nothing
+  // additional is needed here.
+  if (shipsEl) {
+    shipsEl.innerHTML = "";
+    if (ent.type === "fleet" && ent.ships && ent.ships.length > 0) {
+      for (const ship of ent.ships) {
+        const wrap = document.createElement("div");
+        wrap.className = "fleet-ship-card";
+        wrap.innerHTML = buildCardHtml(ship);
+        shipsEl.appendChild(wrap);
+      }
+    }
+  }
 }
 
 function toggleEntityStance(idx) {
@@ -4378,6 +4597,8 @@ function disbandEntityFromPanel(idx) {
 function hideSelectPanel() {
   selectedStarId = null;
   document.getElementById("select-panel").classList.remove("visible");
+  const shipsEl = document.getElementById("select-panel-ships");
+  if (shipsEl) shipsEl.innerHTML = "";
 }
 
 function exploreFromPanel() {
@@ -4385,6 +4606,7 @@ function exploreFromPanel() {
   if (!star || star.visibility !== "detected") return;
   star.visibility = "explored";
   detectStarsInRange(star.x, star.y, BASE_SENSOR_RANGE);
+  markSeenInRange(star.x, star.y, BASE_SENSOR_RANGE);
   showSelectPanel(star); // refresh panel with explored state
 }
 
@@ -4854,7 +5076,17 @@ function tickEconomy(dt) {
     if (col.genTimer >= genInterval) {
       col.genTimer -= genInterval;
       const cat = ACTION_TO_CATEGORY[col.activeAction];
-      if (cat) col.deck.push({ category: cat, faceDown: true });
+      if (cat) {
+        col.deck.push({ category: cat, faceDown: true });
+        // Keep the deck pile's visual in sync with state the instant a card
+        // is generated. Without this the pile lags behind, so players see
+        // an "empty" pile but the click handler (which checks deck.length)
+        // happily draws, producing the "clicked when nothing to draw" bug.
+        if (col === getActiveColony() &&
+            document.getElementById("colony-backdrop").classList.contains("visible")) {
+          refreshDeckDisplay(col);
+        }
+      }
     }
   }
 
@@ -4888,7 +5120,7 @@ function tickEconomy(dt) {
           }
           activeResearch = null;
           // Refresh research panel if visible
-          if (document.getElementById("research-overlay").classList.contains("visible")) {
+          if (document.getElementById("research-backdrop").classList.contains("visible")) {
             refreshResearchPanel();
           }
         }
@@ -4921,9 +5153,31 @@ function updateResourceDisplay() {
       rateEl.style.color = rate < 0 ? "#e05050" : "";
     }
   }
-  // Research button: highlight when no research is active (idle or just-completed)
+  // Research button: highlight when no research is active (idle or just-completed).
+  // When active, a semi-transparent green overlay inside the button fills from
+  // left to right in proportion to research progress.
   const researchBtn = document.getElementById("research-btn");
-  if (researchBtn) researchBtn.classList.toggle("idle", !activeResearch);
+  const pctExact = activeResearch && activeResearch.cost > 0
+    ? Math.max(0, Math.min(100, (activeResearch.progress / activeResearch.cost) * 100))
+    : 0;
+  if (researchBtn) {
+    researchBtn.classList.toggle("idle", !activeResearch);
+    researchBtn.style.setProperty("--research-progress", pctExact + "%");
+  }
+
+  // Live update of the research panel while it's open — touch only the
+  // progress bar width and the numeric text so category-list hover state
+  // and scroll position aren't disturbed by a full refreshResearchPanel().
+  const researchBackdrop = document.getElementById("research-backdrop");
+  if (activeResearch && researchBackdrop && researchBackdrop.classList.contains("visible")) {
+    const pctInt = Math.floor(pctExact);
+    const fill = document.getElementById("research-progress-bar-fill");
+    if (fill) fill.style.width = pctInt + "%";
+    const num = document.getElementById("research-progress-numeric");
+    if (num) num.textContent = `${formatResourceValue(Math.floor(activeResearch.progress))} / ${formatResourceValue(activeResearch.cost)}`;
+    const pctEl = document.getElementById("research-progress-pct");
+    if (pctEl) pctEl.textContent = `(${pctInt}%)`;
+  }
 }
 
 function canAfford(cost) {
@@ -5036,6 +5290,7 @@ function colonizePlanet(star, planetIdx) {
     queue: [],                            // face-up selected cards awaiting placement
     activeAction: null,                   // "trade"|"buildings"|"admirals"|"leaders"|"ships"
     genTimer: 0,                          // seconds toward next card
+    pendingDraw: null,                    // in-flight 3-choice draw: { category, choices }
   };
   colonies.push({ starId: star.id, planetIdx, planet });
   // Refresh the planet card to show "Manage Colony" instead of "Colonize"
@@ -5649,9 +5904,43 @@ function refreshFleetTab(col) {
 }
 
 // ── Deck click → Card Selection ──
+// Once a draw has been started (cost charged, 3 choices rolled), the draw
+// is committed to col.pendingDraw. Dismissing the modal (backdrop click)
+// leaves pendingDraw intact, so reopening the deck shows the SAME choices
+// without re-rolling or re-charging. Picking a card or Discard All resolves
+// and clears pendingDraw.
+function openCardSelectModal(col) {
+  const { choices } = col.pendingDraw;
+  const optionsEl = document.getElementById("card-select-options");
+  optionsEl.innerHTML = "";
+  choices.forEach((card) => {
+    const wrap = document.createElement("div");
+    wrap.className = "card-select-option";
+    wrap.innerHTML = buildCardHtml(card);
+    wrap.addEventListener("click", () => {
+      col.deck.shift();
+      col.queue.push(card);
+      col.pendingDraw = null;
+      hideCardSelect();
+      refreshColonyScreen();
+    });
+    optionsEl.appendChild(wrap);
+  });
+  document.getElementById("card-select-backdrop").classList.add("visible");
+}
+
 document.getElementById("colony-deck").addEventListener("click", () => {
   const col = getActiveColony();
-  if (!col || col.deck.length === 0) return;
+  if (!col) return;
+
+  // Resume an in-flight draw (no new charge, same three choices).
+  if (col.pendingDraw) {
+    openCardSelectModal(col);
+    return;
+  }
+
+  if (col.deck.length === 0) return;
+
   // Check draw cost
   const drawCost = getDrawCost();
   if (resources.credits < drawCost) {
@@ -5663,25 +5952,12 @@ document.getElementById("colony-deck").addEventListener("click", () => {
   resources.credits -= drawCost;
   drawCostMultiplier *= 1.5;
   flashResourceCost({ credits: drawCost });
-  const faceDown = col.deck[0];
-  const cat = faceDown.category;
-  // Roll 3 cards
-  const choices = [rollCardFromCategory(cat), rollCardFromCategory(cat), rollCardFromCategory(cat)];
-  const optionsEl = document.getElementById("card-select-options");
-  optionsEl.innerHTML = "";
-  choices.forEach((card, i) => {
-    const wrap = document.createElement("div");
-    wrap.className = "card-select-option";
-    wrap.innerHTML = buildCardHtml(card);
-    wrap.addEventListener("click", () => {
-      col.deck.shift(); // remove one face-down card
-      col.queue.push(card);
-      hideCardSelect();
-      refreshColonyScreen();
-    });
-    optionsEl.appendChild(wrap);
-  });
-  document.getElementById("card-select-backdrop").classList.add("visible");
+  const cat = col.deck[0].category;
+  col.pendingDraw = {
+    category: cat,
+    choices: [rollCardFromCategory(cat), rollCardFromCategory(cat), rollCardFromCategory(cat)],
+  };
+  openCardSelectModal(col);
 });
 
 function hideCardSelect() {
@@ -5689,13 +5965,16 @@ function hideCardSelect() {
 }
 document.getElementById("card-select-discard-all").addEventListener("click", () => {
   const col = getActiveColony();
-  if (col && col.deck.length > 0) {
-    col.deck.shift(); // remove the face-down card being drawn
+  if (col) {
+    if (col.deck.length > 0) col.deck.shift(); // remove the face-down card being drawn
+    col.pendingDraw = null;
   }
   hideCardSelect();
   refreshColonyScreen();
 });
 document.getElementById("card-select-backdrop").addEventListener("click", (e) => {
+  // Dismissing via backdrop click closes the modal but PRESERVES pendingDraw,
+  // so the next deck click reopens the same three choices rather than re-rolling.
   if (e.target === document.getElementById("card-select-backdrop")) hideCardSelect();
 });
 
@@ -5896,10 +6175,10 @@ function refreshResearchPanel() {
         <span>Researching: <strong>${catLabel}s</strong></span>
       </div>
       <div style="color:#a4e4a4;font-size:12px;display:flex;align-items:center;gap:4px">
-        ${formatResourceValue(Math.floor(activeResearch.progress))} / ${formatResourceValue(activeResearch.cost)}
-        ${ico("i-research", "sm research")} <span>(${pct}%)</span>
+        <span id="research-progress-numeric">${formatResourceValue(Math.floor(activeResearch.progress))} / ${formatResourceValue(activeResearch.cost)}</span>
+        ${ico("i-research", "sm research")} <span id="research-progress-pct">(${pct}%)</span>
       </div>
-      <div class="research-progress"><div class="research-progress-bar" style="width:${pct}%"></div></div>
+      <div class="research-progress"><div id="research-progress-bar-fill" class="research-progress-bar" style="width:${pct}%"></div></div>
       <button onclick="activeResearch=null;refreshResearchPanel()" style="margin-top:8px;background:#1a2040;border:1px solid #2a3460;color:#8090b0;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:11px">Cancel</button>
     `;
   } else {
@@ -5994,7 +6273,7 @@ function showResearchReveal(template, category) {
   btn.textContent = "Continue";
   btn.onclick = () => {
     backdrop.remove();
-    if (document.getElementById("research-overlay").classList.contains("visible")) {
+    if (document.getElementById("research-backdrop").classList.contains("visible")) {
       refreshResearchPanel();
     }
   };
@@ -6087,6 +6366,10 @@ function serializeColony(col) {
     genTimer: col.genTimer,
     growthProgress: col.growthProgress,
     starvationTimer: col.starvationTimer,
+    pendingDraw: col.pendingDraw ? {
+      category: col.pendingDraw.category,
+      choices: col.pendingDraw.choices.map(serializeCardRef),
+    } : null,
   };
 }
 
@@ -6104,6 +6387,13 @@ function hydratePlanet(p) {
 }
 
 function hydrateColony(col) {
+  let pendingDraw = null;
+  if (col.pendingDraw && Array.isArray(col.pendingDraw.choices)) {
+    const choices = col.pendingDraw.choices.map(hydrateCardRef).filter(Boolean);
+    if (choices.length === 3) {
+      pendingDraw = { category: col.pendingDraw.category, choices };
+    }
+  }
   return {
     population: col.population,
     maxPopulation: col.maxPopulation,
@@ -6115,6 +6405,7 @@ function hydrateColony(col) {
     genTimer: col.genTimer || 0,
     growthProgress: col.growthProgress || 0,
     starvationTimer: col.starvationTimer || 0,
+    pendingDraw,
   };
 }
 
@@ -6133,6 +6424,7 @@ function serializeGame() {
       planets: s.planets ? s.planets.map(serializePlanet) : null,
     })),
     generatedChunks: [...generatedChunks.keys()],
+    chunkSeenBits: [...chunkSeenBits.entries()],
     nextStarId,
     nextStarNameIdx: _nextStarNameIdx,
     shuffledStarNames: [..._shuffledStarNames],
@@ -6206,6 +6498,7 @@ function clearGameState() {
 
   stars.clear();
   generatedChunks.clear();
+  chunkSeenBits.clear();
   nextStarId = 1;
   _nextStarNameIdx = 0;
   mapEntities.length = 0;
@@ -6253,6 +6546,7 @@ function deserializeGame(data) {
   }
 
   for (const key of (data.generatedChunks || [])) generatedChunks.set(key, true);
+  for (const [key, bits] of (data.chunkSeenBits || [])) chunkSeenBits.set(key, bits);
 
   for (const e of data.mapEntities) {
     // Preserve mapEntities order: activeCombats reference entities by index

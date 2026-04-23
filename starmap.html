@@ -1340,7 +1340,7 @@ body {
 })();
 </script>
 
-<!-- Live override indicator (shown only when loader picked localStorage override) -->
+<!-- Live override indicator (shown only when loader picked the IndexedDB override) -->
 <div id="card-source-badge" title="Cards are being read from a card-builder override, not from data/game-cards.json">
   <span class="dot"></span>
   <span>Live builder override</span>
@@ -1585,17 +1585,86 @@ body {
 // ═══════════════════════════════════════════
 //  CARD DATA LOADER
 // ═══════════════════════════════════════════
-// Runtime card templates come from data/game-cards.json, or a localStorage
-// override set by the card builder. Falls back to the embedded template
-// arrays below if both are unavailable (file:// load, first-open, fetch
-// error). Embedded fallback is Phase-1 temporary and goes away in Phase 5.
+// Runtime card templates come from data/game-cards.json, or an IndexedDB
+// override set by the card builder's "Apply to Live" button. Falls back to
+// the embedded template arrays below if both are unavailable (file:// load,
+// first-open, fetch error). Embedded fallback is Phase-1 temporary and
+// goes away in Phase 5.
+//
+// Storage choice: IndexedDB (not localStorage). localStorage caps at
+// ~5–10 MB per origin which can't hold a catalog with base64 card art.
+// The card builder migrates legacy localStorage payloads into IDB on load.
 //
 // Schema, precedence, and rules live in CARDS_PIPELINE_PLAN.md.
 
-const CARDS_OVERRIDE_KEY = "idlespace_gameCards_override";
+// Legacy localStorage key — kept only for one-time migration into IndexedDB.
+const LEGACY_CARDS_OVERRIDE_LS_KEY = "idlespace_gameCards_override";
+// IndexedDB keys — must match CARDS_IDB_* in card-builder.html.
+const CARDS_IDB_NAME = "idlespace_cards";
+const CARDS_IDB_STORE = "kv";
+const CARDS_IDB_OVERRIDE_KEY = "gameCardsOverride";
 let CARD_TEMPLATES = {};       // category -> Card[]
 let CARD_INDEX = new Map();    // id -> Card
 let CARD_SOURCE = "embedded";  // "override" | "file" | "embedded"
+
+// ── Minimal IndexedDB helper (get/put/delete for one kv store) ──────
+// Keep in sync with the identically-named helper in card-builder.html.
+function cardsIdbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(CARDS_IDB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(CARDS_IDB_STORE)) db.createObjectStore(CARDS_IDB_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function cardsIdbGet(key) {
+  const db = await cardsIdbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(CARDS_IDB_STORE, "readonly");
+    const req = tx.objectStore(CARDS_IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function cardsIdbPut(key, value) {
+  const db = await cardsIdbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(CARDS_IDB_STORE, "readwrite");
+    tx.objectStore(CARDS_IDB_STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function cardsIdbDelete(key) {
+  const db = await cardsIdbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(CARDS_IDB_STORE, "readwrite");
+    tx.objectStore(CARDS_IDB_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// One-time migration: promote a legacy localStorage override into IDB so
+// existing users don't lose their in-flight edits on first load post-upgrade.
+async function migrateLegacyOverride() {
+  try {
+    if (await cardsIdbGet(CARDS_IDB_OVERRIDE_KEY)) return; // IDB already has it
+    const raw = localStorage.getItem(LEGACY_CARDS_OVERRIDE_LS_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.cards)) {
+      await cardsIdbPut(CARDS_IDB_OVERRIDE_KEY, parsed);
+      console.info(`[cards] migrated localStorage override (${parsed.cards.length} cards) to IndexedDB`);
+    }
+    try { localStorage.removeItem(LEGACY_CARDS_OVERRIDE_LS_KEY); } catch (_) {}
+  } catch (e) {
+    console.warn("[cards] legacy override migration failed:", e);
+  }
+}
 
 function getTemplates(category) {
   return CARD_TEMPLATES[category] || [];
@@ -1673,16 +1742,17 @@ function applyCardBundle(rawCards, source) {
 }
 
 async function loadCardData() {
-  // 1. localStorage override (live-edit loop from card builder)
+  // 1. IndexedDB override (live-edit loop from card builder). Migrate any
+  //    pre-upgrade localStorage payload before reading.
+  await migrateLegacyOverride();
   try {
-    const s = localStorage.getItem(CARDS_OVERRIDE_KEY);
-    if (s) {
-      const bundle = JSON.parse(s);
-      if (bundle && Array.isArray(bundle.cards) && applyCardBundle(bundle.cards, "override")) return;
-      console.warn("[cards] localStorage override malformed, falling through to file");
+    const bundle = await cardsIdbGet(CARDS_IDB_OVERRIDE_KEY);
+    if (bundle && Array.isArray(bundle.cards)) {
+      if (applyCardBundle(bundle.cards, "override")) return;
+      console.warn("[cards] IDB override malformed, falling through to file");
     }
   } catch (e) {
-    console.warn("[cards] override parse failed, falling through to file", e);
+    console.warn("[cards] IDB override read failed, falling through to file", e);
   }
 
   // 2. fetch data/game-cards.json
@@ -1730,14 +1800,18 @@ function updateCardSourceBadge() {
   el.classList.toggle("visible", CARD_SOURCE === "override");
 }
 
-function revertCardOverride() {
-  try { localStorage.removeItem(CARDS_OVERRIDE_KEY); } catch (_) {}
+async function revertCardOverride() {
+  try { await cardsIdbDelete(CARDS_IDB_OVERRIDE_KEY); } catch (_) {}
+  // Also wipe any stale legacy localStorage override so a refresh doesn't
+  // resurrect it via the migration path.
+  try { localStorage.removeItem(LEGACY_CARDS_OVERRIDE_LS_KEY); } catch (_) {}
   // Clear the error screen too (harmless no-op if not present).
   const err = document.getElementById("card-load-error");
   if (err) err.remove();
-  reloadCardData().then(() => {
+  try {
+    await reloadCardData();
     if (typeof setSaveStatus === "function") setSaveStatus("Reverted to shipped cards.", "ok");
-  });
+  } catch (_) {}
   // Tell any open card-builder tab to refresh its live-link status.
   if (typeof CARDS_BROADCAST !== "undefined" && CARDS_BROADCAST) {
     CARDS_BROADCAST.postMessage({ type: "override-cleared" });
@@ -1785,7 +1859,7 @@ function showCardLoadError(detail) {
 
 // ═══════════════════════════════════════════
 //  CARD DATA — all templates live in data/game-cards.json
-//  (or a localStorage override set by card-builder.html).
+//  (or an IndexedDB override set by card-builder.html).
 //  Loaded by loadCardData() above. See CARDS_PIPELINE_PLAN.md.
 // ═══════════════════════════════════════════
 

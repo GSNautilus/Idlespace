@@ -771,48 +771,130 @@ const DROPDOWN_STATS = {
   missileRange: ["short","medium","long"],
 };
 
-const STORAGE_KEY = "idlespace_cards";
 const SCHEMA_VERSION = 1;
-// Shared with starmap.html — must match CARDS_OVERRIDE_KEY there.
-const CARDS_OVERRIDE_KEY = "idlespace_gameCards_override";
+// Legacy localStorage keys — kept only for one-time migration into IndexedDB.
+// localStorage caps at ~5–10 MB per origin, which is nowhere near enough for
+// a catalog full of base64 card art. IndexedDB's quota is measured in GB, so
+// that's where durable card data now lives.
+const LEGACY_CATALOG_LS_KEY = "idlespace_cards";
+const LEGACY_OVERRIDE_LS_KEY = "idlespace_gameCards_override";
+// IndexedDB keys (both live in the same kv store). Shared with starmap.html —
+// the names must match CARDS_IDB_* constants there.
+const CARDS_IDB_NAME = "idlespace_cards";
+const CARDS_IDB_STORE = "kv";
+const CARDS_IDB_CATALOG_KEY = "catalog";
+const CARDS_IDB_OVERRIDE_KEY = "gameCardsOverride";
 const CARDS_BROADCAST = (typeof BroadcastChannel !== "undefined")
   ? new BroadcastChannel("idlespace-cards")
   : null;
 
+// ── Minimal IndexedDB helper (get/put/delete for one kv store) ──────
+// Used for both the builder's working catalog and the live-link override
+// payload. Swapping these out of localStorage is the whole point of this
+// storage layer: we need GB-scale room for base64 card art.
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(CARDS_IDB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(CARDS_IDB_STORE)) db.createObjectStore(CARDS_IDB_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbGet(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(CARDS_IDB_STORE, "readonly");
+    const req = tx.objectStore(CARDS_IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbPut(key, value) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(CARDS_IDB_STORE, "readwrite");
+    tx.objectStore(CARDS_IDB_STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function idbDelete(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(CARDS_IDB_STORE, "readwrite");
+    tx.objectStore(CARDS_IDB_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 // ═══════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════
-let catalog = loadCatalog();
+// Populated asynchronously by loadCatalog() during bootBuilder(). Starts
+// empty; UI render is deferred until the IDB read resolves.
+let catalog = [];
 let editingCardId = null; // null = new card
 
 // ═══════════════════════════════════════════
 //  STORAGE
 // ═══════════════════════════════════════════
 // Storage format: { version, cards: [...] } — matches game's data/game-cards.json.
-// Accepts legacy flat-array localStorage too (pre-Phase 2 catalogs).
-function loadCatalog() {
+// Persists to IndexedDB (localStorage has a per-origin quota too small for
+// catalogs with base64 card art).
+async function loadCatalog() {
+  // One-time migration: if IDB is empty but a legacy localStorage catalog
+  // exists, promote it into IDB and clear the old key.
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (!raw) return [];
-    if (Array.isArray(raw)) return raw;                    // legacy
-    if (Array.isArray(raw.cards)) return raw.cards;         // { version, cards }
-    return [];
-  } catch { return []; }
+    const existing = await idbGet(CARDS_IDB_CATALOG_KEY);
+    if (existing && Array.isArray(existing.cards)) return existing.cards;
+    if (Array.isArray(existing)) return existing; // tolerate bare-array value
+  } catch (e) {
+    console.warn("[cards] IDB catalog read failed:", e);
+  }
+  try {
+    const raw = localStorage.getItem(LEGACY_CATALOG_LS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const cards = Array.isArray(parsed) ? parsed
+                  : (parsed && Array.isArray(parsed.cards)) ? parsed.cards
+                  : null;
+      if (cards) {
+        await idbPut(CARDS_IDB_CATALOG_KEY, { version: SCHEMA_VERSION, cards });
+        try { localStorage.removeItem(LEGACY_CATALOG_LS_KEY); } catch (_) {}
+        console.info(`[cards] migrated ${cards.length} cards from localStorage to IndexedDB`);
+        return cards;
+      }
+    }
+  } catch (e) {
+    console.warn("[cards] legacy catalog migration failed:", e);
+  }
+  return [];
 }
 
-function saveCatalog() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, cards: catalog }));
+async function saveCatalog() {
+  try {
+    await idbPut(CARDS_IDB_CATALOG_KEY, { version: SCHEMA_VERSION, cards: catalog });
+  } catch (e) {
+    console.error("[cards] saveCatalog failed:", e);
+    showToast("Save failed: " + (e && e.message ? e.message : e));
+  }
 }
 
 // ═══════════════════════════════════════════
 //  EDITOR STATE HELPERS
 // ═══════════════════════════════════════════
 // Read key/value rows from a container. Numeric unless the key is in
-// DROPDOWN_STATS or forceString is set.
+// DROPDOWN_STATS or forceString is set. Keys are preserved verbatim so they
+// match starmap.html's expected schema (e.g. sensorRange, kineticDmg) — any
+// casing transform here desyncs the exported JSON from what the game reads.
 function readKvRows(containerId, { forceString = false } = {}) {
   const out = {};
   document.querySelectorAll(`#${containerId} .stat-row`).forEach(row => {
-    const key = row.querySelector(".stat-key").value.trim().toLowerCase().replace(/\s+/g, "_");
+    const key = row.querySelector(".stat-key").value.trim();
     if (!key) return;
     const valEl = row.querySelector(".stat-val");
     let val;
@@ -1259,9 +1341,11 @@ function formatResourceValue(val) {
   return v.toString();
 }
 
-// readKvRows() lowercases every stat key, so any camelCase stat coming from
-// the editor loses its case (sensorRange → sensorrange). The data file and
-// the starmap renderer use camelCase, so this map restores them before render.
+// readKvRows() preserves stat-key casing verbatim, so fresh cards already use
+// camelCase. This alias map stays as a one-way migration helper for loading
+// LEGACY catalogs that were saved by an older builder that lowercased keys.
+// Never generate lowercase keys from new writes — starmap.html is the schema
+// source of truth and uses camelCase throughout.
 const STAT_KEY_ALIASES = {
   // Ship combat
   sensorrange: "sensorRange",
@@ -1834,7 +1918,7 @@ document.getElementById("edit-category").addEventListener("change", () => {
     : "building";
   const oldDefaults = CATEGORY_DEFAULT_STATS[oldCat] || [];
   document.querySelectorAll("#stat-rows .stat-row").forEach(row => {
-    const key = row.querySelector(".stat-key").value.trim().toLowerCase().replace(/\s+/g, "_");
+    const key = row.querySelector(".stat-key").value.trim();
     const valEl = row.querySelector(".stat-val");
     const val = DROPDOWN_STATS[key] ? valEl.value : (parseFloat(valEl.value) || 0);
     if (key && !oldDefaults.includes(key)) {
@@ -2099,58 +2183,59 @@ function extFromDataUrl(url) {
 }
 
 // ═══════════════════════════════════════════
-//  LIVE LINK — localStorage override + BroadcastChannel
+//  LIVE LINK — IndexedDB override + BroadcastChannel
 // ═══════════════════════════════════════════
 // Apply the current catalog as a live override. Any open starmap tab sees
 // the BroadcastChannel message and hot-reloads; a newly-opened starmap reads
-// the override from localStorage at boot. This is the edit loop between
+// the override from IndexedDB at boot. This is the edit loop between
 // card-builder and the game without a rebuild/commit step.
 
-function isOverrideActive() {
-  try { return !!localStorage.getItem(CARDS_OVERRIDE_KEY); }
+async function isOverrideActive() {
+  try { return !!(await idbGet(CARDS_IDB_OVERRIDE_KEY)); }
   catch { return false; }
 }
 
-function updateLiveLinkStatus() {
+async function updateLiveLinkStatus() {
   const el = document.getElementById("live-link-status");
   if (!el) return;
-  el.classList.toggle("visible", isOverrideActive());
+  el.classList.toggle("visible", await isOverrideActive());
 }
 
-function applyToLiveGame() {
+async function applyToLiveGame() {
   try {
-    const bundle = { version: SCHEMA_VERSION, cards: catalog };
-    localStorage.setItem(CARDS_OVERRIDE_KEY, JSON.stringify(bundle));
+    await idbPut(CARDS_IDB_OVERRIDE_KEY, { version: SCHEMA_VERSION, cards: catalog });
   } catch (e) {
-    showToast("Apply failed: " + e.message);
+    showToast("Apply failed: " + (e && e.message ? e.message : e));
     return;
   }
   if (CARDS_BROADCAST) CARDS_BROADCAST.postMessage({ type: "cards-updated" });
-  updateLiveLinkStatus();
+  await updateLiveLinkStatus();
   showToast(`Applied to live game · ${catalog.length} cards`);
 }
 
-function clearLiveOverride() {
-  try { localStorage.removeItem(CARDS_OVERRIDE_KEY); } catch (_) {}
+async function clearLiveOverride() {
+  try { await idbDelete(CARDS_IDB_OVERRIDE_KEY); } catch (_) {}
+  // Also clear any stale legacy localStorage override so a new starmap tab
+  // can't accidentally pick it up.
+  try { localStorage.removeItem(LEGACY_OVERRIDE_LS_KEY); } catch (_) {}
   if (CARDS_BROADCAST) CARDS_BROADCAST.postMessage({ type: "override-cleared" });
-  updateLiveLinkStatus();
+  await updateLiveLinkStatus();
   showToast("Live override cleared — game reverts to shipped cards");
 }
 
 document.getElementById("apply-live-btn").addEventListener("click", applyToLiveGame);
 document.getElementById("clear-override-btn").addEventListener("click", clearLiveOverride);
 
-// Sync status if the other tab clears the override.
+// Sync status if the other tab clears the override. IndexedDB writes don't
+// fire `window.storage`, so BroadcastChannel is the only cross-tab signal.
 if (CARDS_BROADCAST) {
   CARDS_BROADCAST.onmessage = (ev) => {
     const msg = ev && ev.data;
-    if (msg && msg.type === "override-cleared") updateLiveLinkStatus();
+    if (msg && (msg.type === "override-cleared" || msg.type === "cards-updated")) {
+      updateLiveLinkStatus();
+    }
   };
 }
-// Also react to another tab writing the storage directly.
-window.addEventListener("storage", (e) => {
-  if (e.key === CARDS_OVERRIDE_KEY) updateLiveLinkStatus();
-});
 
 document.getElementById("export-bundle-btn").addEventListener("click", () => {
   const files = [];
@@ -2200,7 +2285,7 @@ importFileInput.addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const parsed = JSON.parse(reader.result);
       // Accept { version, cards } or legacy flat array.
@@ -2233,7 +2318,10 @@ importFileInput.addEventListener("change", (e) => {
         if (existing >= 0) { catalog[existing] = card; updated++; }
         else { catalog.push(card); added++; }
       }
-      saveCatalog();
+      // Await so the alert reflects the actual persistence outcome — an IDB
+      // write failure here would otherwise show "complete" for data that
+      // isn't durable.
+      try { await saveCatalog(); } catch (_) {}
       renderCatalog();
       resetEditor();
       alert(`Import complete: ${added} added, ${updated} updated.`);
@@ -2248,9 +2336,19 @@ importFileInput.addEventListener("change", (e) => {
 // ═══════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════
-resetEditor();
-renderCatalog();
-updateLiveLinkStatus();
+// Catalog load is async (IndexedDB), so defer UI render until it resolves.
+// resetEditor() is safe to run synchronously — it only touches form inputs.
+(async function bootBuilder() {
+  resetEditor();
+  try {
+    catalog = await loadCatalog();
+  } catch (e) {
+    console.error("[cards] loadCatalog failed:", e);
+    catalog = [];
+  }
+  renderCatalog();
+  await updateLiveLinkStatus();
+})();
 </script>
 </body>
 </html>

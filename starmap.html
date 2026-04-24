@@ -133,6 +133,7 @@ body {
   position: relative;
   overflow: hidden;
   cursor: grab;
+  touch-action: none; /* let us handle pan/pinch ourselves */
 }
 #map-container.dragging { cursor: grabbing; }
 #starmap {
@@ -5134,16 +5135,73 @@ const container = document.getElementById("map-container");
 const canvasEl = document.getElementById("starmap");
 const tooltip = document.getElementById("tooltip");
 
-container.addEventListener("mousedown", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#system-backdrop") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colony-backdrop") || e.target.closest("#colonies-list-overlay") || e.target.closest("#colonies-backdrop") || e.target.closest("#fleets-list-overlay") || e.target.closest("#fleets-backdrop") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#combat-overlay") || e.target.closest("#combat-backdrop")) return;
-  isDragging = true;
-  dragMoved = false;
-  dragStart = { x: e.clientX, y: e.clientY };
-  dragCameraStart = { x: camera.x, y: camera.y };
-  container.classList.add("dragging");
+// Active pointer tracking — unifies mouse + touch + pen. Two pointers = pinch-zoom.
+const activePointers = new Map();
+let pinchState = null;
+
+function isOverBlockingOverlay(target) {
+  return target.closest("#system-overlay") || target.closest("#system-backdrop") ||
+         target.closest("#select-panel") || target.closest("#colony-overlay") ||
+         target.closest("#colony-backdrop") || target.closest("#colonies-list-overlay") ||
+         target.closest("#colonies-backdrop") || target.closest("#fleets-list-overlay") ||
+         target.closest("#fleets-backdrop") || target.closest("#card-select-backdrop") ||
+         target.closest("#research-backdrop") || target.closest("#combat-overlay") ||
+         target.closest("#combat-backdrop");
+}
+
+container.addEventListener("pointerdown", (e) => {
+  if (isOverBlockingOverlay(e.target)) return;
+  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (activePointers.size === 1) {
+    // First pointer: start panning
+    isDragging = true;
+    dragMoved = false;
+    dragStart = { x: e.clientX, y: e.clientY };
+    dragCameraStart = { x: camera.x, y: camera.y };
+    container.classList.add("dragging");
+    pinchState = null;
+  } else if (activePointers.size === 2) {
+    // Second pointer: switch from pan to pinch-zoom
+    isDragging = false;
+    dragMoved = true; // suppress click after pinch ends
+    container.classList.remove("dragging");
+    const pts = [...activePointers.values()];
+    const dx = pts[0].x - pts[1].x;
+    const dy = pts[0].y - pts[1].y;
+    const rect = canvasEl.getBoundingClientRect();
+    const midX = (pts[0].x + pts[1].x) / 2 - rect.left;
+    const midY = (pts[0].y + pts[1].y) / 2 - rect.top;
+    pinchState = {
+      startDist: Math.hypot(dx, dy),
+      startZoom: camera.zoom,
+      midX, midY,
+      worldBefore: screenToWorld(midX, midY),
+    };
+  }
 });
 
-window.addEventListener("mousemove", (e) => {
+window.addEventListener("pointermove", (e) => {
+  if (activePointers.has(e.pointerId)) {
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  }
+
+  // Pinch-zoom: two active pointers, anchor to starting midpoint
+  if (pinchState && activePointers.size >= 2) {
+    const pts = [...activePointers.values()].slice(0, 2);
+    const dx = pts[0].x - pts[1].x;
+    const dy = pts[0].y - pts[1].y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 0 && pinchState.startDist > 0) {
+      const newZoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, pinchState.startZoom * (dist / pinchState.startDist)));
+      camera.zoom = newZoom;
+      const worldAfter = screenToWorld(pinchState.midX, pinchState.midY);
+      camera.x -= (worldAfter.x - pinchState.worldBefore.x);
+      camera.y -= (worldAfter.y - pinchState.worldBefore.y);
+    }
+    return;
+  }
+
   if (isDragging) {
     const dx = e.clientX - dragStart.x;
     const dy = e.clientY - dragStart.y;
@@ -5152,6 +5210,9 @@ window.addEventListener("mousemove", (e) => {
     camera.y = dragCameraStart.y - dy / camera.zoom;
     return;
   }
+
+  // Hover detection below — only meaningful for mouse/pen (touch has no hover)
+  if (e.pointerType === "touch") return;
 
   // Hover detection
   const rect = canvasEl.getBoundingClientRect();
@@ -5199,51 +5260,72 @@ window.addEventListener("mousemove", (e) => {
   }
 });
 
-window.addEventListener("mouseup", (e) => {
-  if (isDragging) {
+function handlePointerEnd(e) {
+  if (!activePointers.has(e.pointerId)) return;
+  activePointers.delete(e.pointerId);
+
+  // Drop out of pinch once we're below two fingers. Don't auto-restart pan —
+  // require a fresh pointerdown so the user doesn't accidentally fling the map.
+  if (pinchState && activePointers.size < 2) {
+    pinchState = null;
     isDragging = false;
     container.classList.remove("dragging");
+    return;
+  }
 
-    if (!dragMoved && e.button === 0) {
-      const rect = canvasEl.getBoundingClientRect();
-      const sx = e.clientX - rect.left;
-      const sy = e.clientY - rect.top;
+  if (activePointers.size > 0) return; // still another finger down, wait
 
-      // Check combat icon click first
-      const combatHit = getCombatAtScreen(sx, sy);
-      if (combatHit) {
-        showCombatOverlay(combatHit);
-        return;
+  if (!isDragging) return;
+  isDragging = false;
+  container.classList.remove("dragging");
+
+  // Click logic — primary button only (touch/pen are always button 0)
+  if (!dragMoved && e.button === 0) {
+    const rect = canvasEl.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+
+    // Check combat icon click first
+    const combatHit = getCombatAtScreen(sx, sy);
+    if (combatHit) {
+      showCombatOverlay(combatHit);
+      return;
+    }
+
+    // Check if clicking an entity (ship/fleet)
+    const entIdx = getEntityAtScreen(sx, sy);
+
+    if (selectedEntityIdx !== null && entIdx !== selectedEntityIdx) {
+      // Entity is selected — click sets destination. Gated to player-owned
+      // non-combat entities; NPC fleets ignore player click commands.
+      const selEnt = mapEntities[selectedEntityIdx];
+      if (selEnt && selEnt.owner === "player" && !selEnt.inCombat) {
+        const world = screenToWorld(sx, sy);
+        selEnt.destX = world.x;
+        selEnt.destY = world.y;
       }
-
-      // Check if clicking an entity (ship/fleet)
-      const entIdx = getEntityAtScreen(sx, sy);
-
-      if (selectedEntityIdx !== null && entIdx !== selectedEntityIdx) {
-        // Entity is selected — click sets destination. Gated to player-owned
-        // non-combat entities; NPC fleets ignore player click commands.
-        const selEnt = mapEntities[selectedEntityIdx];
-        if (selEnt && selEnt.owner === "player" && !selEnt.inCombat) {
-          const world = screenToWorld(sx, sy);
-          selEnt.destX = world.x;
-          selEnt.destY = world.y;
-        }
-      } else if (entIdx !== null) {
-        // Clicking an entity — select it and show info
-        selectedEntityIdx = entIdx;
-        showEntityPanel(entIdx);
+    } else if (entIdx !== null) {
+      // Clicking an entity — select it and show info
+      selectedEntityIdx = entIdx;
+      showEntityPanel(entIdx);
+    } else {
+      // No entity involved — normal star selection
+      selectedEntityIdx = null;
+      const star = getStarAtScreen(sx, sy);
+      if (star) {
+        showSelectPanel(star);
       } else {
-        // No entity involved — normal star selection
-        selectedEntityIdx = null;
-        const star = getStarAtScreen(sx, sy);
-        if (star) {
-          showSelectPanel(star);
-        } else {
-          hideSelectPanel();
-        }
+        hideSelectPanel();
       }
     }
   }
+}
+
+window.addEventListener("pointerup", handlePointerEnd);
+window.addEventListener("pointercancel", (e) => {
+  // Treat cancel as a no-click end (dragMoved already true if we moved)
+  dragMoved = true;
+  handlePointerEnd(e);
 });
 
 // Suppress context menu on the map entirely

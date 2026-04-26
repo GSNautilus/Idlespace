@@ -3031,6 +3031,74 @@ function tickCombats(rawDt) {
   }
 }
 
+// ── Pictographic ship silhouettes ──
+// Path geometry is normalized to ~size=1.0 (extents roughly within ±12 units
+// for legendary, smaller for lower rarities). Callers scale by the existing
+// per-rarity MINI_SHIP_SIZES knob so the size hierarchy in formations is
+// preserved. Paths point "up" (negative Y); rotate the context to heading
+// before calling. Caller is responsible for fillStyle/strokeStyle.
+//
+// At low zoom, drawShipSilhouette would melt into a smudge — we keep the
+// existing tiny triangle (now factored into drawShipGlyph) for far zoom and
+// crossfade between the two using SHIP_SILHOUETTE_FADE.
+const SHIP_SILHOUETTE_FADE = { in: 0.85, out: 1.30 }; // zoom band where silhouette fades from 0→1
+
+function shipSilhouetteAlpha(zoom) {
+  const { in: a, out: b } = SHIP_SILHOUETTE_FADE;
+  if (zoom <= a) return 0;
+  if (zoom >= b) return 1;
+  const t = (zoom - a) / (b - a);
+  return t * t * (3 - 2 * t); // smoothstep
+}
+
+function drawShipSilhouette(ctx, rarity) {
+  // Geometry from the v2 design exploration — five rarity-distinct shapes.
+  // Each path is closed; caller fills + strokes inside its own save/restore.
+  ctx.beginPath();
+  if (rarity === "legendary") {
+    // Capital dreadnought — long hull with twin wing arrays
+    ctx.moveTo(0, -12);
+    ctx.lineTo(2, -6); ctx.lineTo(4, -4); ctx.lineTo(7, -2); ctx.lineTo(7, 1);
+    ctx.lineTo(4, 2);  ctx.lineTo(3, 6);  ctx.lineTo(-3, 6); ctx.lineTo(-4, 2);
+    ctx.lineTo(-7, 1); ctx.lineTo(-7, -2); ctx.lineTo(-4, -4); ctx.lineTo(-2, -6);
+  } else if (rarity === "epic") {
+    // Cruiser — sleek twin-hull
+    ctx.moveTo(0, -10);
+    ctx.lineTo(3, -4);  ctx.lineTo(5, -2);  ctx.lineTo(5, 3);   ctx.lineTo(2, 4);
+    ctx.lineTo(-2, 4);  ctx.lineTo(-5, 3);  ctx.lineTo(-5, -2); ctx.lineTo(-3, -4);
+  } else if (rarity === "rare") {
+    // Heavy frigate — angular pentagonal hull
+    ctx.moveTo(0, -8);
+    ctx.lineTo(4, -2); ctx.lineTo(4, 4); ctx.lineTo(-4, 4); ctx.lineTo(-4, -2);
+  } else if (rarity === "uncommon") {
+    // Corvette — slim arrow with swept stern
+    ctx.moveTo(0, -7);
+    ctx.lineTo(3, 2); ctx.lineTo(2, 4); ctx.lineTo(-2, 4); ctx.lineTo(-3, 2);
+  } else {
+    // Common — simple triangular scout
+    ctx.moveTo(0, -6);
+    ctx.lineTo(3, 3); ctx.lineTo(-3, 3);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+// Tiny abstract glyph used at far zoom (where the detailed silhouette would
+// just be a smudge). Same coordinate frame as the silhouettes — caller sets
+// fill/stroke and rotation.
+function drawShipGlyph(ctx, isFleet) {
+  ctx.beginPath();
+  if (isFleet) {
+    ctx.moveTo(0, -1.0); ctx.lineTo(0.85, 0.6); ctx.lineTo(0, 0.15); ctx.lineTo(-0.85, 0.6);
+  } else {
+    ctx.moveTo(0, -1.0); ctx.lineTo(0.7, 0.6); ctx.lineTo(-0.7, 0.6);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
 function drawEntities(ctx, time) {
   for (let i = 0; i < mapEntities.length; i++) {
     const ent = mapEntities[i];
@@ -3202,25 +3270,40 @@ function drawEntities(ctx, time) {
             ? "#c04040"
             : (RARITY_COLORS[shipRarity] || "#4a7ac0");
           const ts = (MINI_SHIP_SIZES[shipRarity] || 3.5) * camera.zoom;
+          // Crossfade: tiny chevron glyph at far zoom, detailed silhouette
+          // close in. Old triangle's vertical extent was `ts` — silhouettes
+          // are normalized to ~6 units up, so divide by 6 to match.
+          const silAlpha = shipSilhouetteAlpha(camera.zoom);
+          const glyphAlpha = 1 - silAlpha;
           ctx.save();
           ctx.translate(fx, fy);
           ctx.rotate(triAngle);
           ctx.fillStyle = shipCol;
           ctx.strokeStyle = "rgba(0,0,0,0.45)";
           ctx.lineWidth = Math.max(0.5, 0.6 * camera.zoom);
-          ctx.beginPath();
-          ctx.moveTo(0, -ts);
-          ctx.lineTo(ts * 0.75, ts * 0.6);
-          ctx.lineTo(-ts * 0.75, ts * 0.6);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
+          if (glyphAlpha > 0.04) {
+            ctx.save();
+            ctx.scale(ts, ts);
+            ctx.globalAlpha = glyphAlpha;
+            // Per-ship glyph in a fleet still uses the solo "triangle" form;
+            // the bigger fleet-chevron mark is the parent fleet icon.
+            drawShipGlyph(ctx, false);
+            ctx.restore();
+          }
+          if (silAlpha > 0.04) {
+            ctx.save();
+            ctx.scale(ts / 6, ts / 6);
+            ctx.globalAlpha = silAlpha;
+            drawShipSilhouette(ctx, shipRarity);
+            ctx.restore();
+          }
           ctx.restore();
         }
       }
     } else {
-      // Solo ship icon — triangle rotated to heading. Retains its last
-      // heading after stopping; defaults to "up" only if it's never moved.
+      // Solo ship icon — silhouette rotated to heading, with chevron glyph
+      // at far zoom for legibility. Retains its last heading after stopping;
+      // defaults to "up" only if it's never moved.
       if (ent.destX !== null && ent.destY !== null) {
         const dxh = ent.destX - ent.x;
         const dyh = ent.destY - ent.y;
@@ -3229,16 +3312,32 @@ function drawEntities(ctx, time) {
       const soloAngle = (ent.lastHeadingAngle !== undefined)
         ? ent.lastHeadingAngle + Math.PI / 2
         : 0;
+      const soloRarity = ent.rarity || "common";
+      const soloFill = isSelected ? lightenColor(rarityColor, 30) : rarityColor;
+      const silAlpha = shipSilhouetteAlpha(camera.zoom);
+      const glyphAlpha = 1 - silAlpha;
       ctx.save();
       ctx.rotate(soloAngle);
-      ctx.fillStyle = isSelected ? lightenColor(rarityColor, 30) : rarityColor;
-      ctx.beginPath();
-      ctx.moveTo(0, -size);
-      ctx.lineTo(size * 0.7, size * 0.6);
-      ctx.lineTo(-size * 0.7, size * 0.6);
-      ctx.closePath();
-      ctx.fill();
-      // Bright core — draw inside the rotated frame so it stays centered.
+      ctx.fillStyle = soloFill;
+      ctx.strokeStyle = "rgba(0,0,0,0.5)";
+      ctx.lineWidth = Math.max(0.5, 0.7 * camera.zoom);
+      if (glyphAlpha > 0.04) {
+        ctx.save();
+        ctx.scale(size, size);
+        ctx.globalAlpha = glyphAlpha;
+        drawShipGlyph(ctx, false);
+        ctx.restore();
+      }
+      if (silAlpha > 0.04) {
+        ctx.save();
+        // size = 6 * camera.zoom; silhouettes are ~6 units tall → scale = camera.zoom.
+        ctx.scale(camera.zoom, camera.zoom);
+        ctx.globalAlpha = silAlpha;
+        drawShipSilhouette(ctx, soloRarity);
+        ctx.restore();
+      }
+      // Bright cockpit core — small white dot, scaled with zoom.
+      ctx.globalAlpha = 1;
       ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
       ctx.beginPath();
       ctx.arc(0, 0, size * 0.2, 0, Math.PI * 2);
@@ -3670,6 +3769,173 @@ function initBgStars(count = 400) {
   }
 }
 initBgStars();
+
+// ═══════════════════════════════════════════
+//  NEBULAE
+// ═══════════════════════════════════════════
+// Soft Gaussian-blurred gas clouds drawn in world-space between the deep-space
+// fill and the bg-star parallax layer. Each nebula is prerendered once into
+// its own offscreen canvas (multi-octave radial-noise procedural mask) and
+// blitted with drawImage every frame, so per-frame cost is just N textured
+// blits regardless of how detailed the textures are.
+//
+// Color rules: cool brand range (cobalt/violet/magenta) dominates, with the
+// occasional warm rust-orange "relic-zone" pocket per the design direction.
+const NEBULAE = [];
+const NEBULA_PALETTE_COOL = [
+  { r:  60, g: 110, b: 220 }, // cobalt
+  { r: 120, g:  80, b: 220 }, // violet
+  { r: 200, g:  90, b: 200 }, // magenta
+  { r:  50, g: 140, b: 200 }, // ice-blue
+  { r: 150, g: 100, b: 230 }, // periwinkle
+];
+const NEBULA_PALETTE_WARM = [
+  { r: 220, g: 110, b:  60 }, // rust
+  { r: 230, g: 140, b:  70 }, // amber-rust
+];
+
+// Tiny seedable RNG so nebula layout is stable across reloads.
+function nebulaRand(seed) {
+  let s = seed | 0;
+  return function() {
+    s = (s * 1664525 + 1013904223) | 0;
+    return ((s >>> 0) % 100000) / 100000;
+  };
+}
+
+// 2D value noise — cheap, smooth, good enough for a soft mask.
+function makeNoise2D(rand) {
+  const SIZE = 64;
+  const grid = new Float32Array(SIZE * SIZE);
+  for (let i = 0; i < grid.length; i++) grid[i] = rand();
+  function smooth(t) { return t * t * (3 - 2 * t); }
+  return function(x, y) {
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const xf = x - xi, yf = y - yi;
+    const x0 = ((xi % SIZE) + SIZE) % SIZE;
+    const y0 = ((yi % SIZE) + SIZE) % SIZE;
+    const x1 = (x0 + 1) % SIZE;
+    const y1 = (y0 + 1) % SIZE;
+    const v00 = grid[y0 * SIZE + x0];
+    const v10 = grid[y0 * SIZE + x1];
+    const v01 = grid[y1 * SIZE + x0];
+    const v11 = grid[y1 * SIZE + x1];
+    const sx = smooth(xf), sy = smooth(yf);
+    const a = v00 + (v10 - v00) * sx;
+    const b = v01 + (v11 - v01) * sx;
+    return a + (b - a) * sy;
+  };
+}
+
+// Bake one nebula's pixel data into an offscreen canvas. The mask is a sum of
+// 4 noise octaves multiplied by a radial falloff so the cloud fades cleanly
+// at the edges instead of clipping on the canvas border.
+function bakeNebula(rand, palette) {
+  const SIZE = 256;
+  const cv = document.createElement("canvas");
+  cv.width = SIZE;
+  cv.height = SIZE;
+  const c = cv.getContext("2d");
+  const img = c.createImageData(SIZE, SIZE);
+  const noise = makeNoise2D(rand);
+  // Pick a base color and a secondary tint for inner highlights, both from
+  // the same palette so the cloud feels like one body of gas.
+  const base = palette[Math.floor(rand() * palette.length)];
+  const tint = palette[Math.floor(rand() * palette.length)];
+  // Octave frequencies — broad shape, then progressively finer detail.
+  const freqs = [1.5, 3.2, 6.8, 13.5];
+  const amps  = [0.55, 0.28, 0.13, 0.08];
+  const phaseX = rand() * 100, phaseY = rand() * 100;
+  // Edge falloff softness — higher = harder edge, lower = wispy.
+  const falloffPow = 1.6 + rand() * 1.2;
+  // Inner brightness boost (rare bright pockets inside the cloud).
+  const corePow = 2.5 + rand() * 1.5;
+  const cx = SIZE / 2, cy = SIZE / 2;
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      // Multi-octave value noise normalized to 0..1.
+      let n = 0;
+      for (let i = 0; i < freqs.length; i++) {
+        n += noise(phaseX + x / SIZE * freqs[i] * 8,
+                   phaseY + y / SIZE * freqs[i] * 8) * amps[i];
+      }
+      // Radial falloff: 1 at center → 0 at edge of inscribed circle.
+      const dx = (x - cx) / cx, dy = (y - cy) / cy;
+      const d = Math.min(1, Math.sqrt(dx * dx + dy * dy));
+      const radial = Math.pow(1 - d, falloffPow);
+      const density = Math.max(0, Math.min(1, n)) * radial;
+      // Inner-core tint mix (brighter pockets bias toward the tint color).
+      const coreMix = Math.pow(density, corePow);
+      const r = base.r * (1 - coreMix) + tint.r * coreMix;
+      const g = base.g * (1 - coreMix) + tint.g * coreMix;
+      const b = base.b * (1 - coreMix) + tint.b * coreMix;
+      const idx = (y * SIZE + x) * 4;
+      img.data[idx]     = r;
+      img.data[idx + 1] = g;
+      img.data[idx + 2] = b;
+      // Alpha gates everything — most of the cloud is sparse, so a low
+      // ceiling keeps it atmospheric instead of opaque.
+      img.data[idx + 3] = Math.min(255, density * 220);
+    }
+  }
+  c.putImageData(img, 0, 0);
+  return cv;
+}
+
+function initNebulae() {
+  // Seeded layout so the nebula field doesn't reshuffle between reloads.
+  const rand = nebulaRand(0xC0FFEE);
+  // World-space spread — covers a wide region so nebulae are visible at
+  // typical zoom levels without obvious tiling.
+  const SPREAD = 6000;
+  const COUNT = 14;
+  const WARM_RATIO = 0.18; // ~1 in 5 is a warm relic pocket
+  for (let i = 0; i < COUNT; i++) {
+    const palette = rand() < WARM_RATIO
+      ? NEBULA_PALETTE_WARM
+      : NEBULA_PALETTE_COOL;
+    const tex = bakeNebula(rand, palette);
+    NEBULAE.push({
+      x: (rand() - 0.5) * SPREAD * 2,
+      y: (rand() - 0.5) * SPREAD * 2,
+      // World-space radius; texture is square so we draw it 2*radius wide.
+      // Mix of large background drifts and smaller dense pockets.
+      radius: 700 + rand() * 1400,
+      rotation: rand() * Math.PI * 2,
+      tex,
+      // Per-cloud opacity so some recede and others pop.
+      alpha: 0.55 + rand() * 0.35,
+    });
+  }
+}
+initNebulae();
+
+function drawNebulae(ctx) {
+  if (NEBULAE.length === 0) return;
+  const canvas = ctx.canvas;
+  // Slight parallax — nebulae move just a hair slower than the main star
+  // layer so they feel "deeper" without breaking the world-anchored feel.
+  const parallax = 0.85;
+  ctx.save();
+  // Additive-ish blend: "lighter" makes overlapping clouds bloom into each
+  // other instead of stacking flatly, which sells the gas-cloud feel.
+  ctx.globalCompositeOperation = "lighter";
+  for (const neb of NEBULAE) {
+    const sx = (neb.x - camera.x * parallax) * camera.zoom + canvas.width / 2;
+    const sy = (neb.y - camera.y * parallax) * camera.zoom + canvas.height / 2;
+    const screenR = neb.radius * camera.zoom;
+    // Cull anything entirely off-screen (cheap AABB check).
+    if (sx + screenR < 0 || sx - screenR > canvas.width ||
+        sy + screenR < 0 || sy - screenR > canvas.height) continue;
+    ctx.globalAlpha = neb.alpha;
+    ctx.translate(sx, sy);
+    ctx.rotate(neb.rotation);
+    ctx.drawImage(neb.tex, -screenR, -screenR, screenR * 2, screenR * 2);
+    ctx.rotate(-neb.rotation);
+    ctx.translate(-sx, -sy);
+  }
+  ctx.restore();
+}
 
 // ═══════════════════════════════════════════
 //  CANVAS RENDERING
@@ -4115,6 +4381,10 @@ function render() {
   // Background
   ctx.fillStyle = "#050508";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Nebulae sit between the deep-space fill and the bg-star parallax layer
+  // so distant stars (and everything above) read cleanly through the gas.
+  drawNebulae(ctx);
 
   drawBgStars(ctx);
 

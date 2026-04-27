@@ -419,12 +419,20 @@ body {
   transition: all 0.15s;
   text-align: center;
 }
-.card-action-btn:hover { background: linear-gradient(135deg, #3050a0, #4a6ac0); }
+.card-action-btn:hover:not(:disabled) { background: linear-gradient(135deg, #3050a0, #4a6ac0); }
+.card-action-btn:disabled,
+.card-action-btn[disabled] {
+  background: linear-gradient(135deg, #1a2030, #20283a);
+  border-color: #303848;
+  color: #6a7080;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
 .card-action-btn.secondary {
   background: linear-gradient(135deg, #1a2540, #243060);
   border-color: #2a3a60;
 }
-.card-action-btn.secondary:hover { background: linear-gradient(135deg, #243060, #2e4080); }
+.card-action-btn.secondary:hover:not(:disabled) { background: linear-gradient(135deg, #243060, #2e4080); }
 
 /* ── Detected Info Label ── */
 #detected-info {
@@ -1865,13 +1873,17 @@ function showCardLoadError(detail) {
 // ═══════════════════════════════════════════
 
 
-// Pirate power tier 0..1 based on distance from home (origin).
-// Ramps over ~18000 world units — a long-term progression knob.
-const PIRATE_TIER_RANGE = 18000;
+// Pirate power tier 0..1 based on distance from home (origin). The ratio
+// (dist/RANGE) is raised to TIER_EXPONENT > 1 so power ramps slowly near
+// home and only reaches max at the far edge — finding legendary pirates
+// should be a long-distance journey, not a few screens out.
+const PIRATE_TIER_RANGE = 80000;     // was 18000 — 4.4x slower linear ramp
+const PIRATE_TIER_EXPONENT = 1.5;    // > 1 = slower near home, sharper near edge
 // No pirate spawns within this radius of the home star (origin).
 const PIRATE_HOME_SAFE_RADIUS = 1500;
 function getPirateTier(x, y) {
-  return Math.max(0, Math.min(1, Math.hypot(x, y) / PIRATE_TIER_RANGE));
+  const r = Math.min(1, Math.hypot(x, y) / PIRATE_TIER_RANGE);
+  return Math.pow(r, PIRATE_TIER_EXPONENT);
 }
 function rollPirateRarity(rng, tier) {
   // Near home: almost all common. Far: epic/legendary become plausible.
@@ -2348,9 +2360,13 @@ function generateChunk(cx, cy) {
       // fall through — skip pirate spawn for this chunk
     } else {
       const tier = getPirateTier(px, py);
-      // 1-3 ships near home, up to 1-9 at max tier.
-      const maxShips = 3 + Math.floor(tier * 6);
-      const shipCount = 1 + Math.floor(rng() * maxShips);
+      // Heavy-tail fleet size: most spawns are tiny, but the right tail can
+      // produce occasional large fleets, with the tail growing wider at high
+      // tier. Sampled from an exponential with mean = 1 + tier*5 (so ~1 ship
+      // near home, ~6 at max tier), then floored and clamped.
+      const meanFleetSize = 1 + tier * 5;
+      const u = Math.max(1e-6, rng());
+      const shipCount = Math.max(1, Math.min(30, Math.floor(1 + (-Math.log(u)) * meanFleetSize)));
       const pirateShips = [];
       for (let pi = 0; pi < shipCount; pi++) {
         const tpl = rollPirateShip(rng, tier);
@@ -2416,6 +2432,27 @@ function revealChunksInRadius(wx, wy, radius) {
 
 // Detect stars within sensor range — unknown → detected
 const BASE_SENSOR_RANGE = 500;  // default reveal radius for colonies / exploration
+
+// True iff (wx, wy) is currently covered by any player-controlled sensor
+// zone — colonies (radius BASE_SENSOR_RANGE) or player map entities (radius
+// ent.sensorRange * 50). Mirrors the activeZones the fog renderer uses, so
+// "you can see fog clear here" implies "Explore is available."
+function isInPlayerSensorRange(wx, wy) {
+  for (const star of stars.values()) {
+    if (star.planets && star.planets.some(p => p.colony)) {
+      const dx = wx - star.x, dy = wy - star.y;
+      if (dx * dx + dy * dy <= BASE_SENSOR_RANGE * BASE_SENSOR_RANGE) return true;
+    }
+  }
+  for (const ent of mapEntities) {
+    if (ent.owner === "npc") continue;
+    const r = (ent.sensorRange || 0) * 50;
+    if (r <= 0) continue;
+    const dx = wx - ent.x, dy = wy - ent.y;
+    if (dx * dx + dy * dy <= r * r) return true;
+  }
+  return false;
+}
 
 function detectStarsInRange(wx, wy, sensorRange) {
   revealChunksInRadius(wx, wy, sensorRange);
@@ -2680,6 +2717,17 @@ function tickEntities(dt) {
 
   // Detection & engagement scan
   checkCombatEngagements();
+
+  // Drop a stale pirate selection if it's slipped out of sensor coverage,
+  // otherwise the select panel keeps showing data for an entity the player
+  // can no longer see on the map.
+  if (selectedEntityIdx !== null) {
+    const sel = mapEntities[selectedEntityIdx];
+    if (sel && !isEntityVisibleToPlayer(sel)) {
+      selectedEntityIdx = null;
+      hideSelectPanel();
+    }
+  }
 }
 
 function shouldEngage(a, b, aDetects, bDetects) {
@@ -3111,9 +3159,20 @@ function drawShipGlyph(ctx, isFleet) {
   ctx.stroke();
 }
 
+// NPC entities (pirates) are only rendered when actively detected: in a
+// player sensor zone, OR currently engaged in combat with a player ship.
+// Memory fog reveals stationary terrain (stars), but mobile units must be
+// visible only while a scout/colony actively sees them.
+function isEntityVisibleToPlayer(ent) {
+  if (!ent || ent.owner !== "npc") return true;
+  if (ent.inCombat) return true;
+  return isInPlayerSensorRange(ent.x, ent.y);
+}
+
 function drawEntities(ctx, time) {
   for (let i = 0; i < mapEntities.length; i++) {
     const ent = mapEntities[i];
+    if (!isEntityVisibleToPlayer(ent)) continue;
     const pos = worldToScreen(ent.x, ent.y);
     const isSelected = selectedEntityIdx === i;
 
@@ -3735,6 +3794,7 @@ function getEntityAtScreen(sx, sy) {
   const hitRadius = 15 / camera.zoom;  // generous click target
   for (let i = 0; i < mapEntities.length; i++) {
     const ent = mapEntities[i];
+    if (!isEntityVisibleToPlayer(ent)) continue; // can't click what you can't see
     const d = Math.sqrt((world.x - ent.x) ** 2 + (world.y - ent.y) ** 2);
     if (d < hitRadius) return i;
   }
@@ -5191,9 +5251,14 @@ function showSystemOverlay(star) {
           <div class="mystery-text">Unknown Star</div>
         </div>
       </div>`;
-    document.getElementById("detected-actions").innerHTML =
-      `<button class="card-action-btn" onclick="exploreSelectedStar()">Explore</button>`;
-    document.getElementById("detected-info").textContent = "Send a ship to explore this star.";
+    const inSensor = isInPlayerSensorRange(star.x, star.y);
+    const exploreBtn = inSensor
+      ? `<button class="card-action-btn" onclick="exploreSelectedStar()">Explore</button>`
+      : `<button class="card-action-btn" disabled title="A player ship or colony must have this star in sensor range to explore.">Explore</button>`;
+    document.getElementById("detected-actions").innerHTML = exploreBtn;
+    document.getElementById("detected-info").textContent = inSensor
+      ? "Send a ship to explore this star."
+      : "Move a fleet within sensor range to explore.";
     // No system canvas
     if (systemAnimFrame) { cancelAnimationFrame(systemAnimFrame); systemAnimFrame = null; }
   } else {
@@ -5224,6 +5289,7 @@ function hideSystemOverlay() {
 function exploreSelectedStar() {
   const star = stars.get(selectedStarId);
   if (!star || star.visibility !== "detected") return;
+  if (!isInPlayerSensorRange(star.x, star.y)) return;
 
   star.visibility = "explored";
 
@@ -5270,8 +5336,13 @@ function showSelectPanel(star) {
           <div class="mystery-text">Unknown Star</div>
         </div>
       </div>`;
-    actions.innerHTML = `<button class="card-action-btn" onclick="exploreFromPanel()">Explore</button>`;
-    info.textContent = "Send a ship to explore this star.";
+    const inSensor = isInPlayerSensorRange(star.x, star.y);
+    actions.innerHTML = inSensor
+      ? `<button class="card-action-btn" onclick="exploreFromPanel()">Explore</button>`
+      : `<button class="card-action-btn" disabled title="A player ship or colony must have this star in sensor range to explore.">Explore</button>`;
+    info.textContent = inSensor
+      ? "Send a ship to explore this star."
+      : "Move a fleet within sensor range to explore.";
   } else {
     slot.innerHTML = buildCardHtml(star.card);
     // Generate planets to know count (but don't open system view)
@@ -5380,6 +5451,7 @@ function hideSelectPanel() {
 function exploreFromPanel() {
   const star = stars.get(selectedStarId);
   if (!star || star.visibility !== "detected") return;
+  if (!isInPlayerSensorRange(star.x, star.y)) return;
   star.visibility = "explored";
   detectStarsInRange(star.x, star.y, BASE_SENSOR_RANGE);
   markSeenInRange(star.x, star.y, BASE_SENSOR_RANGE);
@@ -7327,11 +7399,9 @@ function showResearchReveal(template, category) {
   backdrop.appendChild(label);
   backdrop.appendChild(btn);
   document.body.appendChild(backdrop);
-
-  // Click backdrop outside card to dismiss
-  backdrop.addEventListener("click", (e) => {
-    if (e.target === backdrop) btn.click();
-  });
+  // No click-outside-to-dismiss — the player has to acknowledge with the
+  // Continue button so the reveal isn't accidentally clicked away while
+  // they're doing something else on the map.
 }
 
 // ═══════════════════════════════════════════

@@ -17,6 +17,7 @@
 <style>
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: #050508; }
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   background: #050508;
@@ -26,6 +27,18 @@ body {
   flex-direction: column;
   overflow: hidden;
   user-select: none;
+}
+/* Global UI scaling for sub-design screens (tablets, small laptops): body is
+   laid out at the 3440px design width and transform-scaled to fit. The class
+   is added by applyUiScale() only when screen.width < the design width, so
+   desktop windows — including half-windows — stay at the original layout. */
+body.scaled {
+  position: absolute;
+  top: 0; left: 0;
+  width: 3440px;
+  height: 1440px;
+  transform-origin: top left;
+  transform: scale(var(--ui-scale, 1));
 }
 
 /* ── Top Bar (restyled — see ui/topbar.css for the structural vocabulary) ── */
@@ -8675,8 +8688,30 @@ function confirmLoadSave(data, sourceLabel) {
 await loadCardData();
 updateCardSourceBadge();
 initResearch();
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
+// Compute global UI scale (see body CSS). Triggered only when the physical
+// screen is smaller than the 3440px design width — i.e. tablets and small
+// laptops. On a 3440 desktop, scale stays 1 even at half-window so the
+// original layout (with natural overflow) is preserved.
+const DESIGN_W = 3440;
+function applyUiScale() {
+  const screenW = window.screen.width;
+  const scale = Math.min(screenW / DESIGN_W, 1);
+  if (scale >= 1) {
+    document.body.classList.remove('scaled');
+    document.body.style.height = '';
+    document.documentElement.style.removeProperty('--ui-scale');
+  } else {
+    document.body.classList.add('scaled');
+    document.documentElement.style.setProperty('--ui-scale', scale);
+    document.body.style.height = (window.innerHeight / scale) + 'px';
+  }
+  resizeCanvas();
+  if (document.getElementById("system-overlay")?.classList.contains("visible")) {
+    resizeSystemCanvas();
+  }
+}
+applyUiScale();
+window.addEventListener("resize", applyUiScale);
 const homeStar = generateGalaxy();
 // Helper to clone a ship template by id
 function cloneShip(id, nameOverride) {

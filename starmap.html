@@ -2464,6 +2464,18 @@ function formatETA(gameSec) {
   const m = Math.ceil((gameSec % 3600) / 60);
   return `${h}h ${m}m`;
 }
+// Real-seconds an entity needs to traverse `dist` world-units at the current
+// game speed. Movement per real-second = ent.speed * BASE_GAME_SPEED *
+// gameSpeed * WORLD_SPEED_MULT (matches tickEntities). When paused we fall
+// back to the 1x rate so the display still has a meaningful number rather
+// than Infinity, suffixed with a pause indicator at the call site.
+function entityETARealSec(ent, dist) {
+  if (!ent || !ent.speed || dist <= 0) return 0;
+  const speedScale = BASE_GAME_SPEED * (gameSpeed > 0 ? gameSpeed : 1) * WORLD_SPEED_MULT;
+  const unitsPerRealSec = ent.speed * speedScale;
+  if (unitsPerRealSec <= 0) return 0;
+  return dist / unitsPerRealSec;
+}
 const mapEntities = [];  // array of ships/fleets on the starmap
 let selectedEntityIdx = null;  // index into mapEntities, or null
 
@@ -2636,7 +2648,7 @@ function tickEntities(dt) {
     const dx = ent.destX - ent.x;
     const dy = ent.destY - ent.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const move = ent.speed * dt;
+    const move = ent.speed * dt * WORLD_SPEED_MULT;
 
     if (move >= dist) {
       // Arrived
@@ -2660,7 +2672,7 @@ function tickEntities(dt) {
   // NPC patrol behavior — idle NPCs wander randomly
   for (const ent of mapEntities) {
     if (ent.owner !== "npc" || ent.inCombat || ent.destX !== null) continue;
-    if (Math.random() < 0.02 * dt) {
+    if (Math.random() < 0.002 * dt) {
       ent.destX = ent.x + (Math.random() - 0.5) * 300;
       ent.destY = ent.y + (Math.random() - 0.5) * 300;
     }
@@ -3369,7 +3381,7 @@ function drawEntities(ctx, time) {
         const dist = Math.sqrt((ent.destX - ent.x) ** 2 + (ent.destY - ent.y) ** 2);
         ctx.fillStyle = "rgba(160,160,210,0.5)";
         ctx.font = `${Math.max(7, 9 * camera.zoom)}px 'Segoe UI', system-ui, sans-serif`;
-        ctx.fillText(formatETA(dist / ent.speed), pos.x, pos.y + size + 22 * camera.zoom);
+        ctx.fillText(formatETA(entityETARealSec(ent, dist)), pos.x, pos.y + size + 22 * camera.zoom);
       }
     }
   }
@@ -3434,11 +3446,11 @@ function drawCombatParticles(ctx) {
 const weaponVisuals = [];
 
 function spawnWeaponVisual(fwx, fwy, twx, twy, weaponType) {
-  // Weapon visuals tick on scaledDt while combat runs on scaledDt *
-  // COMBAT_TIME_SCALE. One combat-time SHOT_INTERVAL therefore equals
-  // SHOT_INTERVAL / COMBAT_TIME_SCALE scaledDt-seconds — that's the
-  // "volley window" each shot event gets to fill with visual activity.
-  const VOLLEY = SHOT_INTERVAL / COMBAT_TIME_SCALE;
+  // Weapon visuals tick on scaledDt * VISUAL_DT_FACTOR while combat runs on
+  // scaledDt * COMBAT_TIME_SCALE. One combat-time SHOT_INTERVAL is therefore
+  // SHOT_INTERVAL * VISUAL_DT_FACTOR / COMBAT_TIME_SCALE visual-tick-seconds —
+  // the "volley window" each shot event gets to fill with visual activity.
+  const VOLLEY = SHOT_INTERVAL * VISUAL_DT_FACTOR / COMBAT_TIME_SCALE;
 
   if (weaponType === "energy") {
     // One continuous beam covering ~90% of the window.
@@ -3694,8 +3706,13 @@ function refreshCombatOverlay() {
   const distPct = c.initialDistance > 0 ? (c.distance / c.initialDistance) * 100 : 0;
   document.getElementById("combat-distance-fill").style.width = distPct + "%";
   document.getElementById("combat-round").textContent = `Round ${c.roundNumber}`;
-  const nextVolley = Math.max(0, c.shotTimer);
-  document.getElementById("combat-next-volley").textContent = c.phase === "resolved" ? "" : `Next volley: ${nextVolley.toFixed(1)}s`;
+  // c.shotTimer is in combat-time-seconds. Real-seconds = combat-sec divided
+  // by the chain BASE_GAME_SPEED * gameSpeed * COMBAT_TIME_SCALE. Fall back
+  // to 1x when paused so the display stays meaningful instead of "Infinity".
+  const speedFactor = BASE_GAME_SPEED * (gameSpeed > 0 ? gameSpeed : 1) * COMBAT_TIME_SCALE;
+  const nextVolleyReal = Math.max(0, c.shotTimer) / Math.max(speedFactor, 1e-9);
+  const pausedNote = gameSpeed === 0 ? " (at 1x)" : "";
+  document.getElementById("combat-next-volley").textContent = c.phase === "resolved" ? "" : `Next volley: ${nextVolleyReal.toFixed(1)}s${pausedNote}`;
 
   // Log — only append new entries
   const logEl = document.getElementById("combat-log");
@@ -5315,8 +5332,9 @@ function showEntityPanel(idx) {
   if (ent.stealth > 0) infoHtml += row("i-stealth", `Stealth: ${ent.stealth}`);
   if (ent.destX !== null && ent.destY !== null && ent.speed > 0) {
     const dist = Math.sqrt((ent.destX - ent.x) ** 2 + (ent.destY - ent.y) ** 2);
-    const etaSec = dist / ent.speed;
-    infoHtml += `<div style="color:#a0a0d0;margin-top:4px;display:flex;align-items:center;gap:5px">${ico("i-clock", "sm")}<span>ETA: ${formatETA(etaSec)}</span></div>`;
+    const etaSec = entityETARealSec(ent, dist);
+    const pausedNote = gameSpeed === 0 ? " (at 1x)" : "";
+    infoHtml += `<div style="color:#a0a0d0;margin-top:4px;display:flex;align-items:center;gap:5px">${ico("i-clock", "sm")}<span>ETA: ${formatETA(etaSec)}${pausedNote}</span></div>`;
   } else if (ent.inCombat) {
     infoHtml += `<div style="color:#e05050;margin-top:4px;display:flex;align-items:center;gap:5px">${ico("i-swords", "sm")}<span>In Combat</span></div>`;
   } else if (atColony) {
@@ -5717,15 +5735,32 @@ const RESOURCE_DEFS = [
 ];
 const RESOURCE_IDS = RESOURCE_DEFS.map(r => r.id);
 const resources = {};
-for (const r of RESOURCE_DEFS) resources[r.id] = 500;
-const BASE_GAME_SPEED = 0.1;  // 1x = 10% of real-time; tweak this to tune overall pacing
-let gameSpeed = 1;             // player-facing multiplier (1x, 10x, 50x)
+// Starting resources: credits/research per Phase-1 tuning, others kept at legacy 5000 baseline.
+const STARTING_RESOURCES = { credits: 3000, energy: 5000, minerals: 5000, research: 0, food: 5000 };
+for (const r of RESOURCE_DEFS) resources[r.id] = STARTING_RESOURCES[r.id] != null ? STARTING_RESOURCES[r.id] : 0;
+// 1x game-time = 1x real-time. Constants below are written in real-seconds.
+// Movement and combat have their own secondary multipliers (WORLD_SPEED_MULT,
+// COMBAT_TIME_SCALE) so they can be tuned independently of the global base.
+const BASE_GAME_SPEED = 1.0;
+let gameSpeed = 1;             // player-facing multiplier (1x, 2x, 4x, …)
 let lastTickTime = 0;
 let tickAccumulator = 0;
+// Resource ticks fire once every TICK_PERIOD game-seconds. Building/leader stats
+// in templates are denoted "per tick"; with TICK_PERIOD=1 that's per-real-second.
+const TICK_PERIOD = 1;
 
 // ── Combat constants ──
 const SHOT_INTERVAL = 0.5;       // game-seconds between each shot in a volley
-const COMBAT_TIME_SCALE = 1 / 10; // combat runs 10x slower than normal game time
+const COMBAT_TIME_SCALE = 1 / 100; // combat runs 100x slower than wall-clock — preserves the pre-real-time-rebase combat tempo
+// Map-movement secondary scale: ent.x += dir * (ent.speed * scaledDt * WORLD_SPEED_MULT).
+// 0.1 preserves the pre-rebase travel feel; lower it later to push toward the
+// hours-long travel vision in the pacing memory without touching ship template stats.
+const WORLD_SPEED_MULT = 0.1;
+// Particles and weapon-flash visuals tick at scaledDt * VISUAL_DT_FACTOR so
+// their on-screen tempo is unchanged across BASE_GAME_SPEED rebases. Any
+// formula that converts combat-time to "visual-tick-time" (e.g. VOLLEY in
+// spawnWeaponVisual) must include this factor.
+const VISUAL_DT_FACTOR = 0.1;
 const COMBAT_HP_SCALE = 5;       // multiplier on shields/armor for combat durability
 const RANGE_THRESHOLDS = { long: 1000, medium: 650, short: 350 };  // world-unit distance for weapon activation
 const ENGAGED_DISTANCE = 200;    // world units — entities stop closing at this distance
@@ -5737,10 +5772,19 @@ const COMBAT_TRIANGLE = {
 const activeCombats = [];
 let nextCombatId = 1;
 
-// Card draw cost escalation
-const DRAW_BASE_COST = 10;
-let drawCostMultiplier = 1;
-const DRAW_COST_DECAY_HALF_LIFE = 60; // seconds to halve multiplier back toward 1
+// ── Card draw scaling ──────────────────────────────────────────────────────
+// Cost and interval per draw both scale on two axes:
+//   loadC = (cards of category in THIS colony)  / EXPECTED_PER_COLONY[cat]
+//   loadE = (cards of category EMPIRE-WIDE)     / EXPECTED_PER_COLONY[cat]
+//   multiplier = (1 + loadC)^DRAW_K_C * (1 + loadE)^DRAW_K_E
+// Per-colony dominant (a fresh colony resets satC); empire pressure compounds
+// with total holdings and is what makes 30-colony empires expensive to grow.
+// Replaces the old per-draw 1.5x stacking + 60s decay system.
+const BASE_DRAW_COST     = 500;  // credits, brand-new colony first draw
+const BASE_DRAW_INTERVAL = 30;   // real-seconds, brand-new colony first draw
+const DRAW_K_C = 2.5;            // per-colony exponent
+const DRAW_K_E = 1.5;            // empire-wide exponent
+const EXPECTED_PER_COLONY = { building: 10, ship: 5, captain: 3, admiral: 3, leader: 1 };
 
 // Population system
 const POP_LEVELS = [
@@ -5847,8 +5891,74 @@ function initResearch() {
   for (const t of getTemplates("planet")) researchedCards.add(t.id);
 }
 
+// Count cards of `category` held at a single colony — placed slots + queue + face-down deck.
+function countColonyCards(col, category) {
+  if (!col) return 0;
+  let n = 0;
+  if (category === "building") {
+    for (const b of col.buildings || []) if (b) n++;
+  } else if (category === "leader") {
+    for (const l of col.leaders || []) if (l) n++;
+  }
+  // Queue and deck hold cards regardless of where they end up (ships/captains
+  // never enter a slot, so for those categories queue+deck *is* the colony's
+  // holding). Face-down deck cards record their category at gen time.
+  for (const q of col.queue || []) if (q && q.category === category) n++;
+  for (const d of col.deck  || []) if (d && (d.category || (col.activeAction && ACTION_TO_CATEGORY[col.activeAction])) === category) n++;
+  return n;
+}
+
+// Empire-wide count of `category` cards: sum across all colonies' holdings,
+// plus any player-owned ships currently deployed as map entities.
+function countEmpireCards(category) {
+  let n = 0;
+  for (const c of colonies) n += countColonyCards(c.planet.colony, category);
+  if (category === "ship") {
+    for (const e of mapEntities) {
+      if (e.owner !== "player") continue;
+      if (e.type === "ship") n += 1;
+      else if (e.ships) n += e.ships.length;
+    }
+  } else if (category === "admiral") {
+    for (const e of mapEntities) {
+      if (e.owner === "player" && e.admiral) n += 1;
+    }
+  }
+  return n;
+}
+
+function getDrawScaling(col, category) {
+  const expected = EXPECTED_PER_COLONY[category] || 5;
+  const cC = countColonyCards(col, category);
+  const cE = countEmpireCards(category);
+  const loadC = cC / expected;
+  const loadE = cE / expected;
+  const mult  = Math.pow(1 + loadC, DRAW_K_C) * Math.pow(1 + loadE, DRAW_K_E);
+  return {
+    cost:     Math.ceil(BASE_DRAW_COST * mult),
+    interval: BASE_DRAW_INTERVAL * mult,
+    cC, cE, mult,
+  };
+}
+
+// Stack penalty on the gen-tick interval: every face-down card already on
+// the pile multiplies the wait for the next one by 5x. Encourages spending
+// cards instead of stockpiling. Cost paid at click-time is unaffected — only
+// the timer gates pile growth.
+const DRAW_STACK_PENALTY = 5;
+function getColonyGenInterval(col, category) {
+  const base = getDrawScaling(col, category).interval;
+  const stack = (col && col.deck) ? col.deck.length : 0;
+  return base * Math.pow(DRAW_STACK_PENALTY, stack);
+}
+
+// Back-compat shim — current call sites pass no args and assume buildings.
+// New scaling needs colony+category, so this resolves them from the active colony.
 function getDrawCost() {
-  return Math.ceil(DRAW_BASE_COST * drawCostMultiplier);
+  const col = getActiveColony();
+  if (!col) return BASE_DRAW_COST;
+  const cat = (col.activeAction && ACTION_TO_CATEGORY[col.activeAction]) || "building";
+  return getDrawScaling(col, cat).cost;
 }
 
 function getTradeIncome(colony) {
@@ -5898,25 +6008,18 @@ function tickEconomy(dt) {
   if (dt === 0) return;
   tickAccumulator += dt;
 
-  // Draw cost multiplier decay (halves every DRAW_COST_DECAY_HALF_LIFE seconds)
-  if (drawCostMultiplier > 1.01) {
-    const decayRate = Math.log(2) / DRAW_COST_DECAY_HALF_LIFE;
-    drawCostMultiplier = 1 + (drawCostMultiplier - 1) * Math.exp(-decayRate * dt);
-    if (drawCostMultiplier < 1.01) drawCostMultiplier = 1;
-  }
-
   // Card generation timers (every colony with activeAction, except Trade)
   for (const c of colonies) {
     const col = c.planet.colony;
     if (!col || !col.activeAction) continue;
     if (col.activeAction === "trade") continue; // Trade generates credits, not cards
-    const deckSize = col.deck.length;
-    const genInterval = 10 * Math.pow(3, deckSize); // exponential: 10s, 30s, 90s, 270s...
+    const cat = ACTION_TO_CATEGORY[col.activeAction];
+    if (!cat) continue;
+    const genInterval = getColonyGenInterval(col, cat);
     col.genTimer += dt;
     if (col.genTimer >= genInterval) {
       col.genTimer -= genInterval;
-      const cat = ACTION_TO_CATEGORY[col.activeAction];
-      if (cat) {
+      {
         col.deck.push({ category: cat, faceDown: true });
         // Keep the deck pile's visual in sync with state the instant a card
         // is generated. Without this the pile lags behind, so players see
@@ -5930,9 +6033,10 @@ function tickEconomy(dt) {
     }
   }
 
-  // Resource ticks (1 second of game time each)
-  while (tickAccumulator >= 1) {
-    tickAccumulator -= 1;
+  // Resource ticks (one tick every TICK_PERIOD game-seconds; templates state
+  // production "per tick" — that's per-real-second at TICK_PERIOD=1, 1x speed).
+  while (tickAccumulator >= TICK_PERIOD) {
+    tickAccumulator -= TICK_PERIOD;
     for (const c of colonies) {
       const col = c.planet.colony;
       if (!col) continue;
@@ -6104,10 +6208,15 @@ const colonies = []; // array of { starId, planetIdx, planet } references
 
 function getColonizationCost(colonyCount) {
   if (colonyCount === 0) return {}; // first colony is free
+  // Phase-1.1 colonization curve. Softer exponent than the legacy 4^n so
+  // late-game expansion stays achievable; 2nd colony (n=1) lands as a real
+  // gate but not a wall, scaling at 2.2^(n-1) from the base.
+  const n = colonyCount;
+  const k = Math.pow(2.2, n - 1);
   return {
-    credits:  Math.ceil(500 * Math.pow(4, colonyCount)),
-    minerals: Math.ceil(200 * Math.pow(3, colonyCount)),
-    food:     Math.ceil(100 * Math.pow(3, colonyCount)),
+    credits:  Math.ceil(30000 * k),
+    minerals: Math.ceil( 6000 * k),
+    food:     Math.ceil( 3000 * k),
   };
 }
 
@@ -6260,7 +6369,7 @@ function showFleetsList() {
     let etaStr = "";
     if (traveling) {
       const dist = Math.sqrt((ent.destX - ent.x) ** 2 + (ent.destY - ent.y) ** 2);
-      etaStr = ` · ${formatETA(dist / ent.speed)}`;
+      etaStr = ` · ${formatETA(entityETARealSec(ent, dist))}`;
     } else if (ent.inCombat) {
       etaStr = " · in combat";
     }
@@ -6390,9 +6499,9 @@ function updateActionButtonProgress(col) {
     const eta = btn.querySelector(".action-eta");
     if (!fill || !eta) continue; // trade/terraform have no progress elements
     if (col.activeAction === action && ACTION_TO_CATEGORY[action]) {
-      const deckSize = col.deck.length;
-      const genInterval = 10 * Math.pow(3, deckSize);
-      const pct = Math.min(100, (col.genTimer / genInterval) * 100);
+      const cat = ACTION_TO_CATEGORY[action];
+      const genInterval = getColonyGenInterval(col, cat);
+      const pct = genInterval > 0 ? Math.min(100, (col.genTimer / genInterval) * 100) : 0;
       fill.style.width = pct + "%";
       const gameSecLeft = Math.max(0, genInterval - col.genTimer);
       const realRate = BASE_GAME_SPEED * gameSpeed;
@@ -6849,18 +6958,16 @@ document.getElementById("colony-deck").addEventListener("click", () => {
 
   if (col.deck.length === 0) return;
 
-  // Check draw cost
-  const drawCost = getDrawCost();
+  // Check draw cost — priced from current empire/colony holdings of this card's category
+  const cat = col.deck[0].category;
+  const drawCost = getDrawScaling(col, cat).cost;
   if (resources.credits < drawCost) {
     const deckEl = document.getElementById("colony-deck");
     showCostTooltip(deckEl, { credits: drawCost });
     return;
   }
-  // Pay draw cost and escalate multiplier
   resources.credits -= drawCost;
-  drawCostMultiplier *= 1.5;
   flashResourceCost({ credits: drawCost });
-  const cat = col.deck[0].category;
   col.pendingDraw = {
     category: cat,
     choices: [rollCardFromCategory(cat), rollCardFromCategory(cat), rollCardFromCategory(cat)],
@@ -7057,8 +7164,12 @@ function gameLoop(timestamp) {
   tickEconomy(scaledDt);
   tickEntities(scaledDt);
   tickCombats(scaledDt);
-  tickParticles(scaledDt);
-  tickWeaponVisuals(scaledDt);
+  // Combat particles and weapon-flash visuals were tuned for the pre-rebase
+  // 0.1x base; keep them at that effective tempo so flashes/trails read the
+  // same regardless of the BASE_GAME_SPEED switch to 1.0.
+  const visualDt = scaledDt * VISUAL_DT_FACTOR;
+  tickParticles(visualDt);
+  tickWeaponVisuals(visualDt);
   if (viewedCombat) refreshCombatOverlay();
   // Lightweight updates when colony screen is open (no full DOM rebuild)
   if (colonyViewStar && colonyViewPlanetIdx != null) {
@@ -7378,7 +7489,6 @@ function serializeGame() {
 
     resources: { ...resources },
     gameSpeed,
-    drawCostMultiplier,
 
     researchCounts: { ...researchCounts },
     researchedCards: [...researchedCards],
@@ -7444,7 +7554,6 @@ function clearGameState() {
   colonies.length = 0;
   combatParticles.length = 0;
   for (const k of Object.keys(resources)) delete resources[k];
-  drawCostMultiplier = 1;
   for (const k of Object.keys(researchCounts)) researchCounts[k] = 0;
   researchedCards.clear();
   activeResearch = null;
@@ -7508,7 +7617,6 @@ function deserializeGame(data) {
   for (const r of RESOURCE_DEFS) if (resources[r.id] == null) resources[r.id] = 0;
 
   gameSpeed = data.gameSpeed != null ? data.gameSpeed : 1;
-  drawCostMultiplier = data.drawCostMultiplier != null ? data.drawCostMultiplier : 1;
 
   for (const k of Object.keys(data.researchCounts || {})) researchCounts[k] = data.researchCounts[k];
   for (const id of (data.researchedCards || [])) researchedCards.add(id);

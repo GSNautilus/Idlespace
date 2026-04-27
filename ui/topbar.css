@@ -52,6 +52,12 @@
   justify-content: center;
   filter: drop-shadow(0 0 6px rgba(74,122,192,.35));
 }
+.tb-logo-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
 .tb-logo-text {
   font-size: 16px;
   font-weight: 600;
@@ -60,6 +66,13 @@
 }
 .tb-logo-accent {
   color: var(--rarity-rare);
+}
+.tb-logo-version {
+  font-size: 9px;
+  color: var(--fg-dim);
+  letter-spacing: 0.4px;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Nav buttons ─────────────────────────────────── */

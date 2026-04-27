@@ -602,6 +602,158 @@ body {
 #colony-overlay.visible { display: flex; flex-direction: column; opacity: 1; }
 #colony-overlay.fade-in { opacity: 1; }
 
+/* ── Collection Overlay ── */
+#collection-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 34; display: none;
+}
+#collection-backdrop.visible { display: block; }
+#collection-overlay {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 88%; height: 88%;
+  max-width: 1500px; max-height: 1000px;
+  background: rgba(5,5,8,0.96);
+  border: 1px solid #1e2744;
+  border-radius: 12px;
+  z-index: 35;
+  display: none;
+  flex-direction: column;
+  padding: 16px 20px 20px;
+  overflow: hidden;
+}
+#collection-overlay.visible { display: flex; }
+#collection-close {
+  position: absolute; top: 10px; right: 12px;
+  background: none; border: none; color: #6a7a9b; cursor: pointer;
+  width: 28px; height: 28px;
+}
+#collection-close:hover { color: #c0d0e0; }
+#collection-header { flex-shrink: 0; margin-bottom: 12px; }
+#collection-header h2 {
+  font-size: 16px; color: #c0d0e0;
+  margin: 0 0 10px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+}
+#collection-tabs {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  border-bottom: 1px solid #1e2744;
+  padding-bottom: 8px;
+}
+.col-tab {
+  padding: 6px 12px; font-size: 12px;
+  background: rgba(20,28,48,0.6); border: 1px solid #1e2744;
+  color: #8090b0; border-radius: 4px;
+  cursor: pointer; user-select: none;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.col-tab:hover { background: rgba(40,56,96,0.7); color: #c0d0e0; }
+.col-tab.active {
+  background: rgba(60,90,180,0.35); border-color: #4a6ac0;
+  color: #ffffff;
+}
+.col-tab .col-tab-count { font-size: 10px; color: #6a7a9b; }
+.col-tab.active .col-tab-count { color: #b0c0e0; }
+#collection-summary {
+  font-size: 11px; color: #6a7a9b;
+  margin-top: 6px;
+}
+#collection-grid {
+  --col-card-scale: 0.7;
+  --col-card-w: calc(220px * var(--col-card-scale));
+  --col-card-h: calc(320px * var(--col-card-scale));
+  flex: 1; overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, var(--col-card-w));
+  gap: 18px 14px;
+  padding: 14px 4px 16px;
+  justify-content: start;
+}
+.col-card-cell {
+  position: relative;
+  width: var(--col-card-w);
+  height: var(--col-card-h);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.col-card-cell:not(.undiscovered):hover { transform: translateY(-2px); }
+.col-card-cell .card-preview {
+  transform: scale(var(--col-card-scale));
+  transform-origin: top left;
+}
+.col-card-cell.seen .card-preview {
+  filter: grayscale(0.85) brightness(0.75);
+  opacity: 0.75;
+}
+.col-card-cell.undiscovered { cursor: default; }
+.col-card-cell.undiscovered .card-back {
+  width: var(--col-card-w);
+  height: var(--col-card-h);
+  background: linear-gradient(135deg, #0a0d18 0%, #181f30 60%, #0a0d18 100%);
+  border: 1px solid #2a3658;
+  border-radius: 10px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: #485878; font-size: 12px;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.col-card-cell.undiscovered .card-back .qmark {
+  font-size: 48px; color: #2a3658; margin-bottom: 10px; font-weight: 700;
+}
+.col-owned-badge {
+  position: absolute; top: 4px; right: 6px;
+  background: rgba(60,160,90,0.95);
+  color: #fff; font-size: 11px; font-weight: 700;
+  padding: 2px 7px; border-radius: 4px;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.col-state-label {
+  position: absolute; bottom: 4px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px; letter-spacing: 1px;
+  text-transform: uppercase; color: #485878;
+  pointer-events: none;
+}
+
+/* Magnified card popup — opened from any context (Collection grid, fleet
+   selection panel, etc.). Fixed 2.1x natural-size scale so the zoom feels
+   consistent regardless of where the click came from. */
+#card-zoom-backdrop {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.78);
+  display: none;
+  align-items: center; justify-content: center;
+}
+#card-zoom-backdrop.visible { display: flex; }
+#card-zoom-card {
+  --zoom-scale: 2.1;
+  width: calc(220px * var(--zoom-scale));
+  height: calc(320px * var(--zoom-scale));
+  position: relative;
+}
+#card-zoom-card .card-preview {
+  transform: scale(var(--zoom-scale));
+  transform-origin: top left;
+}
+#card-zoom-card.seen .card-preview {
+  filter: grayscale(0.85) brightness(0.75);
+  opacity: 0.85;
+}
+/* Cards in the right-side select panel (star or fleet-ship cards) get a
+   pointer cursor + tiny lift on hover to advertise the click-to-zoom. */
+#select-card-slot[data-card-id],
+#select-panel-ships .fleet-ship-card[data-card-id] {
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+#select-card-slot[data-card-id]:hover,
+#select-panel-ships .fleet-ship-card[data-card-id]:hover {
+  transform: translateY(-2px);
+}
+
 /* ── Combat Overlay ── */
 #combat-backdrop {
   position: absolute; inset: 0; background: rgba(0,0,0,0.5);
@@ -1382,6 +1534,10 @@ body {
         <svg class="ico sm"><use href="#i-fleet"/></svg>
         <span>Fleets</span>
       </button>
+      <button id="collection-btn" class="metal-btn tb-nav-btn" onclick="showCollection()">
+        <svg class="ico sm"><use href="#i-cards"/></svg>
+        <span>Collection</span>
+      </button>
     </div>
   </div>
 
@@ -1478,6 +1634,21 @@ body {
     <h2><svg class="ico lg"><use href="#i-fleet"/></svg> Fleets</h2>
     <div id="fleets-list-items"></div>
   </div>
+  <!-- Collection -->
+  <div id="collection-backdrop"></div>
+  <div id="collection-overlay">
+    <button id="collection-close" onclick="hideCollection()"><svg class="ico"><use href="#i-close"/></svg></button>
+    <div id="collection-header">
+      <h2><svg class="ico lg"><use href="#i-cards"/></svg> Collection</h2>
+      <div id="collection-tabs"></div>
+      <div id="collection-summary"></div>
+    </div>
+    <div id="collection-grid"></div>
+  </div>
+  <!-- Magnified card popup — used by Collection grid and the right-side
+       select panel. Click any clickable card to enlarge; click backdrop
+       to dismiss. -->
+  <div id="card-zoom-backdrop"><div id="card-zoom-card"></div></div>
   <!-- Colony Screen -->
   <div id="colony-backdrop"></div>
   <div id="colony-overlay">
@@ -2805,6 +2976,13 @@ function startCombat(entityA, entityB) {
   const combat = createCombat(entityA, entityB);
   entityA.inCombat = combat.id;
   entityB.inCombat = combat.id;
+  // Combat exposes every ship card on both sides — mark them seen so the
+  // Collection overlay knows the player has encountered them.
+  for (const ent of [entityA, entityB]) {
+    if (ent.type === "ship" && ent.card) markCardSeen(ent.card);
+    if (ent.ships) for (const s of ent.ships) markCardSeen(s);
+    if (ent.admiral) markCardSeen(ent.admiral);
+  }
   // Abandon any prior travel destination — otherwise drawEntities keeps
   // re-reading it and overwrites the combat-facing heading every frame,
   // so ships keep pointing at the old waypoint instead of the enemy.
@@ -5399,6 +5577,9 @@ function showSelectPanel(star) {
 
   panel.classList.add("visible");
 
+  // Clear any previous data-card-id so the mystery/unknown placeholder isn't
+  // treated as a clickable zoomable card.
+  slot.removeAttribute("data-card-id");
   if (star.visibility === "detected") {
     slot.innerHTML = `
       <div class="card-preview common" style="--rarity-color:#384868">
@@ -5416,7 +5597,9 @@ function showSelectPanel(star) {
       ? "Send a ship to explore this star."
       : "Move a fleet within sensor range to explore.";
   } else {
+    markCardSeen(star.card);
     slot.innerHTML = buildCardHtml(star.card);
+    if (star.card && star.card.id) slot.setAttribute("data-card-id", star.card.id);
     // Generate planets to know count (but don't open system view)
     generatePlanets(star);
     const pCount = star.planets ? star.planets.length : 0;
@@ -5442,12 +5625,21 @@ function showEntityPanel(idx) {
   const shipsEl = document.getElementById("select-panel-ships");
   panel.classList.add("visible");
 
-  // Show the primary card
+  // Show the primary card. Set data-card-id on the slot so the panel-wide
+  // click delegation can open the magnified-zoom popup; clear it for the
+  // bare-fleet text case so that empty area doesn't read as clickable.
+  slot.removeAttribute("data-card-id");
   if (ent.type === "ship") {
+    markCardSeen(ent.card);
     slot.innerHTML = buildCardHtml(ent.card);
+    if (ent.card && ent.card.id) slot.setAttribute("data-card-id", ent.card.id);
   } else if (ent.type === "fleet" && ent.admiral) {
+    markCardSeen(ent.admiral);
+    if (ent.ships) for (const s of ent.ships) markCardSeen(s);
     slot.innerHTML = buildCardHtml(ent.admiral);
+    if (ent.admiral.id) slot.setAttribute("data-card-id", ent.admiral.id);
   } else {
+    if (ent.ships) for (const s of ent.ships) markCardSeen(s);
     slot.innerHTML = `<div style="padding:20px;text-align:center;color:#6a7a9b">Fleet (${ent.ships.length} ships)</div>`;
   }
 
@@ -5494,6 +5686,7 @@ function showEntityPanel(idx) {
       for (const ship of ent.ships) {
         const wrap = document.createElement("div");
         wrap.className = "fleet-ship-card";
+        if (ship && ship.id) wrap.setAttribute("data-card-id", ship.id);
         wrap.innerHTML = buildCardHtml(ship);
         shipsEl.appendChild(wrap);
       }
@@ -5578,7 +5771,8 @@ function isOverBlockingOverlay(target) {
          target.closest("#colonies-backdrop") || target.closest("#fleets-list-overlay") ||
          target.closest("#fleets-backdrop") || target.closest("#card-select-backdrop") ||
          target.closest("#research-backdrop") || target.closest("#combat-overlay") ||
-         target.closest("#combat-backdrop");
+         target.closest("#combat-backdrop") || target.closest("#collection-overlay") ||
+         target.closest("#collection-backdrop");
 }
 
 container.addEventListener("pointerdown", (e) => {
@@ -5762,7 +5956,7 @@ window.addEventListener("pointercancel", (e) => {
 
 // Suppress context menu on the map entirely
 container.addEventListener("contextmenu", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#combat-overlay")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#combat-overlay") || e.target.closest("#collection-overlay")) return;
   e.preventDefault();
   if (selectedEntityIdx !== null) {
     selectedEntityIdx = null;
@@ -5783,7 +5977,7 @@ canvasEl.addEventListener("dblclick", (e) => {
 });
 
 container.addEventListener("wheel", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#combat-overlay")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#combat-overlay") || e.target.closest("#collection-overlay")) return;
   e.preventDefault();
   const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
   const newZoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomFactor));
@@ -5982,6 +6176,37 @@ const RESEARCH_COST_MULTIPLIER = 2.8;
 const RESEARCH_SPEND_RATE = 5; // max points consumed per game-second
 const researchCounts = { building: 0, ship: 0, admiral: 0, leader: 0 };
 const researchedCards = new Set(); // card IDs that have been researched
+// Card template IDs the player has ever viewed (full card render). Drives
+// the Collection overlay's "Seen" state for cards not currently owned.
+const seenCards = new Set();
+function markCardSeen(card) {
+  if (!card) return;
+  const id = typeof card === "string" ? card : card.id;
+  if (id) seenCards.add(id);
+}
+
+// Walk every place a player-owned card lives and tally counts by template
+// id. Used by the Collection overlay to show "x N" ownership badges.
+function computeOwnedCounts() {
+  const counts = {};
+  const inc = id => { if (id) counts[id] = (counts[id] || 0) + 1; };
+  for (const c of colonies) {
+    const col = c.planet.colony;
+    if (!col) continue;
+    for (const b of col.buildings || []) if (b) inc(b.id);
+    for (const l of col.leaders  || []) if (l) inc(l.id);
+    for (const q of col.queue    || []) if (q) inc(q.id);
+    // Planet templates are "owned" once any planet of that template has a colony.
+    if (c.planet && c.planet.card) inc(c.planet.card.id);
+  }
+  for (const e of mapEntities) {
+    if (e.owner !== "player") continue;
+    if (e.type === "ship" && e.card) inc(e.card.id);
+    if (e.ships) for (const s of e.ships) if (s) inc(s.id);
+    if (e.admiral) inc(e.admiral.id);
+  }
+  return counts;
+}
 let activeResearch = null;         // { category, cost, progress }
 
 // All 4 card categories require research (stars/planets discovered via exploration)
@@ -6396,6 +6621,7 @@ function colonizePlanet(star, planetIdx) {
 }
 
 function showPlanetCard(planet) {
+  markCardSeen(planet && planet.card);
   const slot = document.getElementById("planet-card-slot");
   slot.innerHTML = buildCardHtml(planet.card);
   // Place button as sibling after the card slot, before the close button
@@ -6555,6 +6781,139 @@ function selectFleetFromList(idx) {
 
 document.getElementById("fleets-list-close").addEventListener("click", hideFleetsList);
 document.getElementById("fleets-backdrop").addEventListener("click", hideFleetsList);
+
+// ── Collection Overlay ──
+// Renders every card template grouped by category, with each template in
+// one of three states: undiscovered (card back), seen (greyed-out preview),
+// or owned (full preview + count badge). Owned counts are derived live from
+// colonies + map entities; "seen" comes from the persistent seenCards Set.
+const COLLECTION_TABS = [
+  { id: "ship",     label: "Ships",     icon: "i-fleet" },
+  { id: "building", label: "Buildings", icon: "i-building" },
+  { id: "leader",   label: "Leaders",   icon: "i-leader" },
+  { id: "admiral",  label: "Admirals",  icon: "i-command" },
+  { id: "planet",   label: "Planets",   icon: "i-planet-verdant" },
+  { id: "star",     label: "Stars",     icon: "i-spark" },
+  { id: "pirate",   label: "Pirates",   icon: "i-swords" },
+];
+let _activeCollectionTab = "ship";
+
+function showCollection() {
+  document.getElementById("collection-backdrop").classList.add("visible");
+  document.getElementById("collection-overlay").classList.add("visible");
+  renderCollection();
+}
+function hideCollection() {
+  document.getElementById("collection-backdrop").classList.remove("visible");
+  document.getElementById("collection-overlay").classList.remove("visible");
+}
+
+function renderCollection() {
+  const tabsEl = document.getElementById("collection-tabs");
+  const gridEl = document.getElementById("collection-grid");
+  const summaryEl = document.getElementById("collection-summary");
+  const owned = computeOwnedCounts();
+
+  // Build tab strip with per-category seen/total counts.
+  tabsEl.innerHTML = COLLECTION_TABS.map(t => {
+    const tpls = getTemplates(t.id) || [];
+    const total = tpls.length;
+    const known = tpls.reduce((n, tpl) => n + ((seenCards.has(tpl.id) || owned[tpl.id]) ? 1 : 0), 0);
+    const cls = t.id === _activeCollectionTab ? "col-tab active" : "col-tab";
+    return `<button class="${cls}" onclick="setCollectionTab('${t.id}')">`
+         + `<svg class="ico sm"><use href="#${t.icon}"/></svg>`
+         + `<span>${t.label}</span>`
+         + `<span class="col-tab-count">${known}/${total}</span>`
+         + `</button>`;
+  }).join("");
+
+  const tpls = getTemplates(_activeCollectionTab) || [];
+  // Sort by rarity (legendary->common), then name, so the strongest of each
+  // category sit at the top of the page.
+  const RARITY_ORDER = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
+  const sorted = tpls.slice().sort((a, b) => {
+    const dr = (RARITY_ORDER[a.rarity] ?? 5) - (RARITY_ORDER[b.rarity] ?? 5);
+    if (dr !== 0) return dr;
+    return (a.name || "").localeCompare(b.name || "");
+  });
+
+  // Stars never get an "owned" state — colonies don't grant ownership of
+  // a star template, only stars whose card has been viewed are "seen".
+  const allowOwned = _activeCollectionTab !== "star";
+
+  let seenN = 0, ownedN = 0, undiscN = 0;
+  gridEl.innerHTML = sorted.map(tpl => {
+    const count = allowOwned ? (owned[tpl.id] || 0) : 0;
+    const isOwned = count > 0;
+    const isSeen = !isOwned && seenCards.has(tpl.id);
+    if (isOwned) ownedN++;
+    else if (isSeen) seenN++;
+    else undiscN++;
+    if (isOwned || isSeen) {
+      const stateClass = isOwned ? "owned" : "seen";
+      const badge = isOwned ? `<div class="col-owned-badge">x${count}</div>` : "";
+      const label = isOwned ? "" : `<div class="col-state-label">Seen</div>`;
+      return `<div class="col-card-cell ${stateClass}" data-card-id="${tpl.id}">${badge}${buildCardHtml(tpl)}${label}</div>`;
+    }
+    // Undiscovered — card back placeholder, no data-card-id (not clickable)
+    return `<div class="col-card-cell undiscovered">`
+         + `<div class="card-back"><div class="qmark">?</div><div>Undiscovered</div></div>`
+         + `</div>`;
+  }).join("");
+
+  summaryEl.textContent = `${ownedN} owned · ${seenN} seen · ${undiscN} undiscovered`;
+}
+
+function setCollectionTab(tabId) {
+  _activeCollectionTab = tabId;
+  renderCollection();
+}
+
+// Open the magnified-card popup. Used by the Collection grid AND the
+// right-side select panel (star/fleet card + per-ship cards). The popup
+// renders the card at a fixed 2.1x natural scale so the zoom size is
+// consistent regardless of the source's rendered scale. `cardOrId` may be
+// a card object or a template id; `opts.seen` greys the card to mirror
+// the Collection grid's "seen" state.
+function showCardZoom(cardOrId, opts) {
+  const card = (typeof cardOrId === "string") ? getCardById(cardOrId) : cardOrId;
+  if (!card) return;
+  const cardEl = document.getElementById("card-zoom-card");
+  cardEl.className = (opts && opts.seen) ? "seen" : "";
+  cardEl.innerHTML = buildCardHtml(card);
+  document.getElementById("card-zoom-backdrop").classList.add("visible");
+}
+function hideCardZoom() {
+  document.getElementById("card-zoom-backdrop").classList.remove("visible");
+  document.getElementById("card-zoom-card").innerHTML = "";
+}
+
+document.getElementById("collection-grid").addEventListener("click", (e) => {
+  const cell = e.target.closest(".col-card-cell");
+  if (!cell || cell.classList.contains("undiscovered")) return;
+  const id = cell.getAttribute("data-card-id");
+  if (!id) return;
+  showCardZoom(id, { seen: cell.classList.contains("seen") });
+});
+document.getElementById("card-zoom-backdrop").addEventListener("click", () => {
+  // Click anywhere on the backdrop dismisses; clicks on the card itself
+  // bubble up here too (no inner handler) so the whole region closes.
+  hideCardZoom();
+});
+
+// Right-side select panel — clicking the primary card slot or any
+// per-ship card in a fleet's roster opens the same magnified popup.
+// Delegated so it survives showEntityPanel rebuilding the inner HTML.
+document.getElementById("select-panel").addEventListener("click", (e) => {
+  const target = e.target.closest("[data-card-id]");
+  if (!target) return;
+  if (!target.matches("#select-card-slot, .fleet-ship-card")) return;
+  // Don't swallow clicks on action buttons that happen to live in the panel.
+  if (e.target.closest("button")) return;
+  showCardZoom(target.getAttribute("data-card-id"));
+});
+
+document.getElementById("collection-backdrop").addEventListener("click", hideCollection);
 
 // ── Colony Screen ──
 let colonyViewStar = null;
@@ -7083,6 +7442,9 @@ function refreshFleetTab(col) {
 // and clears pendingDraw.
 function openCardSelectModal(col) {
   const { choices } = col.pendingDraw;
+  // All three options are revealed to the player — count them seen even
+  // if the player picks one and discards the others.
+  for (const c of choices) markCardSeen(c);
   const optionsEl = document.getElementById("card-select-options");
   optionsEl.innerHTML = "";
   choices.forEach((card) => {
@@ -7441,6 +7803,7 @@ function refreshResearchPanel() {
 
 // Research reveal — "card pack opening" moment
 function showResearchReveal(template, category) {
+  markCardSeen(template);
   // Remove existing reveal if any
   let existing = document.getElementById("research-reveal-backdrop");
   if (existing) existing.remove();
@@ -7645,6 +8008,7 @@ function serializeGame() {
 
     researchCounts: { ...researchCounts },
     researchedCards: [...researchedCards],
+    seenCards:       [...seenCards],
     activeResearch: activeResearch ? { ...activeResearch } : null,
 
     camera: { x: camera.x, y: camera.y, zoom: camera.zoom },
@@ -7709,6 +8073,7 @@ function clearGameState() {
   for (const k of Object.keys(resources)) delete resources[k];
   for (const k of Object.keys(researchCounts)) researchCounts[k] = 0;
   researchedCards.clear();
+  seenCards.clear();
   activeResearch = null;
 }
 
@@ -7773,6 +8138,7 @@ function deserializeGame(data) {
 
   for (const k of Object.keys(data.researchCounts || {})) researchCounts[k] = data.researchCounts[k];
   for (const id of (data.researchedCards || [])) researchedCards.add(id);
+  for (const id of (data.seenCards || [])) seenCards.add(id);
   activeResearch = data.activeResearch || null;
 
   if (data.camera) {
@@ -8056,7 +8422,12 @@ const starterFleets = [
 starterFleets.forEach((f, i) => {
   const angle = (i / starterFleets.length) * Math.PI * 2 - Math.PI / 2;
   createFleet(f.admiral, f.ships, homeStar.x + Math.cos(angle) * 40, homeStar.y + Math.sin(angle) * 40);
+  markCardSeen(f.admiral);
+  for (const s of f.ships) markCardSeen(s);
 });
+// Home star and any pre-explored star/planet cards count as seen too.
+markCardSeen(homeStar.card);
+for (const p of homeStar.planets || []) markCardSeen(p && p.card);
 camera.x = homeStar.x;
 camera.y = homeStar.y;
 updateResourceDisplay();

@@ -1386,7 +1386,7 @@ function buildShipCardHtml(data) {
       const iconId = RES_ICON_BY_KEY[key];
       const icon = iconId ? `<svg class="ico ${key}"><use href="#${iconId}"/></svg>` : "";
       const label = RESOURCE_LABELS[key] || key;
-      return `<span class="cost-part" title="${label}: ${formatResourceValue(val)}">${icon}${formatResourceValue(val)}</span>`;
+      return `<span class="cost-part" style="--cost-c: var(--res-${key})" title="${label}: ${formatResourceValue(val)}">${icon}${formatResourceValue(val)}</span>`;
     });
     costHtml = `<div class="cost">${parts.join("")}</div>`;
   }
@@ -1483,7 +1483,7 @@ function buildCostPillHtml(cost) {
     const iconId = RES_ICON_BY_KEY[key];
     const icon = iconId ? `<svg class="ico ${key}"><use href="#${iconId}"/></svg>` : "";
     const label = RESOURCE_LABELS[key] || key;
-    return `<span class="cost-part" title="${label}: ${formatResourceValue(val)}">${icon}${formatResourceValue(val)}</span>`;
+    return `<span class="cost-part" style="--cost-c: var(--res-${key})" title="${label}: ${formatResourceValue(val)}">${icon}${formatResourceValue(val)}</span>`;
   });
   return `<div class="cost">${parts.join("")}</div>`;
 }

@@ -3582,6 +3582,23 @@ function drawEntities(ctx, time) {
 
     // Selection highlight
     if (isSelected) {
+      // Sensor-range halo — soft outer ring at the entity's actual detect
+      // boundary (ent.sensorRange * 50 world units, matching the fog
+      // renderer). Pulses gently so it reads as a "scanning" effect rather
+      // than a hard border. Skipped if the radius would be smaller than
+      // the entity icon (degenerate case).
+      const sensorR = (ent.sensorRange || 0) * 50 * camera.zoom;
+      if (sensorR > size + 2) {
+        const pulse = 0.32 + 0.12 * Math.sin(time * 2);
+        ctx.save();
+        ctx.strokeStyle = `rgba(170,210,240,${pulse.toFixed(3)})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, sensorR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // Close selection dash around the icon itself.
       ctx.strokeStyle = rarityColor;
       ctx.lineWidth = 2;
       ctx.setLineDash([3 * camera.zoom, 2 * camera.zoom]);
@@ -4580,18 +4597,19 @@ function drawTerritoryContour(ctx) {
   // World-space padding around each colony; scaled with zoom so the territory
   // feels the same size regardless of camera.
   const pad = 140 * camera.zoom;
-  const FILL_RGB = "rgb(80,140,220)";
-  const OUTLINE_RGB = "rgb(120,180,240)";
-  const FILL_ALPHA = 0.08;
-  const OUTLINE_ALPHA = 0.45;
+  // Darker blue + 25% more transparent than the previous tuning.
+  const FILL_RGB = "rgb(40,80,180)";
+  const OUTLINE_RGB = "rgb(70,120,200)";
+  const FILL_ALPHA = 0.06;     // was 0.08
+  const OUTLINE_ALPHA = 0.34;  // was 0.45
 
   // Single colony: pulsing disc with thin outline.
   if (colonizedPos.length === 1) {
     const p = colonizedPos[0];
     const r = pad + Math.sin(animTime * 2) * 4 * camera.zoom;
     ctx.save();
-    ctx.fillStyle = `rgba(80,140,220,${FILL_ALPHA})`;
-    ctx.strokeStyle = `rgba(120,180,240,${OUTLINE_ALPHA})`;
+    ctx.fillStyle = `rgba(40,80,180,${FILL_ALPHA})`;
+    ctx.strokeStyle = `rgba(70,120,200,${OUTLINE_ALPHA})`;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
@@ -4914,7 +4932,7 @@ function buildCostPillHtml(cost) {
     const iconId = RES_ICON_BY_KEY[key];
     const icon = iconId ? `<svg class="ico ${key}"><use href="#${iconId}"/></svg>` : "";
     const label = RESOURCE_LABELS[key] || key;
-    return `<span class="cost-part" title="${label}: ${formatResourceValue(val)}">${icon}${formatResourceValue(val)}</span>`;
+    return `<span class="cost-part" style="--cost-c: var(--res-${key})" title="${label}: ${formatResourceValue(val)}">${icon}${formatResourceValue(val)}</span>`;
   });
   return `<div class="cost">${parts.join("")}</div>`;
 }
@@ -4976,7 +4994,7 @@ function buildShipCardHtml(card) {
       const iconId = RES_ICON_BY_KEY[key];
       const icon = iconId ? `<svg class="ico ${key}"><use href="#${iconId}"/></svg>` : "";
       const label = RESOURCE_LABELS[key] || key;
-      return `<span class="cost-part" title="${label}: ${formatResourceValue(val)}">${icon}${formatResourceValue(val)}</span>`;
+      return `<span class="cost-part" style="--cost-c: var(--res-${key})" title="${label}: ${formatResourceValue(val)}">${icon}${formatResourceValue(val)}</span>`;
     });
     costHtml = `<div class="cost">${parts.join("")}</div>`;
   }
@@ -6485,9 +6503,14 @@ function getDrawCost() {
   return getDrawScaling(col, cat).cost;
 }
 
-function getTradeIncome(colony) {
+function getTradeIncome(colony, output) {
   if (!colony.activeAction || colony.activeAction !== "trade") return 0;
-  return colony.population * 50;
+  let total = 0;
+  for (const id of RESOURCE_IDS) {
+    if (id === "credits") continue;
+    total += Math.max(0, output[id] || 0);
+  }
+  return total / 4;
 }
 
 function getColonyOutput(colony, planet) {
@@ -6567,7 +6590,7 @@ function tickEconomy(dt) {
       const out = getColonyOutput(col, c.planet);
       for (const id of RESOURCE_IDS) resources[id] += (out[id] || 0);
       // Trade income
-      resources.credits += getTradeIncome(col);
+      resources.credits += getTradeIncome(col, out);
       // Population growth is buy-only; starvation only reduces production (see getColonyOutput)
     }
 
@@ -6608,7 +6631,7 @@ function updateResourceDisplay() {
     if (!col) continue;
     const out = getColonyOutput(col, c.planet);
     for (const id of RESOURCE_IDS) totalOut[id] += (out[id] || 0);
-    totalOut.credits += getTradeIncome(col);
+    totalOut.credits += getTradeIncome(col, out);
   }
   for (const id of RESOURCE_IDS) {
     const valEl = document.getElementById(`res-${id}`);
@@ -7137,6 +7160,17 @@ function showColonyScreen(star, planetIdx) {
 
   const backdrop = document.getElementById("colony-backdrop");
   const overlay = document.getElementById("colony-overlay");
+  // Stretch the planet card art across the overlay background, dimmed so
+  // foreground UI stays legible. Falls back to the default solid bg if the
+  // planet card has no image attached.
+  if (planet.card && planet.card.image) {
+    overlay.style.backgroundImage =
+      `linear-gradient(rgba(5,5,8,0.78), rgba(5,5,8,0.78)), url("${planet.card.image}")`;
+    overlay.style.backgroundSize = "cover";
+    overlay.style.backgroundPosition = "center";
+  } else {
+    overlay.style.backgroundImage = "";
+  }
   backdrop.classList.add("visible");
   overlay.style.display = "flex";
   requestAnimationFrame(() => overlay.classList.add("visible", "fade-in"));
@@ -7153,7 +7187,10 @@ function hideColonyScreen() {
   const backdrop = document.getElementById("colony-backdrop");
   overlay.classList.remove("visible", "fade-in");
   backdrop.classList.remove("visible");
-  setTimeout(() => { overlay.style.display = "none"; }, 300);
+  setTimeout(() => {
+    overlay.style.display = "none";
+    overlay.style.backgroundImage = "";
+  }, 300);
   // Restore system view cards
   document.getElementById("system-star-card").style.display = "";
   document.getElementById("system-planet-card").style.display = "";

@@ -14,20 +14,8 @@
 .card-preview.tpl-metal {
   background: transparent;
   overflow: visible;
-  /* Cross-browser-safe shadow stack. Three roles in one box-shadow chain:
-       1. inset 1.5px ring  → rarity border (replaces the ::before mask ring)
-       2. outer rarity glow → atmosphere (replaces filter: drop-shadow)
-       3. outer drop shadow → lift off background
-     The ::before mask trick + filter chain caused Firefox WebRender to
-     corrupt cards in any wrap-capable layout, two-value gap, or with
-     ≥3 cards visible. Single box-shadow renders reliably in every browser.
-     Visual loss vs original: the diagonal sheen across the border ring is
-     gone (now flat rarity colour). */
-  box-shadow:
-    inset 0 0 0 1.5px var(--rc, var(--rarity-common)),
-    0 0 16px color-mix(in oklab, var(--rc, var(--rarity-common)) 50%, transparent),
-    0 10px 24px rgba(0,0,0,.6);
-  border-radius: 10px;
+  filter: drop-shadow(0 0 16px color-mix(in oklab, var(--rc, var(--rarity-common)) 50%, transparent))
+          drop-shadow(0 10px 24px rgba(0,0,0,.6));
 }
 .card-preview.tpl-metal.common    { --rc: var(--rarity-common); }
 .card-preview.tpl-metal.uncommon  { --rc: var(--rarity-uncommon); }
@@ -35,12 +23,26 @@
 .card-preview.tpl-metal.epic      { --rc: var(--rarity-epic); }
 .card-preview.tpl-metal.legendary { --rc: var(--rarity-legendary); }
 
-/* Rarity border ring is now provided by inset box-shadow on .card-preview
-   itself (see above). The previous ::before with mask-composite produced
-   the same visual but caused Firefox WebRender to corrupt cards under
-   common layouts. Single inset shadow does the job and renders everywhere. */
+/* Gradient rarity border */
+.card-preview.tpl-metal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  padding: 1.5px;
+  background: linear-gradient(135deg,
+    color-mix(in oklab, var(--rc) 100%, white 25%) 0%,
+    var(--rc) 35%,
+    color-mix(in oklab, var(--rc) 60%, black) 60%,
+    var(--rc) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  z-index: 4;
+}
 
-/* Gunmetal interior with brushed streaks + noise. */
+/* Gunmetal interior with brushed streaks + noise + glint */
 .card-preview.tpl-metal .bg {
   position: absolute;
   inset: 1.5px;
@@ -65,16 +67,18 @@
       rgba(255,255,255,.018) 0 2px,
       transparent 2px 40px),
     var(--noise-url);
-  /* Was mix-blend-mode: overlay + opacity .75. Firefox WebRender re-blends on
-     every compositor frame and drifts colors when the backdrop transforms or
-     scrolls (visible as the "glitching with movement" on tablet Firefox).
-     Plain reduced opacity renders identically across browsers. */
-  opacity: .35;
+  mix-blend-mode: overlay;
+  opacity: .75;
   pointer-events: none;
 }
-/* .bg::after glint removed — was a stacked-gradient pseudo with no functional
-   content. Removing it drops one compositing layer per card with negligible
-   visual change. */
+.card-preview.tpl-metal .bg::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.035) 0%, transparent 25%, transparent 75%, rgba(0,0,0,.15) 100%),
+    linear-gradient(to bottom, transparent 55%, rgba(0,0,0,.35) 100%);
+  pointer-events: none;
+}
 
 /* Decorative corner brackets */
 .card-preview.tpl-metal .frame-corners {

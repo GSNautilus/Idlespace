@@ -81,8 +81,11 @@
       rgba(255,255,255,.018) 0 2px,
       transparent 2px 40px),
     var(--noise-url);
-  mix-blend-mode: overlay;
-  opacity: .75;
+  /* Was mix-blend-mode: overlay + opacity .75. Firefox WebRender re-blends on
+     every compositor frame and drifts colors when the backdrop transforms or
+     scrolls (visible as the "glitching with movement" on tablet Firefox).
+     Plain reduced opacity renders identically across browsers. */
+  opacity: .35;
   pointer-events: none;
 }
 .card-preview.tpl-metal .bg::after {

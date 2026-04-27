@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IdleSpace — Card Render Test</title>
+<link rel="stylesheet" href="ui/colors_and_type.css">
+<link rel="stylesheet" href="ui/chrome.css">
+<link rel="stylesheet" href="ui/card-chrome.css">
+<link rel="stylesheet" href="ui/ship-card.css">
+<style>
+  /* No body transform. No grid. No scrolling. Just two cards centered. */
+  body {
+    margin: 0;
+    background: #050508;
+    color: #c8d0e0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    padding: 20px;
+  }
+  h1 { font-size: 14px; color: #6a7a9b; font-weight: 400; letter-spacing: 1px; text-transform: uppercase; }
+  .card-row { display: flex; gap: 40px; }
+  .card-preview { width: 220px; height: 320px; border-radius: 10px; position: relative; }
+  .label { font-size: 11px; color: #6a7a9b; text-align: center; margin-top: 8px; }
+  .card-wrap { display: flex; flex-direction: column; align-items: center; }
+</style>
+</head>
+<body>
+  <h1>Card Render Test — should look identical in Firefox and Chrome</h1>
+  <div class="card-row">
+    <div class="card-wrap">
+      <div class="card-preview tpl-metal is-ship common">
+        <div class="bg"></div>
+        <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
+        <div class="c">
+          <div class="hdr"><span class="hdr-name">Common Test</span></div>
+          <div class="img">
+            <div class="glyph">
+              <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32" /></svg>
+            </div>
+          </div>
+          <div class="row"><div class="stat"><span class="sv">10</span></div></div>
+          <div class="special"><span class="sn">Test</span> Plain ability text for layout.</div>
+          <div class="flv">"Test flavor text in italics."</div>
+        </div>
+      </div>
+      <div class="label">common rarity</div>
+    </div>
+    <div class="card-wrap">
+      <div class="card-preview tpl-metal is-ship legendary">
+        <div class="bg"></div>
+        <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
+        <div class="c">
+          <div class="hdr"><span class="hdr-name">Legendary Test</span></div>
+          <div class="img">
+            <div class="glyph">
+              <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32" /></svg>
+            </div>
+          </div>
+          <div class="row"><div class="stat"><span class="sv">99</span></div></div>
+          <div class="special"><span class="sn">Test</span> Plain ability text for layout.</div>
+          <div class="flv">"Test flavor text in italics."</div>
+        </div>
+      </div>
+      <div class="label">legendary rarity</div>
+    </div>
+  </div>
+  <p style="font-size:11px;color:#6a7a9b;max-width:520px;text-align:center;line-height:1.5;">
+    If these look identical in Firefox and Chrome, the chrome's CSS is fine and the bug is in the page context (body transform, collection grid, scrolling). If they differ, the chrome itself needs simplification.
+  </p>
+</body>
+</html>

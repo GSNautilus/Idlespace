@@ -4,16 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IdleSpace — Star Map</title>
-<link rel="stylesheet" href="ui/colors_and_type.css?v=11">
-<link rel="stylesheet" href="ui/chrome.css?v=11">
-<link rel="stylesheet" href="ui/topbar.css?v=11">
-<link rel="stylesheet" href="ui/card-chrome.css?v=11">
-<link rel="stylesheet" href="ui/ship-card.css?v=11">
-<link rel="stylesheet" href="ui/star-card.css?v=11">
-<link rel="stylesheet" href="ui/planet-card.css?v=11">
-<link rel="stylesheet" href="ui/building-card.css?v=11">
-<link rel="stylesheet" href="ui/leader-card.css?v=11">
-<link rel="stylesheet" href="ui/admiral-card.css?v=11">
+<link rel="stylesheet" href="ui/colors_and_type.css?v=12">
+<link rel="stylesheet" href="ui/chrome.css?v=12">
+<link rel="stylesheet" href="ui/topbar.css?v=12">
+<link rel="stylesheet" href="ui/card-chrome.css?v=12">
+<link rel="stylesheet" href="ui/ship-card.css?v=12">
+<link rel="stylesheet" href="ui/star-card.css?v=12">
+<link rel="stylesheet" href="ui/planet-card.css?v=12">
+<link rel="stylesheet" href="ui/building-card.css?v=12">
+<link rel="stylesheet" href="ui/leader-card.css?v=12">
+<link rel="stylesheet" href="ui/admiral-card.css?v=12">
 <style>
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -681,11 +681,15 @@ body.scaled {
   --col-card-w: calc(220px * var(--col-card-scale));
   --col-card-h: calc(320px * var(--col-card-scale));
   flex: 1; overflow-y: auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, var(--col-card-w));
+  /* Flex-wrap rather than grid — Firefox's WebRender corrupts the metallic
+     card chrome's pseudo-element compositing inside grid items (visible as
+     wild color blocks on Android Firefox). Flex-wrap gives the same auto-fill
+     row behaviour without the bug. */
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
   gap: 18px 14px;
   padding: 14px 4px 16px;
-  justify-content: start;
 }
 .col-card-cell {
   position: relative;
@@ -1022,20 +1026,19 @@ body.scaled {
   margin-bottom: 10px;
 }
 #building-slots {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  grid-template-rows: 1fr 1fr;
+  /* Flex-wrap rather than grid — see #collection-grid note. */
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
   gap: 10px;
   flex: 1;
 }
 .building-slot {
   /* Slot matches the card's aspect ratio (220×320) plus a small margin, so
      the dashed border sits just outside the card rather than leaving wide
-     empty columns on each side. */
+     empty columns on each side. 5 per row, 4 gaps × 10px = 40px subtracted. */
+  width: calc((100% - 40px) / 5);
   aspect-ratio: 230 / 320;
-  max-width: 100%;
-  justify-self: center;
-  height: 100%;
   min-height: 0;
   border: 2px dashed #1e2744;
   border-radius: 8px;
@@ -1268,12 +1271,14 @@ body.scaled {
 
 /* ── Fleet Tab ── */
 #fleet-ship-slots {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  /* Flex-wrap rather than grid — see #collection-grid note. */
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 .fleet-ship-slot {
-  width: 100%;
+  /* 5 per row matching the old grid; 4 gaps × 10px = 40px subtracted. */
+  width: calc((100% - 40px) / 5);
   aspect-ratio: 220/320;
   border: 2px dashed #1e2744;
   border-radius: 8px;
@@ -1612,7 +1617,7 @@ body.scaled {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.0.9.11</span>
+        <span class="tb-logo-version">v0.0.9.12</span>
       </div>
     </div>
     <div class="tb-nav">

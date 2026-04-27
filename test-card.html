@@ -45,17 +45,17 @@
   .s4 .cell { width: 154px; height: 224px; position: relative; }
   .s4 .card-preview { transform: scale(0.7); transform-origin: top left; }
 
-  /* Section 5: grid of cards, no transforms */
+  /* Section 5: flex-wrap (was grid) — many cards. */
   .s5 {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, 220px);
+    display: flex;
+    flex-wrap: wrap;
     gap: 18px 14px;
   }
 
-  /* Section 6: grid + per-card transform (no body transform) */
+  /* Section 6: flex-wrap + per-card transform (was grid). */
   .s6 {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, 154px);
+    display: flex;
+    flex-wrap: wrap;
     gap: 18px 14px;
   }
   .s6 .cell { width: 154px; height: 224px; position: relative; }
@@ -92,7 +92,7 @@
     <div class="cell"><div class="card-preview tpl-metal is-ship legendary"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">Nested Legendary</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">99</span></div></div><div class="flv">"flavor"</div></div></div></div>
   </div>
 
-  <h2>5. Grid only — many cards, no transforms</h2>
+  <h2>5. Flex-wrap (was grid) — many cards, no transforms</h2>
   <p class="note">Many cards in a grid at natural size. If this glitches, it's the grid+chrome combo.</p>
   <div class="s5">
     <div class="card-preview tpl-metal is-ship common"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">Grid 1</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">10</span></div></div><div class="flv">"flavor"</div></div></div>
@@ -102,7 +102,7 @@
     <div class="card-preview tpl-metal is-ship legendary"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">Grid 5</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">99</span></div></div><div class="flv">"flavor"</div></div></div>
   </div>
 
-  <h2>6. Grid + per-card transform (matches collection screen)</h2>
+  <h2>6. Flex-wrap + per-card transform (matches collection screen)</h2>
   <p class="note">Like the in-game collection grid: many cards, each scaled.</p>
   <div class="s6">
     <div class="cell"><div class="card-preview tpl-metal is-ship common"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">CollGrid 1</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">10</span></div></div><div class="flv">"flavor"</div></div></div></div>

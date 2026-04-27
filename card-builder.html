@@ -1513,7 +1513,7 @@ function statColorStyle(card, rangesField, key, val, defaultColor) {
   return defaultColor ? ` style="color:${defaultColor}"` : "";
 }
 function buildArtImageHtml(src, subLabel, alt) {
-  return `<div class="img"><img src="${src}" alt="${alt || ""}"><div class="subtype">${subLabel}</div></div>`;
+  return `<div class="img"><img src="${src}" alt="${alt || ""}" loading="lazy" decoding="async"><div class="subtype">${subLabel}</div></div>`;
 }
 function buildGlyphImageHtml(glyphId, subLabel) {
   return `<div class="img"><div class="glyph"><svg viewBox="0 0 24 24"><use href="#${glyphId}"/></svg></div><div class="subtype">${subLabel}</div></div>`;

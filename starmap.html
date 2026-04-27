@@ -1993,7 +1993,30 @@ function applyCardBundle(rawCards, source) {
   CARD_SOURCE = source;
   const cats = Object.keys(byCat).sort().join(", ");
   console.info(`[cards] loaded ${byId.size} cards from ${source} (${cats})`);
+  preloadCardImages();
   return true;
+}
+
+// Warm the HTTP cache for every card's art at load time so the first
+// render of a card doesn't pay fetch latency. We deliberately don't hold
+// the Image refs — that would keep decoded RGBA pixels in memory
+// (~3.7 MB per 1216x768 image, ~360 MB across the catalog). The bytes
+// stay in the HTTP cache regardless of GC, and decoding="async" on the
+// <img> tag handles decode off-thread when the card actually renders.
+const __preloadedCardArt = new Set();
+function preloadCardImages() {
+  let count = 0;
+  for (const card of CARD_INDEX.values()) {
+    const src = card && card.image;
+    if (!src || typeof src !== "string" || !src.startsWith("assets/")) continue;
+    if (__preloadedCardArt.has(src)) continue;
+    __preloadedCardArt.add(src);
+    const img = new Image();
+    img.decoding = "async";
+    img.src = src;
+    count++;
+  }
+  if (count > 0) console.info(`[cards] prefetching ${count} card images`);
 }
 
 async function loadCardData() {
@@ -4974,7 +4997,7 @@ function statColorStyle(card, rangesField, key, val, defaultColor) {
   return defaultColor ? ` style="color:${defaultColor}"` : "";
 }
 function buildArtImageHtml(src, subLabel, alt) {
-  return `<div class="img"><img src="${src}" alt="${alt || ""}"><div class="subtype">${subLabel}</div></div>`;
+  return `<div class="img"><img src="${src}" alt="${alt || ""}" loading="lazy" decoding="async"><div class="subtype">${subLabel}</div></div>`;
 }
 function buildGlyphImageHtml(glyphId, subLabel) {
   return `<div class="img"><div class="glyph"><svg viewBox="0 0 24 24"><use href="#${glyphId}"/></svg></div><div class="subtype">${subLabel}</div></div>`;

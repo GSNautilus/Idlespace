@@ -1561,12 +1561,16 @@ function buildStarCardHtml(data) {
       ).join("")}</div>`;
   }
 
+  const imageHtml = data.image
+    ? buildArtImageHtml(data.image, subLabel, data.name)
+    : buildGlyphImageHtml("i-star", subLabel);
+
   return `
       <div class="bg"></div>
       <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
       <div class="c">
         <div class="hdr"><span class="hdr-name">${data.name || "New Card"}</span></div>
-        ${buildGlyphImageHtml("i-star", subLabel)}
+        ${imageHtml}
         ${mainRow}
         ${pipsHtml}
         ${buildSpecialHtml(data.special)}
@@ -1594,13 +1598,16 @@ function buildPlanetCardHtml(data) {
     }).join("")}</div>`;
 
   const glyphId = planetBiomeIconId(data.name);
+  const imageHtml = data.image
+    ? buildArtImageHtml(data.image, subLabel, data.name)
+    : buildGlyphImageHtml(glyphId, subLabel);
 
   return `
       <div class="bg"></div>
       <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
       <div class="c">
         <div class="hdr"><span class="hdr-name">${data.name || "New Card"}</span></div>
-        ${buildGlyphImageHtml(glyphId, subLabel)}
+        ${imageHtml}
         ${bonusRow}
         ${buildSpecialHtml(data.special)}
         ${buildFlavorHtml(data.flavor)}

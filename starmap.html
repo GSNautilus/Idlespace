@@ -1481,6 +1481,81 @@ body {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Combat salvage screen — shown when the player wins a fight against a
+   pirate fleet. Flips in any dropped cards (loot-box flair), then lists
+   resources gained. Single Continue button to dismiss. */
+#salvage-backdrop {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0,0,0,0.88);
+  display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px 20px;
+  overflow-y: auto;
+}
+#salvage-backdrop.visible { display: flex; }
+#salvage-title {
+  font-size: 28px; font-weight: 700; letter-spacing: 4px;
+  color: #4a9b5a; text-transform: uppercase;
+  margin-bottom: 4px;
+  animation: revealFadeIn 0.4s ease-out;
+}
+#salvage-subtitle {
+  font-size: 13px; color: #6a7a9b; letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  animation: revealFadeIn 0.5s ease-out 0.1s both;
+}
+#salvage-cards {
+  display: flex; gap: 18px; flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+.salvage-card-cell {
+  width: calc(220px * 1.3);
+  height: calc(320px * 1.3);
+  position: relative;
+  animation: revealFlip 0.7s ease-out forwards;
+  transform-origin: center;
+}
+.salvage-card-cell .card-preview {
+  transform: scale(1.3);
+  transform-origin: top left;
+}
+.salvage-card-glow {
+  position: absolute; inset: -40px;
+  background: radial-gradient(ellipse at center, var(--rc, #c04040) 0%, transparent 65%);
+  opacity: 0.25;
+  pointer-events: none; z-index: -1;
+  animation: revealGlow 1.4s ease-out;
+}
+#salvage-resources {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 24px;
+  animation: revealFadeIn 0.5s ease-out 0.4s both;
+}
+.salvage-res-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 16px;
+  background: rgba(20,28,48,0.8);
+  border: 1px solid #2a3658;
+  border-radius: 8px;
+  color: #c0d0e0;
+  font-size: 16px; font-weight: 600;
+}
+.salvage-res-pill .ico { width: 18px; height: 18px; }
+#salvage-continue {
+  padding: 10px 32px;
+  background: linear-gradient(135deg, #2a4080, #3a5ab0);
+  border: 1px solid #4060c0;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  animation: revealFadeIn 0.4s ease-out 0.6s both;
+}
+#salvage-continue:hover { background: linear-gradient(135deg, #3050a0, #4a6ac0); }
 </style>
 </head>
 <body>
@@ -2521,8 +2596,12 @@ function generateChunk(cx, cy) {
   const centerY = (cy + 0.5) * CHUNK_SIZE;
   const density = fractalNoise(centerX * NOISE_SCALE, centerY * NOISE_SCALE);
 
-  // Pirate fleet spawning — rate reduced to 1/5; fleet size & rarity scale with distance from home.
-  const pirateChance = density >= DENSITY_THRESHOLD ? 0.02 : 0.006;
+  // Pirate fleet spawning — base rate is the previous "rate / 5" times 4.
+  // The base is then multiplied by (1 + 4 * tier) so density scales linearly
+  // with distance from home: 1x near home, up to 5x at PIRATE_TIER_RANGE.
+  const baseChance = density >= DENSITY_THRESHOLD ? 0.08 : 0.024;
+  const distMult   = 1 + 4 * getPirateTier(centerX, centerY);
+  const pirateChance = baseChance * distMult;
   if (rng() < pirateChance) {
     const px = cx * CHUNK_SIZE + rng() * CHUNK_SIZE;
     const py = cy * CHUNK_SIZE + rng() * CHUNK_SIZE;
@@ -3216,10 +3295,53 @@ function syncSurvivorState(side) {
   }
 }
 
+// Per-rarity credits-equivalent ranges for combat salvage.
+// Tuned to roughly 30-100% of a same-rarity ship's placement cost so wiping
+// pirates is meaningful but not the most efficient resource source.
+const LOOT_VALUE_RANGES = {
+  common:    [50,        150],
+  uncommon:  [600,       1800],
+  rare:      [12000,     36000],
+  epic:      [240000,    720000],
+  legendary: [5000000,   15000000],
+};
+// Inverse of cost weights — used to convert a rolled cred-equivalent into a
+// concrete resource amount. Mirrors the rebase script's WEIGHTS table.
+const LOOT_RESOURCE_WEIGHTS = { credits: 1, food: 1, minerals: 2, energy: 2 };
+const LOOT_RESOURCE_TYPES   = ["credits", "minerals", "energy", "food"];
+const LOOT_CARD_DROP_CHANCE = 0.05; // independent roll per defeated ship
+
+// Roll resources + (rarely) a pirate card from each destroyed enemy ship.
+// Returns null if no loot fired (player wipe, friendly-on-friendly, etc.).
+function rollCombatLoot(winner, loser) {
+  if (!winner || !loser) return null;
+  if (winner.entity.owner !== "player") return null;
+  if (loser.entity.owner !== "npc") return null;
+  if (!winner.ships.some(s => s.alive)) return null; // mutual destruction → no loot
+  const resources = {};
+  const cards = [];
+  for (const shipState of loser.ships) {
+    const card = shipState.card;
+    if (!card) continue;
+    const rarity = card.rarity || "common";
+    const range = LOOT_VALUE_RANGES[rarity] || LOOT_VALUE_RANGES.common;
+    const credEquiv = range[0] + Math.random() * (range[1] - range[0]);
+    const resType = LOOT_RESOURCE_TYPES[Math.floor(Math.random() * LOOT_RESOURCE_TYPES.length)];
+    const weight = LOOT_RESOURCE_WEIGHTS[resType] || 1;
+    const amount = Math.max(1, Math.round(credEquiv / weight));
+    resources[resType] = (resources[resType] || 0) + amount;
+    if (Math.random() < LOOT_CARD_DROP_CHANCE) cards.push(card);
+  }
+  return { resources, cards };
+}
+
 function cleanupCombat(combat, arrayIndex) {
   const aAlive = combat.sideA.ships.some(s => s.alive);
   const winner = aAlive ? combat.sideA : combat.sideB;
   const loser = aAlive ? combat.sideB : combat.sideA;
+
+  // Roll salvage BEFORE removing the loser entity so loser.ships is intact.
+  const loot = rollCombatLoot(winner, loser);
 
   // Remove destroyed entity
   const loserIdx = mapEntities.indexOf(loser.entity);
@@ -3234,6 +3356,21 @@ function cleanupCombat(combat, arrayIndex) {
   winner.entity.inCombat = null;
 
   activeCombats.splice(arrayIndex, 1);
+
+  // Apply loot + show salvage screen. Resources go into the global pool now;
+  // any dropped cards land in the pirateLoot inventory and are marked seen.
+  if (loot) {
+    for (const k of Object.keys(loot.resources)) {
+      resources[k] = (resources[k] || 0) + loot.resources[k];
+    }
+    for (const card of loot.cards) {
+      pirateLoot[card.id] = (pirateLoot[card.id] || 0) + 1;
+      markCardSeen(card);
+    }
+    if (Object.keys(loot.resources).length > 0 || loot.cards.length > 0) {
+      showSalvageScreen(loot);
+    }
+  }
 }
 
 function tryDisengage(combat) {
@@ -4041,7 +4178,7 @@ function getEntityAtScreen(sx, sy) {
 const camera = {
   x: 0, y: 0,       // world offset (center of view)
   zoom: 1.0,
-  minZoom: 0.3,
+  minZoom: 0.1,
   maxZoom: 3.0,
 };
 
@@ -4951,13 +5088,17 @@ function buildStarCardHtml(card) {
       ).join("")}</div>`;
   }
 
+  const imageHtml = card.image
+    ? buildArtImageHtml(card.image, subLabel, card.name)
+    : buildGlyphImageHtml("i-star", subLabel);
+
   return `
     <div class="card-preview tpl-metal is-star ${rarity}">
       <div class="bg"></div>
       <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
       <div class="c">
         <div class="hdr"><span class="hdr-name">${card.name || ""}</span></div>
-        ${buildGlyphImageHtml("i-star", subLabel)}
+        ${imageHtml}
         ${mainRow}
         ${pipsHtml}
         ${buildSpecialHtml(getSpecialDisplay(card))}
@@ -4986,6 +5127,9 @@ function buildPlanetCardHtml(card) {
     }).join("")}</div>`;
 
   const glyphId = planetBiomeIconId(card.name);
+  const imageHtml = card.image
+    ? buildArtImageHtml(card.image, subLabel, card.name)
+    : buildGlyphImageHtml(glyphId, subLabel);
 
   return `
     <div class="card-preview tpl-metal is-planet ${rarity}">
@@ -4993,7 +5137,7 @@ function buildPlanetCardHtml(card) {
       <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
       <div class="c">
         <div class="hdr"><span class="hdr-name">${card.name || ""}</span></div>
-        ${buildGlyphImageHtml(glyphId, subLabel)}
+        ${imageHtml}
         ${bonusRow}
         ${buildSpecialHtml(getSpecialDisplay(card))}
         ${buildFlavorHtml(card.flavor)}
@@ -6091,9 +6235,11 @@ const TICK_PERIOD = 1;
 const SHOT_INTERVAL = 0.5;       // game-seconds between each shot in a volley
 const COMBAT_TIME_SCALE = 1 / 100; // combat runs 100x slower than wall-clock — preserves the pre-real-time-rebase combat tempo
 // Map-movement secondary scale: ent.x += dir * (ent.speed * scaledDt * WORLD_SPEED_MULT).
-// 0.1 preserves the pre-rebase travel feel; lower it later to push toward the
-// hours-long travel vision in the pacing memory without touching ship template stats.
-const WORLD_SPEED_MULT = 0.1;
+// 0.2 doubles travel speed vs the v0.1.0 baseline; ETAs read from this same
+// constant so they update automatically. Combat closing speed lives on a
+// different path (tickCombats with COMBAT_TIME_SCALE) so combat tempo is
+// unaffected.
+const WORLD_SPEED_MULT = 0.2;
 // Particles and weapon-flash visuals tick at scaledDt * VISUAL_DT_FACTOR so
 // their on-screen tempo is unchanged across BASE_GAME_SPEED rebases. Any
 // formula that converts combat-time to "visual-tick-time" (e.g. VOLLEY in
@@ -6179,6 +6325,11 @@ const researchedCards = new Set(); // card IDs that have been researched
 // Card template IDs the player has ever viewed (full card render). Drives
 // the Collection overlay's "Seen" state for cards not currently owned.
 const seenCards = new Set();
+// Inventory of pirate cards looted from destroyed enemy fleets. Keyed by
+// template id, value = count owned. These DO show as Owned in Collection
+// but are NOT placed into any colony queue / map entity — they're trophies
+// only for v0.1.0; deployable-pirate-ships is a possible future phase.
+const pirateLoot = {};
 function markCardSeen(card) {
   if (!card) return;
   const id = typeof card === "string" ? card : card.id;
@@ -6204,6 +6355,10 @@ function computeOwnedCounts() {
     if (e.type === "ship" && e.card) inc(e.card.id);
     if (e.ships) for (const s of e.ships) if (s) inc(s.id);
     if (e.admiral) inc(e.admiral.id);
+  }
+  // Loot trophies count toward Collection ownership.
+  for (const id of Object.keys(pirateLoot)) {
+    counts[id] = (counts[id] || 0) + pirateLoot[id];
   }
   return counts;
 }
@@ -7801,6 +7956,74 @@ function refreshResearchPanel() {
   }
 }
 
+// Salvage screen — shown after a winning fight against a pirate fleet.
+// Cards flip in first (loot-box flair), then resources list, then a single
+// Continue button. Dismisses on Continue or Escape.
+function showSalvageScreen(loot) {
+  // Tear down any existing salvage modal (e.g. back-to-back wins).
+  const existing = document.getElementById("salvage-backdrop");
+  if (existing) existing.remove();
+
+  const backdrop = document.createElement("div");
+  backdrop.id = "salvage-backdrop";
+
+  const title = document.createElement("div");
+  title.id = "salvage-title";
+  title.textContent = "Victory";
+
+  const subtitle = document.createElement("div");
+  subtitle.id = "salvage-subtitle";
+  subtitle.textContent = loot.cards.length > 0
+    ? "Salvage recovered from the wreckage"
+    : "Salvage recovered";
+
+  const cardsRow = document.createElement("div");
+  cardsRow.id = "salvage-cards";
+  loot.cards.forEach((card, i) => {
+    const cell = document.createElement("div");
+    cell.className = "salvage-card-cell";
+    cell.style.animationDelay = `${0.1 + i * 0.18}s`;
+    const rarityColor = (typeof RARITY_COLORS !== "undefined" && RARITY_COLORS[card.rarity]) || "#c04040";
+    cell.style.setProperty("--rc", rarityColor);
+    cell.innerHTML = `<div class="salvage-card-glow"></div>` + buildCardHtml(card);
+    cardsRow.appendChild(cell);
+  });
+
+  const resRow = document.createElement("div");
+  resRow.id = "salvage-resources";
+  for (const k of Object.keys(loot.resources)) {
+    const v = loot.resources[k];
+    if (!v) continue;
+    const pill = document.createElement("div");
+    pill.className = "salvage-res-pill";
+    const iconId = (typeof RES_ICON_BY_KEY !== "undefined" && RES_ICON_BY_KEY[k]) || null;
+    const iconHtml = iconId ? `<svg class="ico ${k}"><use href="#${iconId}"/></svg>` : "";
+    pill.innerHTML = `${iconHtml}<span>+${formatResourceValue(v)}</span>`;
+    resRow.appendChild(pill);
+  }
+
+  const btn = document.createElement("button");
+  btn.id = "salvage-continue";
+  btn.textContent = "Continue";
+  const dismiss = () => {
+    backdrop.remove();
+    document.removeEventListener("keydown", onKey);
+  };
+  const onKey = (e) => { if (e.key === "Escape" || e.key === "Enter") dismiss(); };
+  btn.addEventListener("click", dismiss);
+  document.addEventListener("keydown", onKey);
+
+  backdrop.appendChild(title);
+  backdrop.appendChild(subtitle);
+  if (loot.cards.length > 0) backdrop.appendChild(cardsRow);
+  if (resRow.childNodes.length > 0) backdrop.appendChild(resRow);
+  backdrop.appendChild(btn);
+  document.body.appendChild(backdrop);
+
+  // Force the .visible class in the next frame so the CSS transition fires.
+  requestAnimationFrame(() => backdrop.classList.add("visible"));
+}
+
 // Research reveal — "card pack opening" moment
 function showResearchReveal(template, category) {
   markCardSeen(template);
@@ -8009,6 +8232,7 @@ function serializeGame() {
     researchCounts: { ...researchCounts },
     researchedCards: [...researchedCards],
     seenCards:       [...seenCards],
+    pirateLoot:      { ...pirateLoot },
     activeResearch: activeResearch ? { ...activeResearch } : null,
 
     camera: { x: camera.x, y: camera.y, zoom: camera.zoom },
@@ -8074,6 +8298,7 @@ function clearGameState() {
   for (const k of Object.keys(researchCounts)) researchCounts[k] = 0;
   researchedCards.clear();
   seenCards.clear();
+  for (const k of Object.keys(pirateLoot)) delete pirateLoot[k];
   activeResearch = null;
 }
 
@@ -8139,6 +8364,7 @@ function deserializeGame(data) {
   for (const k of Object.keys(data.researchCounts || {})) researchCounts[k] = data.researchCounts[k];
   for (const id of (data.researchedCards || [])) researchedCards.add(id);
   for (const id of (data.seenCards || [])) seenCards.add(id);
+  for (const k of Object.keys(data.pirateLoot || {})) pirateLoot[k] = data.pirateLoot[k];
   activeResearch = data.activeResearch || null;
 
   if (data.camera) {

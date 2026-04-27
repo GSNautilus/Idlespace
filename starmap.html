@@ -3,18 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script>
-  // Responsive scaling: on screens narrower than the UI's natural width,
-  // tell the browser to lay the page out at 1920px and natively scale it
-  // to fit. Uses the browser's own viewport zoom (same mechanism as user
-  // browser zoom) — no body transform, no compositing layer, so card
-  // chrome renders exactly as it does on desktop. Inline + early so it
-  // runs before first paint to avoid a layout flash.
-  if (window.screen.width < 1920) {
-    document.querySelector('meta[name="viewport"]')
-      .setAttribute('content', 'width=1920');
-  }
-</script>
 <title>IdleSpace — Star Map</title>
 <link rel="stylesheet" href="ui/colors_and_type.css">
 <link rel="stylesheet" href="ui/chrome.css">
@@ -29,6 +17,7 @@
 <style>
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: #050508; }
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   background: #050508;
@@ -38,6 +27,18 @@ body {
   flex-direction: column;
   overflow: hidden;
   user-select: none;
+}
+/* Global UI scaling for sub-design screens. The UI fits naturally at ~1920px
+   wide (a half-window on a 3440 monitor sits well below that), so 1920 is the
+   floor: screens at or above it render natively, smaller screens get
+   transform-scaled to fit. Keep this width in sync with DESIGN_W in JS. */
+body.scaled {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+  transform: scale(var(--ui-scale, 1));
 }
 
 /* ── Top Bar (restyled — see ui/topbar.css for the structural vocabulary) ── */
@@ -1609,7 +1610,7 @@ body {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.0.9.7</span>
+        <span class="tb-logo-version">v0.0.9.8</span>
       </div>
     </div>
     <div class="tb-nav">
@@ -4455,6 +4456,22 @@ function resizeCanvas() {
   canvas.height = container.clientHeight;
 }
 
+// Convert a pointer event's viewport-pixel position into the canvas's internal
+// coord system. Required because the body transform (see applyUiScale) makes
+// the canvas's displayed size diverge from its internal pixel buffer:
+// rect.width = canvas.width * uiScale. The kx/ky multipliers undo that, and
+// also serve as 1/uiScale for placing tooltips inside the scaled body.
+function pointerToCanvas(canvas, clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const kx = canvas.width / rect.width;
+  const ky = canvas.height / rect.height;
+  return {
+    x: (clientX - rect.left) * kx,
+    y: (clientY - rect.top) * ky,
+    rect, kx, ky,
+  };
+}
+
 function drawBgStars(ctx) {
   const canvas = ctx.canvas;
   const parallax = 0.15; // moves slower than main layer
@@ -5996,9 +6013,9 @@ container.addEventListener("pointerdown", (e) => {
     const pts = [...activePointers.values()];
     const dx = pts[0].x - pts[1].x;
     const dy = pts[0].y - pts[1].y;
-    const rect = canvasEl.getBoundingClientRect();
-    const midX = (pts[0].x + pts[1].x) / 2 - rect.left;
-    const midY = (pts[0].y + pts[1].y) / 2 - rect.top;
+    const mid = pointerToCanvas(canvasEl, (pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2);
+    const midX = mid.x;
+    const midY = mid.y;
     pinchState = {
       startDist: Math.hypot(dx, dy),
       startZoom: camera.zoom,
@@ -6030,8 +6047,9 @@ window.addEventListener("pointermove", (e) => {
   }
 
   if (isDragging) {
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
+    const m = pointerToCanvas(canvasEl, e.clientX, e.clientY);
+    const dx = (e.clientX - dragStart.x) * m.kx;
+    const dy = (e.clientY - dragStart.y) * m.ky;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
     camera.x = dragCameraStart.x - dx / camera.zoom;
     camera.y = dragCameraStart.y - dy / camera.zoom;
@@ -6042,9 +6060,10 @@ window.addEventListener("pointermove", (e) => {
   if (e.pointerType === "touch") return;
 
   // Hover detection
-  const rect = canvasEl.getBoundingClientRect();
-  const sx = e.clientX - rect.left;
-  const sy = e.clientY - rect.top;
+  const m = pointerToCanvas(canvasEl, e.clientX, e.clientY);
+  const rect = m.rect;
+  const sx = m.x;
+  const sy = m.y;
 
   // Check entities first
   const entIdx = getEntityAtScreen(sx, sy);
@@ -6056,8 +6075,8 @@ window.addEventListener("pointermove", (e) => {
     const stanceLabel = hEnt.stance === "aggressive" ? "Aggressive" : "Evasive";
     const shipCount = hEnt.type === "fleet" ? ` (${hEnt.ships.length} ships)` : "";
     tooltip.textContent = `${hEnt.label}${shipCount} — ${stanceLabel}`;
-    tooltip.style.left = (e.clientX - rect.left + 12) + "px";
-    tooltip.style.top = (e.clientY - rect.top - 8) + "px";
+    tooltip.style.left = (sx + 12) + "px";
+    tooltip.style.top = (sy - 8) + "px";
     tooltip.style.display = "block";
     canvasEl.style.cursor = "pointer";
   } else if (selectedEntityIdx !== null) {
@@ -6065,8 +6084,8 @@ window.addEventListener("pointermove", (e) => {
     hoveredStarId = star ? star.id : null;
     if (star) {
       tooltip.textContent = star.visibility === "explored" ? star.card.name : "Unknown Star";
-      tooltip.style.left = (e.clientX - rect.left + 12) + "px";
-      tooltip.style.top = (e.clientY - rect.top - 8) + "px";
+      tooltip.style.left = (sx + 12) + "px";
+      tooltip.style.top = (sy - 8) + "px";
       tooltip.style.display = "block";
     } else {
       tooltip.style.display = "none";
@@ -6076,8 +6095,8 @@ window.addEventListener("pointermove", (e) => {
     hoveredStarId = star.id;
     const label = star.visibility === "explored" ? star.card.name : "Unknown Star";
     tooltip.textContent = label;
-    tooltip.style.left = (e.clientX - rect.left + 12) + "px";
-    tooltip.style.top = (e.clientY - rect.top - 8) + "px";
+    tooltip.style.left = (sx + 12) + "px";
+    tooltip.style.top = (sy - 8) + "px";
     tooltip.style.display = "block";
     canvasEl.style.cursor = "pointer";
   } else {
@@ -6108,9 +6127,9 @@ function handlePointerEnd(e) {
 
   // Click logic — primary button only (touch/pen are always button 0)
   if (!dragMoved && e.button === 0) {
-    const rect = canvasEl.getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
+    const m = pointerToCanvas(canvasEl, e.clientX, e.clientY);
+    const sx = m.x;
+    const sy = m.y;
 
     // Check combat icon click first
     const combatHit = getCombatAtScreen(sx, sy);
@@ -6167,9 +6186,9 @@ container.addEventListener("contextmenu", (e) => {
 
 // Double-click to enter system view
 canvasEl.addEventListener("dblclick", (e) => {
-  const rect = canvasEl.getBoundingClientRect();
-  const sx = e.clientX - rect.left;
-  const sy = e.clientY - rect.top;
+  const m = pointerToCanvas(canvasEl, e.clientX, e.clientY);
+  const sx = m.x;
+  const sy = m.y;
   const star = getStarAtScreen(sx, sy);
   if (star && star.visibility === "explored") {
     hideSelectPanel();
@@ -6184,9 +6203,9 @@ container.addEventListener("wheel", (e) => {
   const newZoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomFactor));
 
   // Zoom toward mouse position
-  const rect = canvasEl.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+  const m = pointerToCanvas(canvasEl, e.clientX, e.clientY);
+  const mx = m.x;
+  const my = m.y;
   const worldBefore = screenToWorld(mx, my);
 
   camera.zoom = newZoom;
@@ -6206,9 +6225,9 @@ const systemCanvas = document.getElementById("system-canvas");
 
 systemCanvas.addEventListener("mousemove", (e) => {
   if (!systemViewStar || !systemViewStar.planets) return;
-  const rect = systemCanvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+  const m = pointerToCanvas(systemCanvas, e.clientX, e.clientY);
+  const mx = m.x;
+  const my = m.y;
   const cx = systemCanvas.width / 2;
   const cy = systemCanvas.height / 2;
   const time = animTime;
@@ -6231,9 +6250,9 @@ systemCanvas.addEventListener("mousemove", (e) => {
 
 systemCanvas.addEventListener("click", (e) => {
   if (!systemViewStar || !systemViewStar.planets) return;
-  const rect = systemCanvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+  const m = pointerToCanvas(systemCanvas, e.clientX, e.clientY);
+  const mx = m.x;
+  const my = m.y;
   const cx = systemCanvas.width / 2;
   const cy = systemCanvas.height / 2;
   const time = animTime;
@@ -7869,9 +7888,9 @@ document.querySelectorAll(".colony-action-btn").forEach(btn => {
 // Double-click planet in system view to open colony screen
 systemCanvas.addEventListener("dblclick", (e) => {
   if (!systemViewStar || !systemViewStar.planets) return;
-  const rect = systemCanvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+  const m = pointerToCanvas(systemCanvas, e.clientX, e.clientY);
+  const mx = m.x;
+  const my = m.y;
   const cx = systemCanvas.width / 2;
   const cy = systemCanvas.height / 2;
   const time = animTime;
@@ -8691,8 +8710,29 @@ function confirmLoadSave(data, sourceLabel) {
 await loadCardData();
 updateCardSourceBadge();
 initResearch();
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
+// Compute global UI scale (see body CSS). The UI fits natively at 1920px, so
+// only screens narrower than that get scaled — desktops (and any window on
+// them, including half-windows) keep the original layout untouched.
+const DESIGN_W = 1920;
+function applyUiScale() {
+  const screenW = window.screen.width;
+  const scale = Math.min(screenW / DESIGN_W, 1);
+  if (scale >= 1) {
+    document.body.classList.remove('scaled');
+    document.body.style.height = '';
+    document.documentElement.style.removeProperty('--ui-scale');
+  } else {
+    document.body.classList.add('scaled');
+    document.documentElement.style.setProperty('--ui-scale', scale);
+    document.body.style.height = (window.innerHeight / scale) + 'px';
+  }
+  resizeCanvas();
+  if (document.getElementById("system-overlay")?.classList.contains("visible")) {
+    resizeSystemCanvas();
+  }
+}
+applyUiScale();
+window.addEventListener("resize", applyUiScale);
 const homeStar = generateGalaxy();
 // Helper to clone a ship template by id
 function cloneShip(id, nameOverride) {

@@ -49,6 +49,11 @@
   inset: 1.5px;
   border-radius: 8.5px;
   overflow: hidden;
+  /* Required so the .bg::before mix-blend-mode: overlay (the noise) blends
+     against .bg's own background only. Without explicit isolation Firefox
+     bleeds the blend onto sibling content underneath, producing colored
+     blotches over the card. (.metal already does the same thing.) */
+  isolation: isolate;
   background:
     radial-gradient(ellipse 80% 60% at 0% 0%,   color-mix(in oklab, var(--rc) 14%, transparent) 0%, transparent 60%),
     radial-gradient(ellipse 80% 60% at 100% 100%, color-mix(in oklab, var(--rc) 10%, transparent) 0%, transparent 55%),

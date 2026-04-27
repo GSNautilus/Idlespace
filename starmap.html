@@ -2454,6 +2454,62 @@ function isInPlayerSensorRange(wx, wy) {
   return false;
 }
 
+// Find the player fleet/ship best positioned to colonize `star` — must
+// hold a Colony Ship (special === "colonize") AND have the star within its
+// own sensor range. Returns the closest qualifying entity, or null.
+function findColonyShipFleet(star) {
+  let best = null;
+  let bestD2 = Infinity;
+  for (const ent of mapEntities) {
+    if (ent.owner !== "player") continue;
+    if (ent.inCombat) continue;
+    let hasColonyShip = false;
+    if (ent.type === "ship") {
+      hasColonyShip = ent.card && ent.card.special === "colonize";
+    } else if (ent.ships) {
+      hasColonyShip = ent.ships.some(s => s && s.special === "colonize");
+    }
+    if (!hasColonyShip) continue;
+    const range = (ent.sensorRange || 0) * 50;
+    if (range <= 0) continue;
+    const dx = star.x - ent.x, dy = star.y - ent.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 > range * range) continue;
+    if (d2 < bestD2) { bestD2 = d2; best = ent; }
+  }
+  return best;
+}
+
+// Remove one Colony Ship from the given entity. Solo Colony Ships delete the
+// entity outright; fleet members get spliced and the fleet's derived stats
+// are recomputed. If splicing empties a fleet, the fleet entity is removed.
+// Returns true on success.
+function consumeColonyShip(ent) {
+  if (!ent) return false;
+  const idx = mapEntities.indexOf(ent);
+  if (idx < 0) return false;
+  if (ent.type === "ship") {
+    if (!ent.card || ent.card.special !== "colonize") return false;
+    mapEntities.splice(idx, 1);
+    if (selectedEntityIdx === idx) selectedEntityIdx = null;
+    else if (selectedEntityIdx !== null && selectedEntityIdx > idx) selectedEntityIdx--;
+    return true;
+  }
+  if (!ent.ships) return false;
+  const shipIdx = ent.ships.findIndex(s => s && s.special === "colonize");
+  if (shipIdx < 0) return false;
+  ent.ships.splice(shipIdx, 1);
+  if (ent.ships.length === 0) {
+    mapEntities.splice(idx, 1);
+    if (selectedEntityIdx === idx) selectedEntityIdx = null;
+    else if (selectedEntityIdx !== null && selectedEntityIdx > idx) selectedEntityIdx--;
+  } else {
+    ent.speed = Math.min(...ent.ships.map(s => s.stats.speed || 1));
+    ent.sensorRange = Math.max(...ent.ships.map(s => s.stats.sensorRange || 0));
+  }
+  return true;
+}
+
 function detectStarsInRange(wx, wy, sensorRange) {
   revealChunksInRadius(wx, wy, sensorRange);
   for (const star of stars.values()) {
@@ -4547,6 +4603,21 @@ function buildCostPillHtml(cost) {
   });
   return `<div class="cost">${parts.join("")}</div>`;
 }
+// Registry of special abilities. The card's `special` field stores a stable
+// system key (e.g. "colonize"); game logic compares against the key directly.
+// The renderer looks up player-facing text here. Adding a new ability =
+// adding an entry with { label, ... }; legacy cards whose `special` is free
+// prose still render fine because unknown keys fall back to the raw string.
+const SPECIAL_ABILITIES = {
+  colonize: { label: "Can colonize planets" },
+};
+
+function getSpecialDisplay(card) {
+  if (!card || !card.special) return "";
+  const ability = SPECIAL_ABILITIES[card.special];
+  return ability ? ability.label : card.special;
+}
+
 function buildSpecialHtml(text)  { return text ? `<div class="special"><span class="sn">Special</span>${text}</div>` : ""; }
 function buildFlavorHtml(text)   { return text ? `<div class="flv">${text}</div>` : ""; }
 function buildWatermarkHtml(id)  { return `<div class="wm"><svg viewBox="0 0 24 24"><use href="#${id}"/></svg></div>`; }
@@ -4628,8 +4699,9 @@ function buildShipCardHtml(card) {
       `<div class="stat" title="${u.label}: ${formatResourceValue(s[u.key])}"><svg class="ico ${u.cls}"><use href="#${u.icon}"/></svg><span class="sv"${colored(qc(u.key, s[u.key]))}>${formatResourceValue(s[u.key])}</span></div>`
     ).join("")}</div>`;
 
-  const specialHtml = (card.special && card.special.length > 0)
-    ? `<div class="special"><span class="sn">Special</span>${card.special}</div>` : "";
+  const specialDisplay = getSpecialDisplay(card);
+  const specialHtml = specialDisplay
+    ? `<div class="special"><span class="sn">Special</span>${specialDisplay}</div>` : "";
   const flavorHtml = card.flavor ? `<div class="flv">${card.flavor}</div>` : "";
 
   // Placeholder portrait until ship-specific art is authored per card.
@@ -4710,7 +4782,7 @@ function buildStarCardHtml(card) {
         ${buildGlyphImageHtml("i-star", subLabel)}
         ${mainRow}
         ${pipsHtml}
-        ${buildSpecialHtml(card.special)}
+        ${buildSpecialHtml(getSpecialDisplay(card))}
         ${buildFlavorHtml(card.flavor)}
         ${buildWatermarkHtml("i-star")}
       </div>
@@ -4745,7 +4817,7 @@ function buildPlanetCardHtml(card) {
         <div class="hdr"><span class="hdr-name">${card.name || ""}</span></div>
         ${buildGlyphImageHtml(glyphId, subLabel)}
         ${bonusRow}
-        ${buildSpecialHtml(card.special)}
+        ${buildSpecialHtml(getSpecialDisplay(card))}
         ${buildFlavorHtml(card.flavor)}
         ${buildWatermarkHtml("i-planet")}
       </div>
@@ -4795,7 +4867,7 @@ function buildBuildingCardHtml(card) {
         ${imageHtml}
         ${prodRow}
         ${upkeepRow}
-        ${buildSpecialHtml(card.special)}
+        ${buildSpecialHtml(getSpecialDisplay(card))}
         ${buildFlavorHtml(card.flavor)}
         ${buildWatermarkHtml("i-building")}
       </div>
@@ -4833,7 +4905,7 @@ function buildLeaderCardHtml(card) {
         <div class="hdr"><span class="hdr-name">${card.name || ""}</span></div>
         ${imageHtml}
         ${row}
-        ${buildSpecialHtml(card.special)}
+        ${buildSpecialHtml(getSpecialDisplay(card))}
         ${buildFlavorHtml(card.flavor)}
         ${buildWatermarkHtml("i-leader")}
       </div>
@@ -4889,7 +4961,7 @@ function buildAdmiralCardHtml(card) {
         ${imageHtml}
         ${heroRow}
         ${bonusRow}
-        ${buildSpecialHtml(card.special)}
+        ${buildSpecialHtml(getSpecialDisplay(card))}
         ${buildFlavorHtml(card.flavor)}
         ${buildWatermarkHtml("i-admiral")}
       </div>
@@ -6296,11 +6368,16 @@ function colonizePlanet(star, planetIdx) {
   const planet = star.planets[planetIdx];
   if (planet.colony) return; // already colonized
   const cost = getColonizationCost(colonies.length);
+  // Re-check the colony-ship gate at function entry so a stale UI button
+  // can't bypass it (mirrors the explore gate pattern).
+  const colonyFleet = findColonyShipFleet(star);
+  if (!colonyFleet) return;
   if (!canAfford(cost)) {
     const btn = document.getElementById("planet-action-btn");
     if (btn) showCostTooltip(btn, cost);
     return;
   }
+  if (!consumeColonyShip(colonyFleet)) return;
   if (Object.keys(cost).length > 0) deductCost(cost);
   planet.colony = {
     population: 1,                        // starts at pop 1 (100K people, 1 building slot)
@@ -6333,6 +6410,7 @@ function showPlanetCard(planet) {
   } else {
     const cost = getColonizationCost(colonies.length);
     const costKeys = Object.keys(cost);
+    const colonyFleet = systemViewStar ? findColonyShipFleet(systemViewStar) : null;
     if (costKeys.length > 0) {
       const costStr = Object.entries(cost).map(([k,v]) => {
         const iconId = RES_ICON_BY_KEY[k];
@@ -6343,7 +6421,12 @@ function showPlanetCard(planet) {
     } else {
       btn.textContent = "Colonize";
     }
-    btn.onclick = () => colonizeFromSystem();
+    if (!colonyFleet) {
+      btn.disabled = true;
+      btn.title = "Move a fleet with a Colony Ship into sensor range of this star.";
+    } else {
+      btn.onclick = () => colonizeFromSystem();
+    }
   }
   const container = document.getElementById("system-planet-card");
   container.insertBefore(btn, document.getElementById("planet-card-close"));
@@ -7954,24 +8037,20 @@ function cloneAdmiral(id) {
   const t = getCardById(id);
   return { ...t, stats: { ...t.stats } };
 }
-// Start with 3 admiral-led fleets, each with a high-sensor ship, offset from home star
+// Start with 2 admiral-led fleets: one carries the player's only Colony
+// Ship (gates the first colonization), the other is pure combat escort.
 const starterFleets = [
-  { admiral: cloneAdmiral("adm_002"), ships: [  // Patrol Commander
-    cloneShip("shp_002"),            // Patrol Frigate (kinetic/medium)
-    cloneShip("shp_009"),            // Sensor Pinnace (sensorRange:20)
-    cloneShip("shp_003"),            // Missile Corvette (missile/long)
+  { admiral: cloneAdmiral("adm_002"), ships: [  // Patrol Commander — settler escort
     cloneShip("shp_001"),            // Scout Corvette (energy/short)
+    cloneShip("shp_002"),            // Patrol Frigate (kinetic/medium)
+    cloneShip("shp_003"),            // Missile Corvette (missile/long)
+    cloneShip("shp_018"),            // Colony Ship — required to colonize
   ]},
-  { admiral: cloneAdmiral("adm_001"), ships: [  // Ensign Hale
-    cloneShip("shp_001"),            // Scout Corvette
-    cloneShip("shp_009", "Sensor Pinnace II"),
+  { admiral: cloneAdmiral("adm_001"), ships: [  // Ensign Hale — combat patrol
+    cloneShip("shp_001", "Scout Corvette II"),
     cloneShip("shp_002", "Patrol Frigate II"),
-  ]},
-  { admiral: cloneAdmiral("adm_004"), ships: [  // Privateer
-    cloneShip("shp_003", "Missile Corvette II"),
-    cloneShip("shp_009", "Sensor Pinnace III"),
-    cloneShip("shp_005"),            // Picket Ship (PD + energy)
     cloneShip("shp_004"),            // Gunboat (kinetic/short)
+    cloneShip("shp_005"),            // Picket Ship (PD + energy)
   ]},
 ];
 starterFleets.forEach((f, i) => {

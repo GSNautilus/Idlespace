@@ -367,8 +367,9 @@ body {
   padding: 3px;
   background: var(--rarity-color);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-  mask-composite: exclude;
+          mask-composite: exclude;
   pointer-events: none;
 }
 .card-preview .card-bg {
@@ -1608,7 +1609,7 @@ body {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.0.9.6</span>
+        <span class="tb-logo-version">v0.0.9.7</span>
       </div>
     </div>
     <div class="tb-nav">

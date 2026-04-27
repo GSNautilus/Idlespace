@@ -14,8 +14,16 @@
 .card-preview.tpl-metal {
   background: transparent;
   overflow: visible;
-  filter: drop-shadow(0 0 16px color-mix(in oklab, var(--rc, var(--rarity-common)) 50%, transparent))
-          drop-shadow(0 10px 24px rgba(0,0,0,.6));
+  /* Was filter: drop-shadow x2 with color-mix. Each filter creates a filter
+     group; Firefox WebRender stacks these poorly under transformed parents
+     (game body has transform: scale on small screens), producing color-block
+     artifacts at scale that aren't visible in isolated test cards. Plain
+     box-shadow has no filter group and renders identically across browsers.
+     Card has rounded border-box matching the gradient ring, so visually
+     equivalent. */
+  box-shadow: 0 0 16px color-mix(in oklab, var(--rc, var(--rarity-common)) 50%, transparent),
+              0 10px 24px rgba(0,0,0,.6);
+  border-radius: 10px;
 }
 .card-preview.tpl-metal.common    { --rc: var(--rarity-common); }
 .card-preview.tpl-metal.uncommon  { --rc: var(--rarity-uncommon); }

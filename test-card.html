@@ -3,75 +3,61 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IdleSpace — Card Render Test</title>
-<link rel="stylesheet" href="ui/colors_and_type.css">
-<link rel="stylesheet" href="ui/chrome.css">
-<link rel="stylesheet" href="ui/card-chrome.css">
-<link rel="stylesheet" href="ui/ship-card.css">
+<title>IdleSpace — Card Render Test (game-like context)</title>
+<link rel="stylesheet" href="ui/colors_and_type.css?v=11">
+<link rel="stylesheet" href="ui/chrome.css?v=11">
+<link rel="stylesheet" href="ui/card-chrome.css?v=11">
+<link rel="stylesheet" href="ui/ship-card.css?v=11">
 <style>
-  /* No body transform. No grid. No scrolling. Just two cards centered. */
+  /* Now mimics the GAME's context: body transform: scale, plus a grid of
+     cards each scaled with its own transform — same nesting that exists in
+     the collection screen. */
+  html { background: #050508; }
   body {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1920px;
     margin: 0;
     background: #050508;
     color: #c8d0e0;
     font-family: 'Segoe UI', system-ui, sans-serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 30px;
+    transform-origin: top left;
+    transform: scale(0.7);
     padding: 20px;
+    box-sizing: border-box;
   }
-  h1 { font-size: 14px; color: #6a7a9b; font-weight: 400; letter-spacing: 1px; text-transform: uppercase; }
-  .card-row { display: flex; gap: 40px; }
-  .card-preview { width: 220px; height: 320px; border-radius: 10px; position: relative; }
-  .label { font-size: 11px; color: #6a7a9b; text-align: center; margin-top: 8px; }
-  .card-wrap { display: flex; flex-direction: column; align-items: center; }
+  h1 { font-size: 14px; color: #6a7a9b; font-weight: 400; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 20px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 154px);
+    gap: 18px 14px;
+    padding: 14px 0;
+  }
+  .cell {
+    position: relative;
+    width: 154px;
+    height: 224px;
+  }
+  .card-preview {
+    width: 220px;
+    height: 320px;
+    position: relative;
+    transform: scale(0.7);
+    transform-origin: top left;
+  }
 </style>
 </head>
 <body>
-  <h1>Card Render Test — should look identical in Firefox and Chrome</h1>
-  <div class="card-row">
-    <div class="card-wrap">
-      <div class="card-preview tpl-metal is-ship common">
-        <div class="bg"></div>
-        <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
-        <div class="c">
-          <div class="hdr"><span class="hdr-name">Common Test</span></div>
-          <div class="img">
-            <div class="glyph">
-              <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32" /></svg>
-            </div>
-          </div>
-          <div class="row"><div class="stat"><span class="sv">10</span></div></div>
-          <div class="special"><span class="sn">Test</span> Plain ability text for layout.</div>
-          <div class="flv">"Test flavor text in italics."</div>
-        </div>
-      </div>
-      <div class="label">common rarity</div>
-    </div>
-    <div class="card-wrap">
-      <div class="card-preview tpl-metal is-ship legendary">
-        <div class="bg"></div>
-        <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
-        <div class="c">
-          <div class="hdr"><span class="hdr-name">Legendary Test</span></div>
-          <div class="img">
-            <div class="glyph">
-              <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32" /></svg>
-            </div>
-          </div>
-          <div class="row"><div class="stat"><span class="sv">99</span></div></div>
-          <div class="special"><span class="sn">Test</span> Plain ability text for layout.</div>
-          <div class="flv">"Test flavor text in italics."</div>
-        </div>
-      </div>
-      <div class="label">legendary rarity</div>
-    </div>
+  <h1>Card Render Test — game-like context (body transform + nested card transforms + grid)</h1>
+  <div class="grid">
+    <div class="cell"><div class="card-preview tpl-metal is-ship common"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">Common</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">10</span></div></div><div class="flv">"flavor"</div></div></div></div>
+    <div class="cell"><div class="card-preview tpl-metal is-ship uncommon"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">Uncommon</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">20</span></div></div><div class="flv">"flavor"</div></div></div></div>
+    <div class="cell"><div class="card-preview tpl-metal is-ship rare"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">Rare</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">40</span></div></div><div class="flv">"flavor"</div></div></div></div>
+    <div class="cell"><div class="card-preview tpl-metal is-ship epic"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">Epic</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">70</span></div></div><div class="flv">"flavor"</div></div></div></div>
+    <div class="cell"><div class="card-preview tpl-metal is-ship legendary"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">Legendary</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">99</span></div></div><div class="flv">"flavor"</div></div></div></div>
+    <div class="cell"><div class="card-preview tpl-metal is-ship common"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">Common 2</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">12</span></div></div><div class="flv">"flavor"</div></div></div></div>
+    <div class="cell"><div class="card-preview tpl-metal is-ship rare"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">Rare 2</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">42</span></div></div><div class="flv">"flavor"</div></div></div></div>
+    <div class="cell"><div class="card-preview tpl-metal is-ship legendary"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">Legendary 2</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">99</span></div></div><div class="flv">"flavor"</div></div></div></div>
   </div>
-  <p style="font-size:11px;color:#6a7a9b;max-width:520px;text-align:center;line-height:1.5;">
-    If these look identical in Firefox and Chrome, the chrome's CSS is fine and the bug is in the page context (body transform, collection grid, scrolling). If they differ, the chrome itself needs simplification.
-  </p>
 </body>
 </html>

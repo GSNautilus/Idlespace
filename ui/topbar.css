@@ -1,9 +1,13 @@
 /* TopBar specific styles */
 
 .tb-root {
-  display: flex;
+  /* Three-column grid pinned to true geometric center: minmax(0, 1fr)
+     forces both side columns to exactly half the remaining width even
+     if their content is wider, so the middle column (resource rack)
+     stays at the bar's visual center regardless of nav-button widths. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   padding: 0 12px;
   height: 52px;
@@ -16,12 +20,22 @@
   min-width: 0;
 }
 
-.tb-left,
+.tb-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: start;
+  min-width: 0;
+}
 .tb-right {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-shrink: 0;
+  justify-self: end;
+  min-width: 0;
+}
+.tb-root > #resources {
+  justify-self: center;
 }
 
 /* ── Logo ────────────────────────────────────────── */

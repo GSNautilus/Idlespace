@@ -35,8 +35,16 @@
     var(--rc) 35%,
     color-mix(in oklab, var(--rc) 60%, black) 60%,
     var(--rc) 100%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  /* Carve a 1.5px ring (the padding) so only the gradient border is visible.
+     Explicit longhand because the shorthand `mask: ... content-box` is
+     ambiguous — Chrome treats the keyword as both mask-origin and mask-clip,
+     but Firefox strictly sets mask-origin only, leaving mask-clip at
+     border-box and producing an empty XOR. Both prefixed + unprefixed for
+     full browser coverage. */
+  -webkit-mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+          mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+  -webkit-mask-clip: content-box, border-box;
+          mask-clip: content-box, border-box;
   -webkit-mask-composite: xor;
           mask-composite: exclude;
   pointer-events: none;

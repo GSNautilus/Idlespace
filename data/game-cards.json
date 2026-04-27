@@ -208,7 +208,7 @@
       "special": "",
       "flavor": "Know the void before the void knows you.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T05:52:04.381Z",
+      "updatedAt": "2026-04-27T05:54:53.703Z",
       "tags": [],
       "upkeep": {},
       "attributes": {},
@@ -379,12 +379,13 @@
       "special": "Powers adjacent buildings for free.",
       "flavor": "The annihilation of matter feeds the empire.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T14:33:28.286Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_011.png",
+      "notes": ""
     },
     {
       "id": "bld_008",
@@ -405,12 +406,13 @@
       "special": "",
       "flavor": "A garden among the stars.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T06:26:50.727Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_008.png",
+      "notes": ""
     },
     {
       "id": "bld_016",
@@ -427,13 +429,14 @@
       "special": "",
       "flavor": "Where settlers first call home.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T06:09:21.950Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": "",
-      "upkeep": {}
+      "image": "assets/cards/building/bld_016.png",
+      "upkeep": {},
+      "notes": ""
     },
     {
       "id": "bld_020",
@@ -455,12 +458,13 @@
       "special": "Chance to discover exotic tech.",
       "flavor": "Probing the invisible scaffolding of reality.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T14:31:40.503Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_020.png",
+      "notes": ""
     },
     {
       "id": "bld_007",
@@ -481,12 +485,13 @@
       "special": "",
       "flavor": "Every discovery preserved for eternity.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T06:25:23.518Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_007.png",
+      "notes": ""
     },
     {
       "id": "bld_014",
@@ -509,12 +514,13 @@
       "special": "Energy output scales with star luminosity.",
       "flavor": "To harness a star is to hold infinity.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T14:31:57.918Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_014.png",
+      "notes": ""
     },
     {
       "id": "bld_005",
@@ -535,12 +541,13 @@
       "special": "",
       "flavor": "Atoms split, power flows.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T06:18:14.298Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_005.png",
+      "notes": ""
     },
     {
       "id": "bld_004",
@@ -557,12 +564,12 @@
       "special": "",
       "flavor": "Life finds a way, even in the void.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T06:04:00.812Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": "",
+      "image": "assets/cards/building/bld_004.png",
       "notes": "",
       "upkeep": {}
     },
@@ -587,12 +594,13 @@
       "special": "Unlocks tier-3 buildings.",
       "flavor": "The skeleton of something immense takes shape.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T14:32:05.482Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_012.png",
+      "notes": ""
     },
     {
       "id": "bld_002",
@@ -608,13 +616,14 @@
       "special": "",
       "flavor": "Deep core extractors never rest.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T06:02:55.842Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": "",
-      "upkeep": {}
+      "image": "assets/cards/building/bld_002.png",
+      "upkeep": {},
+      "notes": ""
     },
     {
       "id": "bld_015",
@@ -636,12 +645,13 @@
       "special": "Reduces all building costs by 15%.",
       "flavor": "Molecule by molecule, a world remade.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T14:32:22.150Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_015.png",
+      "notes": ""
     },
     {
       "id": "bld_013",
@@ -663,12 +673,13 @@
       "special": "",
       "flavor": "Endless fields circling the world below.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T14:32:26.857Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_013.png",
+      "notes": ""
     },
     {
       "id": "bld_006",
@@ -689,12 +700,13 @@
       "special": "",
       "flavor": "Raw stone becomes refined wealth.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T06:18:23.784Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_006.png",
+      "notes": ""
     },
     {
       "id": "bld_009",
@@ -716,12 +728,13 @@
       "special": "Boosts all research output by 10%.",
       "flavor": "Processing power beyond mortal comprehension.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T14:32:35.308Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_009.png",
+      "notes": ""
     },
     {
       "id": "bld_003",
@@ -738,13 +751,14 @@
       "special": "",
       "flavor": "Knowledge is the ultimate resource.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T06:03:25.658Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": "",
-      "upkeep": {}
+      "image": "assets/cards/building/bld_003.png",
+      "upkeep": {},
+      "notes": ""
     },
     {
       "id": "bld_017",
@@ -765,12 +779,13 @@
       "special": "",
       "flavor": "An invisible dome of safety.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T14:32:43.356Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_017.png",
+      "notes": ""
     },
     {
       "id": "bld_001",
@@ -786,13 +801,14 @@
       "special": "",
       "flavor": "Harnessing the light of distant suns.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T06:02:50.478Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": "",
-      "upkeep": {}
+      "image": "assets/cards/building/bld_001.png",
+      "upkeep": {},
+      "notes": ""
     },
     {
       "id": "bld_019",
@@ -809,13 +825,14 @@
       "special": "",
       "flavor": "The gateway between ground and sky.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T06:10:27.394Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": "",
-      "upkeep": {}
+      "image": "assets/cards/building/bld_019.png",
+      "upkeep": {},
+      "notes": ""
     },
     {
       "id": "bld_010",
@@ -837,12 +854,13 @@
       "special": "",
       "flavor": "Forged in the heat of captured stars.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T14:32:53.111Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_010.png",
+      "notes": ""
     },
     {
       "id": "bld_018",
@@ -865,12 +883,13 @@
       "special": "Gradually improves planet habitability.",
       "flavor": "Rewriting the laws of a world.",
       "createdAt": "2026-04-22T00:04:36.704Z",
-      "updatedAt": "2026-04-27T01:31:57.951Z",
+      "updatedAt": "2026-04-27T14:33:10.298Z",
       "tags": [],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
-      "image": ""
+      "image": "assets/cards/building/bld_018.png",
+      "notes": ""
     },
     {
       "id": "ldr_004",

@@ -1,0 +1,12 @@
+# Local Claude Code / agent config
+.claude/
+
+# Local dev tooling and ad-hoc scripts (rebalance, extract, etc.)
+.scripts/
+
+# Backups and stray duplicates from card-builder import/export workflow
+*.bak
+/game-cards.json
+
+# Unused / staging planet art (not part of shipped assets)
+assets/planets/unused/

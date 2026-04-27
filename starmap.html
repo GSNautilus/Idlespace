@@ -28,15 +28,15 @@ body {
   overflow: hidden;
   user-select: none;
 }
-/* Global UI scaling for sub-design screens (tablets, small laptops): body is
-   laid out at the 3440px design width and transform-scaled to fit. The class
-   is added by applyUiScale() only when screen.width < the design width, so
-   desktop windows — including half-windows — stay at the original layout. */
+/* Global UI scaling for sub-design screens. The UI fits naturally at ~1920px
+   wide (a half-window on a 3440 monitor sits well below that), so 1920 is the
+   floor: screens at or above it render natively, smaller screens get
+   transform-scaled to fit. Keep this width in sync with DESIGN_W in JS. */
 body.scaled {
   position: absolute;
   top: 0; left: 0;
-  width: 3440px;
-  height: 1440px;
+  width: 1920px;
+  height: 1080px;
   transform-origin: top left;
   transform: scale(var(--ui-scale, 1));
 }
@@ -8688,11 +8688,10 @@ function confirmLoadSave(data, sourceLabel) {
 await loadCardData();
 updateCardSourceBadge();
 initResearch();
-// Compute global UI scale (see body CSS). Triggered only when the physical
-// screen is smaller than the 3440px design width — i.e. tablets and small
-// laptops. On a 3440 desktop, scale stays 1 even at half-window so the
-// original layout (with natural overflow) is preserved.
-const DESIGN_W = 3440;
+// Compute global UI scale (see body CSS). The UI fits natively at 1920px, so
+// only screens narrower than that get scaled — desktops (and any window on
+// them, including half-windows) keep the original layout untouched.
+const DESIGN_W = 1920;
 function applyUiScale() {
   const screenW = window.screen.width;
   const scale = Math.min(screenW / DESIGN_W, 1);

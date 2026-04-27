@@ -60,6 +60,15 @@
   }
   .s6 .cell { width: 154px; height: 224px; position: relative; }
   .s6 .card-preview { transform: scale(0.7); transform-origin: top left; }
+
+  /* Sections 7-9: each changes ONE variable from section 1 (which works:
+     2 cards, plain flex, single-value gap 20px) to isolate the trigger. */
+  /* Section 7: 5 cards, plain flex, single gap. Only changes COUNT vs s1. */
+  .s7 { display: flex; gap: 20px; }
+  /* Section 8: 2 cards, flex-wrap, single gap. Only changes WRAP vs s1. */
+  .s8 { display: flex; flex-wrap: wrap; gap: 20px; }
+  /* Section 9: 2 cards, plain flex, two-value gap. Only changes GAP vs s1. */
+  .s9 { display: flex; gap: 18px 14px; }
 </style>
 </head>
 <body>
@@ -110,6 +119,30 @@
     <div class="cell"><div class="card-preview tpl-metal is-ship epic"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">CollGrid 3</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">70</span></div></div><div class="flv">"flavor"</div></div></div></div>
     <div class="cell"><div class="card-preview tpl-metal is-ship legendary"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">CollGrid 4</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">99</span></div></div><div class="flv">"flavor"</div></div></div></div>
     <div class="cell"><div class="card-preview tpl-metal is-ship uncommon"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">CollGrid 5</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">20</span></div></div><div class="flv">"flavor"</div></div></div></div>
+  </div>
+
+  <h2>7. 5 cards, plain flex, single gap (only COUNT changed from s1)</h2>
+  <p class="note">If broken → many cards alone is the trigger.</p>
+  <div class="s7">
+    <div class="card-preview tpl-metal is-ship common"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">s7-1</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">10</span></div></div><div class="flv">"flavor"</div></div></div>
+    <div class="card-preview tpl-metal is-ship uncommon"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">s7-2</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">20</span></div></div><div class="flv">"flavor"</div></div></div>
+    <div class="card-preview tpl-metal is-ship rare"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">s7-3</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">40</span></div></div><div class="flv">"flavor"</div></div></div>
+    <div class="card-preview tpl-metal is-ship epic"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">s7-4</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">70</span></div></div><div class="flv">"flavor"</div></div></div>
+    <div class="card-preview tpl-metal is-ship legendary"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">s7-5</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">99</span></div></div><div class="flv">"flavor"</div></div></div>
+  </div>
+
+  <h2>8. 2 cards, flex-wrap, single gap (only WRAP changed from s1)</h2>
+  <p class="note">If broken → flex-wrap (wrap-capable container) alone is the trigger.</p>
+  <div class="s8">
+    <div class="card-preview tpl-metal is-ship common"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">s8-1</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">10</span></div></div><div class="flv">"flavor"</div></div></div>
+    <div class="card-preview tpl-metal is-ship legendary"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">s8-2</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">99</span></div></div><div class="flv">"flavor"</div></div></div>
+  </div>
+
+  <h2>9. 2 cards, plain flex, two-value gap (only GAP changed from s1)</h2>
+  <p class="note">If broken → two-value gap alone is the trigger.</p>
+  <div class="s9">
+    <div class="card-preview tpl-metal is-ship common"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">s9-1</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">10</span></div></div><div class="flv">"flavor"</div></div></div>
+    <div class="card-preview tpl-metal is-ship legendary"><div class="bg"></div><div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div><div class="c"><div class="hdr"><span class="hdr-name">s9-2</span></div><div class="img"><div class="glyph"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg></div></div><div class="row"><div class="stat"><span class="sv">99</span></div></div><div class="flv">"flavor"</div></div></div>
   </div>
 
 </body>

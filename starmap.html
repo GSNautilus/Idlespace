@@ -1612,7 +1612,7 @@ body.scaled {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.0.9.18</span>
+        <span class="tb-logo-version">v0.0.9.19</span>
       </div>
     </div>
     <div class="tb-nav">
@@ -6587,7 +6587,14 @@ function getColonyGenInterval(col, category) {
 function getDrawCost() {
   const col = getActiveColony();
   if (!col) return BASE_DRAW_COST;
-  const cat = (col.activeAction && ACTION_TO_CATEGORY[col.activeAction]) || "building";
+  // Match the click handler's pricing: when the deck has cards, the charge
+  // is keyed off the topmost card's category, not col.activeAction (which
+  // can differ if the player switched action buttons after cards were
+  // generated). Without this, the displayed cost diverges from what gets
+  // deducted on click.
+  const cat = (col.deck[0] && col.deck[0].category)
+    || (col.activeAction && ACTION_TO_CATEGORY[col.activeAction])
+    || "building";
   return getDrawScaling(col, cat).cost;
 }
 

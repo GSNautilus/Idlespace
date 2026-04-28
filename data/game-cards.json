@@ -447,8 +447,8 @@
         "research": 60
       },
       "upkeep": {
-        "energy": 50,
-        "credits": 100
+        "energy": 100,
+        "credits": 200
       },
       "cost": {
         "energy": 12000,
@@ -475,8 +475,8 @@
         "research": 15
       },
       "upkeep": {
-        "energy": 6,
-        "credits": 15
+        "energy": 12,
+        "credits": 30
       },
       "cost": {
         "energy": 860,
@@ -717,8 +717,8 @@
         "research": 75
       },
       "upkeep": {
-        "energy": 60,
-        "credits": 120
+        "energy": 120,
+        "credits": 240
       },
       "cost": {
         "energy": 11000,
@@ -757,7 +757,9 @@
       "categoryData": {},
       "weight": 1,
       "image": "assets/cards/building/bld_003.webp",
-      "upkeep": {},
+      "upkeep": {
+        "credits": 1
+      },
       "notes": ""
     },
     {
@@ -2665,6 +2667,313 @@
       "attributes": {},
       "weight": 1,
       "image": "assets/cards/star/str_002.webp",
+      "notes": ""
+    },
+    {
+      "id": "bld_021",
+      "name": "Power Brokerage",
+      "category": "building",
+      "rarity": "common",
+      "stats": {
+        "credits": 12
+      },
+      "upkeep": {
+        "energy": 3
+      },
+      "cost": {
+        "minerals": 60,
+        "energy": 30
+      },
+      "special": "",
+      "flavor": "Surplus joules sold by the kilowatt-second.",
+      "createdAt": "2026-04-27T12:00:00.000Z",
+      "updatedAt": "2026-04-27T12:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {},
+      "weight": 1,
+      "image": "assets/cards/building/bld_021.webp",
+      "notes": ""
+    },
+    {
+      "id": "bld_022",
+      "name": "Ore Market",
+      "category": "building",
+      "rarity": "common",
+      "stats": {
+        "credits": 12
+      },
+      "upkeep": {
+        "minerals": 3
+      },
+      "cost": {
+        "energy": 60,
+        "minerals": 25
+      },
+      "special": "",
+      "flavor": "Where rocks become wealth.",
+      "createdAt": "2026-04-27T12:00:00.000Z",
+      "updatedAt": "2026-04-27T12:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {},
+      "weight": 1,
+      "image": "assets/cards/building/bld_022.webp",
+      "notes": ""
+    },
+    {
+      "id": "bld_023",
+      "name": "Patent Office",
+      "category": "building",
+      "rarity": "common",
+      "stats": {
+        "credits": 12
+      },
+      "upkeep": {
+        "research": 3
+      },
+      "cost": {
+        "energy": 50,
+        "minerals": 50
+      },
+      "special": "",
+      "flavor": "Ideas, stamped and sold.",
+      "createdAt": "2026-04-27T12:00:00.000Z",
+      "updatedAt": "2026-04-27T12:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {},
+      "weight": 1,
+      "image": "assets/cards/building/bld_023.webp",
+      "notes": ""
+    },
+    {
+      "id": "bld_024",
+      "name": "Provisions Bazaar",
+      "category": "building",
+      "rarity": "common",
+      "stats": {
+        "credits": 12
+      },
+      "upkeep": {
+        "food": 3
+      },
+      "cost": {
+        "energy": 40,
+        "minerals": 60
+      },
+      "special": "",
+      "flavor": "Hungry travelers pay top credit.",
+      "createdAt": "2026-04-27T12:00:00.000Z",
+      "updatedAt": "2026-04-27T12:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {},
+      "weight": 1,
+      "image": "assets/cards/building/bld_024.webp",
+      "notes": ""
+    },
+    {
+      "id": "bld_025",
+      "name": "Energy Exchange",
+      "category": "building",
+      "rarity": "uncommon",
+      "stats": {
+        "credits": 35
+      },
+      "upkeep": {
+        "energy": 10
+      },
+      "cost": {
+        "minerals": 680,
+        "energy": 200
+      },
+      "special": "",
+      "flavor": "Watt futures traded at light-speed.",
+      "createdAt": "2026-04-27T12:00:00.000Z",
+      "updatedAt": "2026-04-27T12:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {},
+      "weight": 1,
+      "image": "assets/cards/building/bld_025.webp",
+      "notes": ""
+    },
+    {
+      "id": "bld_026",
+      "name": "Mineral Bourse",
+      "category": "building",
+      "rarity": "uncommon",
+      "stats": {
+        "credits": 35
+      },
+      "upkeep": {
+        "minerals": 10
+      },
+      "cost": {
+        "energy": 600,
+        "minerals": 200
+      },
+      "special": "",
+      "flavor": "Tonnes traded by the tick.",
+      "createdAt": "2026-04-27T12:00:00.000Z",
+      "updatedAt": "2026-04-27T12:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {},
+      "weight": 1,
+      "image": "assets/cards/building/bld_026.webp",
+      "notes": ""
+    },
+    {
+      "id": "bld_027",
+      "name": "Research Brokerage",
+      "category": "building",
+      "rarity": "uncommon",
+      "stats": {
+        "credits": 35
+      },
+      "upkeep": {
+        "research": 10
+      },
+      "cost": {
+        "energy": 500,
+        "minerals": 500
+      },
+      "special": "",
+      "flavor": "Every breakthrough has a buyer.",
+      "createdAt": "2026-04-27T12:00:00.000Z",
+      "updatedAt": "2026-04-27T12:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {},
+      "weight": 1,
+      "image": "assets/cards/building/bld_027.webp",
+      "notes": ""
+    },
+    {
+      "id": "bld_028",
+      "name": "Food Cartel",
+      "category": "building",
+      "rarity": "uncommon",
+      "stats": {
+        "credits": 35
+      },
+      "upkeep": {
+        "food": 10
+      },
+      "cost": {
+        "minerals": 550,
+        "energy": 400
+      },
+      "special": "",
+      "flavor": "Control the grain, control the colony.",
+      "createdAt": "2026-04-27T12:00:00.000Z",
+      "updatedAt": "2026-04-27T12:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {},
+      "weight": 1,
+      "image": "assets/cards/building/bld_028.webp",
+      "notes": ""
+    },
+    {
+      "id": "bld_029",
+      "name": "Trade Outpost",
+      "category": "building",
+      "rarity": "uncommon",
+      "stats": {
+        "credits": 22
+      },
+      "upkeep": {},
+      "cost": {
+        "minerals": 550,
+        "energy": 280
+      },
+      "special": "",
+      "flavor": "A handshake at the edge of known space.",
+      "createdAt": "2026-04-27T12:00:00.000Z",
+      "updatedAt": "2026-04-27T12:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {},
+      "weight": 1,
+      "image": "assets/cards/building/bld_029.webp",
+      "notes": ""
+    },
+    {
+      "id": "bld_030",
+      "name": "Merchant Hub",
+      "category": "building",
+      "rarity": "rare",
+      "stats": {
+        "credits": 90
+      },
+      "upkeep": {},
+      "cost": {
+        "minerals": 8000,
+        "energy": 5500,
+        "research": 1800
+      },
+      "special": "",
+      "flavor": "Caravans from a thousand worlds converge here.",
+      "createdAt": "2026-04-27T12:00:00.000Z",
+      "updatedAt": "2026-04-27T12:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {},
+      "weight": 1,
+      "image": "assets/cards/building/bld_030.webp",
+      "notes": ""
+    },
+    {
+      "id": "bld_031",
+      "name": "Galactic Exchange",
+      "category": "building",
+      "rarity": "epic",
+      "stats": {
+        "credits": 280
+      },
+      "upkeep": {},
+      "cost": {
+        "minerals": 120000,
+        "energy": 80000,
+        "research": 40000
+      },
+      "special": "",
+      "flavor": "The bell that rings here is heard across a thousand systems.",
+      "createdAt": "2026-04-27T12:00:00.000Z",
+      "updatedAt": "2026-04-27T12:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {},
+      "weight": 1,
+      "image": "assets/cards/building/bld_031.webp",
+      "notes": ""
+    },
+    {
+      "id": "bld_032",
+      "name": "Imperial Treasury",
+      "category": "building",
+      "rarity": "legendary",
+      "stats": {
+        "credits": 1100
+      },
+      "upkeep": {},
+      "cost": {
+        "minerals": 2200000,
+        "energy": 1500000,
+        "research": 600000
+      },
+      "special": "",
+      "flavor": "Vaults so vast their inventories are themselves a trade secret.",
+      "createdAt": "2026-04-27T12:00:00.000Z",
+      "updatedAt": "2026-04-27T12:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {},
+      "weight": 1,
+      "image": "assets/cards/building/bld_032.webp",
       "notes": ""
     }
   ]

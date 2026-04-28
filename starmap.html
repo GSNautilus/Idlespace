@@ -1612,7 +1612,7 @@ body.scaled {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.0.9.14</span>
+        <span class="tb-logo-version">v0.0.9.15</span>
       </div>
     </div>
     <div class="tb-nav">
@@ -6313,11 +6313,10 @@ const TICK_PERIOD = 1;
 const SHOT_INTERVAL = 0.5;       // game-seconds between each shot in a volley
 const COMBAT_TIME_SCALE = 1 / 100; // combat runs 100x slower than wall-clock — preserves the pre-real-time-rebase combat tempo
 // Map-movement secondary scale: ent.x += dir * (ent.speed * scaledDt * WORLD_SPEED_MULT).
-// 0.2 doubles travel speed vs the v0.1.0 baseline; ETAs read from this same
-// constant so they update automatically. Combat closing speed lives on a
-// different path (tickCombats with COMBAT_TIME_SCALE) so combat tempo is
-// unaffected.
-const WORLD_SPEED_MULT = 0.2;
+// 0.8 is 4x the previous 0.2; ETAs read from this same constant so they update
+// automatically. Combat closing speed lives on a different path (tickCombats
+// with COMBAT_TIME_SCALE) so combat tempo is unaffected.
+const WORLD_SPEED_MULT = 0.8;
 // Particles and weapon-flash visuals tick at scaledDt * VISUAL_DT_FACTOR so
 // their on-screen tempo is unchanged across BASE_GAME_SPEED rebases. Any
 // formula that converts combat-time to "visual-tick-time" (e.g. VOLLEY in

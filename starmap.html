@@ -1612,7 +1612,7 @@ body.scaled {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.0.9.19</span>
+        <span class="tb-logo-version">v0.0.9.20</span>
       </div>
     </div>
     <div class="tb-nav">
@@ -6598,6 +6598,7 @@ function getDrawCost() {
   return getDrawScaling(col, cat).cost;
 }
 
+const TRADE_BASE_CREDITS = 5;
 function getTradeIncome(colony, output) {
   if (!colony.activeAction || colony.activeAction !== "trade") return 0;
   let total = 0;
@@ -6605,7 +6606,7 @@ function getTradeIncome(colony, output) {
     if (id === "credits") continue;
     total += Math.max(0, output[id] || 0);
   }
-  return total / 4;
+  return TRADE_BASE_CREDITS + total / 4;
 }
 
 function getColonyOutput(colony, planet) {

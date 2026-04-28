@@ -545,7 +545,7 @@
       "tags": [],
       "attributes": {},
       "categoryData": {},
-      "weight": 1,
+      "weight": 3,
       "image": "assets/cards/building/bld_005.webp",
       "notes": ""
     },
@@ -568,7 +568,7 @@
       "tags": [],
       "attributes": {},
       "categoryData": {},
-      "weight": 1,
+      "weight": 2,
       "image": "assets/cards/building/bld_004.webp",
       "notes": "",
       "upkeep": {}
@@ -620,7 +620,7 @@
       "tags": [],
       "attributes": {},
       "categoryData": {},
-      "weight": 1,
+      "weight": 1.5,
       "image": "assets/cards/building/bld_002.webp",
       "upkeep": {},
       "notes": ""
@@ -704,7 +704,7 @@
       "tags": [],
       "attributes": {},
       "categoryData": {},
-      "weight": 1,
+      "weight": 2,
       "image": "assets/cards/building/bld_006.webp",
       "notes": ""
     },
@@ -807,7 +807,7 @@
       "tags": [],
       "attributes": {},
       "categoryData": {},
-      "weight": 1,
+      "weight": 2,
       "image": "assets/cards/building/bld_001.webp",
       "upkeep": {},
       "notes": ""
@@ -1461,7 +1461,7 @@
       "cost": {},
       "upkeep": {},
       "attributes": {},
-      "weight": 1,
+      "weight": 2,
       "image": "assets/cards/planet/pln_001.webp",
       "notes": ""
     },
@@ -1853,7 +1853,7 @@
       "upkeep": {},
       "attributes": {},
       "categoryData": {},
-      "weight": 1,
+      "weight": 1.5,
       "image": "assets/cards/ship/shp_018.webp",
       "notes": ""
     },
@@ -2136,7 +2136,13 @@
         "speed": 8,
         "sensorRange": 5,
         "energyDmg": 3,
-        "energyRange": "short"
+        "energyRange": "short",
+        "kineticDmg": 0,
+        "kineticRange": "short",
+        "missileDmg": 0,
+        "missileRange": "short",
+        "stealth": 0,
+        "pointDefense": 0
       },
       "cost": {
         "minerals": 50,
@@ -2150,7 +2156,7 @@
       "upkeep": {},
       "attributes": {},
       "categoryData": {},
-      "weight": 1,
+      "weight": 2,
       "image": "assets/cards/ship/shp_001.webp"
     },
     {
@@ -2749,7 +2755,7 @@
       ],
       "attributes": {},
       "categoryData": {},
-      "weight": 1,
+      "weight": 0.5,
       "image": "assets/cards/building/bld_023.webp",
       "notes": ""
     },
@@ -2777,7 +2783,7 @@
       ],
       "attributes": {},
       "categoryData": {},
-      "weight": 1,
+      "weight": 0.5,
       "image": "assets/cards/building/bld_024.webp",
       "notes": ""
     },

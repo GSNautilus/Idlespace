@@ -1612,7 +1612,7 @@ body.scaled {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.0.9.17</span>
+        <span class="tb-logo-version">v0.0.9.18</span>
       </div>
     </div>
     <div class="tb-nav">
@@ -6318,7 +6318,7 @@ const RESOURCE_DEFS = [
 const RESOURCE_IDS = RESOURCE_DEFS.map(r => r.id);
 const resources = {};
 // Starting resources: credits/research per Phase-1 tuning, others kept at legacy 5000 baseline.
-const STARTING_RESOURCES = { credits: 3000, energy: 5000, minerals: 5000, research: 0, food: 5000 };
+const STARTING_RESOURCES = { credits: 5000, energy: 5000, minerals: 5000, research: 0, food: 5000 };
 for (const r of RESOURCE_DEFS) resources[r.id] = STARTING_RESOURCES[r.id] != null ? STARTING_RESOURCES[r.id] : 0;
 // 1x game-time = 1x real-time. Constants below are written in real-seconds.
 // Movement and combat have their own secondary multipliers (WORLD_SPEED_MULT,

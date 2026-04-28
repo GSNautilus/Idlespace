@@ -1612,7 +1612,7 @@ body.scaled {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.0.9.16</span>
+        <span class="tb-logo-version">v0.0.9.17</span>
       </div>
     </div>
     <div class="tb-nav">
@@ -2190,12 +2190,32 @@ function rollPirateRarity(rng, tier) {
   }
   return "common";
 }
+// Pick a random element using each item's `weight` field (default 1).
+// weight 0 excludes the item; returns null if the array is empty or every
+// item has weight 0. Optional rng for deterministic procgen.
+function pickWeighted(arr, rng) {
+  if (!arr || arr.length === 0) return null;
+  const rand = rng || Math.random;
+  let total = 0;
+  for (const item of arr) {
+    const w = (typeof item.weight === "number") ? Math.max(0, item.weight) : 1;
+    total += w;
+  }
+  if (total <= 0) return null;
+  let roll = rand() * total;
+  for (const item of arr) {
+    const w = (typeof item.weight === "number") ? Math.max(0, item.weight) : 1;
+    roll -= w;
+    if (roll <= 0) return item;
+  }
+  return arr[arr.length - 1];
+}
+
 function rollPirateShip(rng, tier) {
   const rarity = rollPirateRarity(rng, tier);
   const pirates = getTemplates("pirate");
   const pool = pirates.filter(s => s.rarity === rarity);
-  const fallback = pool.length ? pool : pirates;
-  return fallback[Math.floor(rng() * fallback.length)];
+  return pickWeighted(pool, rng) || pickWeighted(pirates, rng);
 }
 
 const ACTION_TO_CATEGORY = { buildings:"building", admirals:"admiral", leaders:"leader", ships:"ship" };
@@ -2261,8 +2281,8 @@ function rollCardFromCategory(category) {
   if (available.length === 0) return null;
   const rarity = rollRarity();
   const matches = available.filter(t => t.rarity === rarity);
-  const fallback = matches.length > 0 ? matches : available;
-  const template = fallback[Math.floor(Math.random() * fallback.length)];
+  const template = pickWeighted(matches) || pickWeighted(available);
+  if (!template) return null;
   // Roll stats within ±25% range, biased by rarity
   const { stats: rolledStats, statRanges } = rollStats(template);
   return { ...template, stats: rolledStats, statRanges, cost: { ...(template.cost || {}) }, upkeep: { ...(template.upkeep || {}) } };
@@ -2457,8 +2477,10 @@ function rollStarPlanetSlots(template, rand) {
 function rollStarCard(rng) {
   const rand = rng || Math.random;
   const rarity = rollRarity(rng);
-  const pool = getTemplates("star").filter(t => t.rarity === rarity);
-  const template = pool[Math.floor(rand() * pool.length)];
+  const allStars = getTemplates("star");
+  const pool = allStars.filter(t => t.rarity === rarity);
+  const template = pickWeighted(pool, rand) || pickWeighted(allStars, rand);
+  if (!template) return null;
   // Pre-roll planet slots so the card can display them. Sort by rarity index desc (best first).
   const slots = rollStarPlanetSlots(template, rand);
   slots.sort((a,b) => RARITY_ORDER.indexOf(b) - RARITY_ORDER.indexOf(a));
@@ -2471,8 +2493,8 @@ const RARITY_ORDER = ["common","uncommon","rare","epic","legendary"];
 function rollPlanetCardOfRarity(rarity) {
   const planetPool = getTemplates("planet");
   const pool = planetPool.filter(t => t.rarity === rarity);
-  const fallback = pool.length > 0 ? pool : planetPool;
-  const template = fallback[Math.floor(Math.random() * fallback.length)];
+  const template = pickWeighted(pool) || pickWeighted(planetPool);
+  if (!template) return null;
   const bias = RARITY_ROLL_BIAS[template.rarity] || 0.5;
   const bonuses = {};
   const bonusRanges = {};
@@ -6462,14 +6484,19 @@ function rollResearchResult(category) {
   const candidates = pool.filter(t => !researchedCards.has(t.id));
   if (candidates.length === 0) return null;
   // Non-starter commons (tag "non-starter") are weighted to roll first;
-  // legendaries astronomically rare.
+  // legendaries astronomically rare. Per-card `weight` (from card-builder)
+  // multiplies the rarity weight, so individual cards can be tuned up/down
+  // within their rarity class.
   const weights = { common:200, uncommon:60, rare:15, epic:3, legendary:0.3 };
   let totalWeight = 0;
   const weighted = candidates.map(t => {
-    const w = weights[t.rarity] || 10;
+    const rarityW = weights[t.rarity] || 10;
+    const cardW = (typeof t.weight === "number") ? Math.max(0, t.weight) : 1;
+    const w = rarityW * cardW;
     totalWeight += w;
     return { template: t, weight: w };
   });
+  if (totalWeight <= 0) return null;
   let roll = Math.random() * totalWeight;
   for (const entry of weighted) {
     roll -= entry.weight;

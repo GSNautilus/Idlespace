@@ -1612,7 +1612,7 @@ body.scaled {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.0.9.15</span>
+        <span class="tb-logo-version">v0.0.9.16</span>
       </div>
     </div>
     <div class="tb-nav">
@@ -6394,8 +6394,8 @@ function buyPopulation() {
 }
 
 // Research system — category-based with escalating cost and random card reveal
-const RESEARCH_BASE_COST = 50;
-const RESEARCH_COST_MULTIPLIER = 2.8;
+const RESEARCH_BASE_COST = 500;
+const RESEARCH_COST_MULTIPLIER = 2.0;
 const RESEARCH_SPEND_RATE = 5; // max points consumed per game-second
 const researchCounts = { building: 0, ship: 0, admiral: 0, leader: 0 };
 const researchedCards = new Set(); // card IDs that have been researched
@@ -6459,10 +6459,11 @@ function startResearch(category) {
 function rollResearchResult(category) {
   const pool = getTemplates(category);
   if (!pool) return null;
-  const candidates = pool.filter(t => !researchedCards.has(t.id) && t.rarity !== "common");
+  const candidates = pool.filter(t => !researchedCards.has(t.id));
   if (candidates.length === 0) return null;
-  // Legendaries astronomically rare
-  const weights = { uncommon:50, rare:25, epic:8, legendary:1 };
+  // Non-starter commons (tag "non-starter") are weighted to roll first;
+  // legendaries astronomically rare.
+  const weights = { common:200, uncommon:60, rare:15, epic:3, legendary:0.3 };
   let totalWeight = 0;
   const weighted = candidates.map(t => {
     const w = weights[t.rarity] || 10;
@@ -6478,11 +6479,12 @@ function rollResearchResult(category) {
 }
 
 function initResearch() {
-  // Auto-unlock all common cards across all gated categories
+  // Auto-unlock all common cards across all gated categories EXCEPT those
+  // tagged "non-starter" (which require research like uncommon+).
   for (const catName of RESEARCH_GATED_CATEGORIES) {
     const templates = getTemplates(catName);
     for (const t of templates) {
-      if (t.rarity === "common") {
+      if (t.rarity === "common" && !(t.tags || []).includes("non-starter")) {
         researchedCards.add(t.id);
       }
     }
@@ -8006,7 +8008,7 @@ function refreshResearchPanel() {
     const pool = getTemplates(cat);
     if (pool.length === 0) continue;
     const researchedCount = pool.filter(t => researchedCards.has(t.id)).length;
-    const remaining = pool.filter(t => !researchedCards.has(t.id) && t.rarity !== "common");
+    const remaining = pool.filter(t => !researchedCards.has(t.id));
     const count = researchCounts[cat] || 0;
     const cost = getResearchCost(cat);
     const allDone = remaining.length === 0;

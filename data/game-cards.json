@@ -2688,7 +2688,9 @@
       "flavor": "Surplus joules sold by the kilowatt-second.",
       "createdAt": "2026-04-27T12:00:00.000Z",
       "updatedAt": "2026-04-27T12:00:00.000Z",
-      "tags": [],
+      "tags": [
+        "non-starter"
+      ],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
@@ -2714,7 +2716,9 @@
       "flavor": "Where rocks become wealth.",
       "createdAt": "2026-04-27T12:00:00.000Z",
       "updatedAt": "2026-04-27T12:00:00.000Z",
-      "tags": [],
+      "tags": [
+        "non-starter"
+      ],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
@@ -2740,7 +2744,9 @@
       "flavor": "Ideas, stamped and sold.",
       "createdAt": "2026-04-27T12:00:00.000Z",
       "updatedAt": "2026-04-27T12:00:00.000Z",
-      "tags": [],
+      "tags": [
+        "non-starter"
+      ],
       "attributes": {},
       "categoryData": {},
       "weight": 1,
@@ -2766,7 +2772,9 @@
       "flavor": "Hungry travelers pay top credit.",
       "createdAt": "2026-04-27T12:00:00.000Z",
       "updatedAt": "2026-04-27T12:00:00.000Z",
-      "tags": [],
+      "tags": [
+        "non-starter"
+      ],
       "attributes": {},
       "categoryData": {},
       "weight": 1,

@@ -1612,7 +1612,7 @@ body.scaled {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.0.9.20</span>
+        <span class="tb-logo-version">v0.0.9.21</span>
       </div>
     </div>
     <div class="tb-nav">
@@ -2236,15 +2236,33 @@ const RARITY_COLORS  = { common:"#6a7a9b", uncommon:"#4a9b5a", rare:"#4a7ac0", e
 
 // Stat rolling: ±25% variance around template value, higher rarity biases toward top of range
 const STAT_ROLL_VARIANCE = 0.25;
-const RARITY_ROLL_BIAS   = { common:0.5, uncommon:0.55, rare:0.6, epic:0.7, legendary:0.8 };
+// Stat-roll tiers: 5 buckets matching getStatQualityColor's 0/20/40/60/80%
+// thresholds. Base weights mirror RARITY_WEIGHTS so a "gold" stat roll is
+// genuinely as rare as a legendary draw on a common card. Higher card
+// rarities blend toward the inverted weights (legendary cards reliably
+// roll high), capped at 0.5 — never full inversion, so even legendaries
+// occasionally roll low.
+const STAT_TIER_BASE_WEIGHTS = [60, 25, 10, 4, 1]; // gray, green, blue, purple, gold
+const STAT_RARITY_BLEND = { common: 0, uncommon: 0.125, rare: 0.25, epic: 0.375, legendary: 0.5 };
 
-function biasedRandom(bias) {
-  // 0..1 skewed toward 1 when bias > 0.5. bias=0.5 → uniform; bias=0.8 → heavily top-weighted.
-  return Math.pow(Math.random(), 1 / (bias * 2));
+function rollStatTier(cardRarity) {
+  const f = STAT_RARITY_BLEND[cardRarity] || 0;
+  const n = STAT_TIER_BASE_WEIGHTS.length;
+  const weights = new Array(n);
+  let total = 0;
+  for (let i = 0; i < n; i++) {
+    weights[i] = (1 - f) * STAT_TIER_BASE_WEIGHTS[i] + f * STAT_TIER_BASE_WEIGHTS[n - 1 - i];
+    total += weights[i];
+  }
+  let roll = Math.random() * total;
+  for (let i = 0; i < n; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return i;
+  }
+  return n - 1;
 }
 
 function rollStats(template) {
-  const bias = RARITY_ROLL_BIAS[template.rarity] || 0.5;
   const rolled = {};
   const ranges = {};
   for (const [key, val] of Object.entries(template.stats || {})) {
@@ -2254,7 +2272,14 @@ function rollStats(template) {
     }
     const min = Math.max(1, Math.round(val * (1 - STAT_ROLL_VARIANCE)));
     const max = Math.max(min + 1, Math.round(val * (1 + STAT_ROLL_VARIANCE)));
-    rolled[key] = min + Math.round((max - min) * biasedRandom(bias));
+    const tier = rollStatTier(template.rarity);
+    // Tier picks a 20% slice of [min, max]; uniform within the slice so the
+    // displayed color (also bucketed at 20% intervals) always agrees.
+    const slice = (max - min) / 5;
+    let v = Math.round(min + slice * tier + Math.random() * slice);
+    if (v < min) v = min;
+    if (v > max) v = max;
+    rolled[key] = v;
     ranges[key] = [min, max];
   }
   return { stats: rolled, statRanges: ranges };
@@ -2495,13 +2520,21 @@ function rollPlanetCardOfRarity(rarity) {
   const pool = planetPool.filter(t => t.rarity === rarity);
   const template = pickWeighted(pool) || pickWeighted(planetPool);
   if (!template) return null;
-  const bias = RARITY_ROLL_BIAS[template.rarity] || 0.5;
   const bonuses = {};
   const bonusRanges = {};
   for (const [key, val] of Object.entries(template.bonuses || {})) {
+    if (typeof val !== "number") {
+      bonuses[key] = val;
+      continue;
+    }
     const min = Math.max(1, Math.round(val * (1 - STAT_ROLL_VARIANCE)));
     const max = Math.max(min + 1, Math.round(val * (1 + STAT_ROLL_VARIANCE)));
-    bonuses[key] = min + Math.round((max - min) * biasedRandom(bias));
+    const tier = rollStatTier(template.rarity);
+    const slice = (max - min) / 5;
+    let v = Math.round(min + slice * tier + Math.random() * slice);
+    if (v < min) v = min;
+    if (v > max) v = max;
+    bonuses[key] = v;
     bonusRanges[key] = [min, max];
   }
   return { ...template, bonuses, bonusRanges };

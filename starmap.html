@@ -6241,6 +6241,9 @@ window.addEventListener("pointercancel", (e) => {
 container.addEventListener("contextmenu", (e) => {
   if (e.target.closest("#system-overlay") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#combat-overlay") || e.target.closest("#collection-overlay")) return;
   e.preventDefault();
+  // A right-click *drag* is the camera-pan gesture; only a clean right-click
+  // (no movement past the 3px threshold) should deselect the active entity.
+  if (dragMoved) return;
   if (selectedEntityIdx !== null) {
     selectedEntityIdx = null;
     hideSelectPanel();
@@ -6696,6 +6699,19 @@ function getColonyOutput(colony, planet) {
       if (bonuses[id]) raw[id] *= (1 + bonuses[id] / 100);
     }
   }
+  // Terraform bonus folds into raw food BEFORE the starvation check so a
+  // Terraforming colony can rescue itself from a deficit. Computed from raw
+  // (pre-starvation) non-food production so terraform doesn't get gimped at
+  // the moment it's most needed. Trade stays added externally (see tick
+  // loop) since it's not part of food maintenance.
+  if (colony.activeAction === "terraform") {
+    let total = 0;
+    for (const id of RESOURCE_IDS) {
+      if (id === "food") continue;
+      total += Math.max(0, raw[id] || 0);
+    }
+    raw.food += TERRAFORM_BASE_FOOD + total / 4;
+  }
   // Starvation: non-food production at 1/5 while food rate is negative. Food itself stays
   // full so players can recover by building food producers.
   const maintenance = getFoodMaintenance(colony.population);
@@ -6744,10 +6760,9 @@ function tickEconomy(dt) {
       if (!col) continue;
       const out = getColonyOutput(col, c.planet);
       for (const id of RESOURCE_IDS) resources[id] += (out[id] || 0);
-      // Trade income
+      // Trade income (Terraform's food bonus is already folded into out.food
+      // by getColonyOutput so it can rescue starving colonies).
       resources.credits += getTradeIncome(col, out);
-      // Terraform income (food mirror of Trade)
-      resources.food += getTerraformIncome(col, out);
       // Population growth is buy-only; starvation only reduces production (see getColonyOutput)
     }
 
@@ -6880,6 +6895,15 @@ function getAffordabilityTooltip(cost) {
     }
   }
   return missing.length ? "Need " + missing.join(", ") : "";
+}
+
+// Returns colony output augmented with the active action's resource bonus
+// (Trade adds credits, Terraform adds food). Used by the colony rate display
+// so players see Trade/Terraform contributions reflected per-colony.
+function getEffectiveColonyOutput(col, planet) {
+  const out = getColonyOutput(col, planet);
+  out.credits = (out.credits || 0) + getTradeIncome(col, out);
+  return out;
 }
 
 function updateColonyResourceDisplay(out) {
@@ -7416,8 +7440,8 @@ function refreshColonyScreen() {
   }
   document.getElementById("colony-pop").innerHTML = popHtml;
 
-  // Colony resource output
-  const out = getColonyOutput(col, planet);
+  // Colony resource output (with Trade/Terraform contributions folded in)
+  const out = getEffectiveColonyOutput(col, planet);
   updateColonyResourceDisplay(out);
 
   // ── Building slots ──
@@ -7979,7 +8003,11 @@ document.querySelectorAll(".colony-action-btn").forEach(btn => {
         col.genTimer = 0;
       }
     }
-    refreshColonyScreen();
+    // Avoid a full refreshColonyScreen here — that tears down every building
+    // slot's <img>, which makes the card art blink. The button "active" class
+    // is already toggled above; the per-frame loop handles the rest.
+    refreshDeckDisplay(col);
+    updateActionButtonProgress(col);
   });
 });
 
@@ -8046,7 +8074,7 @@ function gameLoop(timestamp) {
       }
       // Update colony resource header without full refresh
       const viewedPlanet = colonyViewStar.planets[colonyViewPlanetIdx];
-      const out = getColonyOutput(col, viewedPlanet);
+      const out = getEffectiveColonyOutput(col, viewedPlanet);
       updateColonyResourceDisplay(out);
       updateActionButtonProgress(col);
     }

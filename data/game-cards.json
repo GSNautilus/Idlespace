@@ -898,10 +898,7 @@
       "name": "Chief Engineer",
       "category": "leader",
       "rarity": "uncommon",
-      "stats": {
-        "engineering": 15,
-        "efficiency": 8
-      },
+      "stats": {},
       "cost": {
         "food": 600,
         "minerals": 450,
@@ -914,7 +911,12 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "minerals": 8,
+          "energy": 7
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_004.webp",
       "notes": ""
@@ -924,10 +926,7 @@
       "name": "Colony Overseer",
       "category": "leader",
       "rarity": "common",
-      "stats": {
-        "efficiency": 2,
-        "morale": 1
-      },
+      "stats": {},
       "cost": {
         "food": 150
       },
@@ -938,7 +937,15 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "credits": 1,
+          "energy": 1,
+          "minerals": 1,
+          "research": 1,
+          "food": 1
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_001.webp",
       "notes": ""
@@ -948,12 +955,7 @@
       "name": "Eternal Chancellor",
       "category": "leader",
       "rarity": "legendary",
-      "stats": {
-        "efficiency": 1000,
-        "morale": 500,
-        "charisma": 400,
-        "growth": 300
-      },
+      "stats": {},
       "cost": {
         "food": 1700000,
         "energy": 1300000,
@@ -967,7 +969,15 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "credits": 16,
+          "energy": 16,
+          "minerals": 16,
+          "research": 16,
+          "food": 16
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_011.webp",
       "notes": ""
@@ -977,9 +987,7 @@
       "name": "Frontier Preacher",
       "category": "leader",
       "rarity": "common",
-      "stats": {
-        "morale": 3
-      },
+      "stats": {},
       "cost": {
         "food": 150
       },
@@ -990,7 +998,11 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "food": 5
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_002.webp",
       "notes": ""
@@ -1000,11 +1012,7 @@
       "name": "Galactic Diplomat",
       "category": "leader",
       "rarity": "epic",
-      "stats": {
-        "diplomacy": 250,
-        "charisma": 150,
-        "morale": 80
-      },
+      "stats": {},
       "cost": {
         "food": 130000,
         "energy": 74000,
@@ -1017,7 +1025,12 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "credits": 35,
+          "food": 15
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_010.webp",
       "notes": ""
@@ -1027,10 +1040,7 @@
       "name": "Labor Organizer",
       "category": "leader",
       "rarity": "common",
-      "stats": {
-        "efficiency": 3,
-        "morale": 1
-      },
+      "stats": {},
       "cost": {
         "food": 150
       },
@@ -1041,7 +1051,15 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "credits": 1,
+          "energy": 1,
+          "minerals": 1,
+          "research": 1,
+          "food": 1
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_013.webp",
       "notes": ""
@@ -1051,10 +1069,7 @@
       "name": "Propaganda Minister",
       "category": "leader",
       "rarity": "uncommon",
-      "stats": {
-        "morale": 15,
-        "charisma": 10
-      },
+      "stats": {},
       "cost": {
         "food": 710,
         "energy": 290,
@@ -1067,7 +1082,12 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "food": 10,
+          "credits": 5
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_005.webp",
       "notes": ""
@@ -1077,10 +1097,7 @@
       "name": "Research Director",
       "category": "leader",
       "rarity": "uncommon",
-      "stats": {
-        "research_bonus": 15,
-        "research": 10
-      },
+      "stats": {},
       "cost": {
         "food": 330,
         "research": 200,
@@ -1093,7 +1110,11 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "research": 15
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_006.webp",
       "notes": ""
@@ -1103,11 +1124,7 @@
       "name": "Spymaster",
       "category": "leader",
       "rarity": "rare",
-      "stats": {
-        "tactics": 40,
-        "charisma": 40,
-        "efficiency": 30
-      },
+      "stats": {},
       "cost": {
         "food": 8700,
         "energy": 6500,
@@ -1120,7 +1137,13 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "credits": 15,
+          "research": 10,
+          "minerals": 5
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_012.webp",
       "notes": ""
@@ -1130,10 +1153,7 @@
       "name": "Supply Coordinator",
       "category": "leader",
       "rarity": "common",
-      "stats": {
-        "logistics": 3,
-        "efficiency": 1
-      },
+      "stats": {},
       "cost": {
         "food": 60,
         "energy": 45
@@ -1145,7 +1165,12 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "credits": 3,
+          "minerals": 2
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_003.webp",
       "notes": ""
@@ -1155,11 +1180,7 @@
       "name": "Trade Magnate",
       "category": "leader",
       "rarity": "rare",
-      "stats": {
-        "logistics": 50,
-        "diplomacy": 40,
-        "charisma": 25
-      },
+      "stats": {},
       "cost": {
         "food": 10000,
         "energy": 6200,
@@ -1172,7 +1193,12 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "credits": 20,
+          "minerals": 10
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_007.webp",
       "notes": ""
@@ -1182,11 +1208,7 @@
       "name": "Visionary Architect",
       "category": "leader",
       "rarity": "epic",
-      "stats": {
-        "engineering": 200,
-        "efficiency": 150,
-        "research": 80
-      },
+      "stats": {},
       "cost": {
         "food": 97000,
         "minerals": 65000,
@@ -1200,7 +1222,13 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "minerals": 18,
+          "energy": 17,
+          "research": 15
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_009.webp",
       "notes": ""
@@ -1210,11 +1238,7 @@
       "name": "War Marshal",
       "category": "leader",
       "rarity": "rare",
-      "stats": {
-        "tactics": 60,
-        "morale": 30,
-        "attack": 25
-      },
+      "stats": {},
       "cost": {
         "food": 10000,
         "energy": 5000,
@@ -1227,7 +1251,12 @@
       "tags": [],
       "upkeep": {},
       "attributes": {},
-      "categoryData": {},
+      "categoryData": {
+        "bonuses": {
+          "minerals": 22,
+          "food": 8
+        }
+      },
       "weight": 1,
       "image": "assets/cards/leader/ldr_008.webp",
       "notes": ""

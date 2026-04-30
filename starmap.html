@@ -2637,7 +2637,7 @@ function fractalNoise(x, y, octaves = 3) {
 const CHUNK_SIZE = 400;             // world units per chunk
 const NOISE_SCALE = 0.0015;         // controls cluster size (lower = bigger clusters)
 const MIN_STAR_SEPARATION = 240;    // minimum distance between stars
-const DENSITY_THRESHOLD = 0.45;     // noise below this = empty void
+const DENSITY_THRESHOLD = 0.25;     // noise below this = empty void
 const MAX_STARS_PER_CHUNK = 1;      // at peak density
 
 const generatedChunks = new Map();  // "cx,cy" -> true (already processed)
@@ -2707,7 +2707,7 @@ function generateChunk(cx, cy) {
   // Pirate fleet spawning — base rate is the previous "rate / 5" times 4.
   // The base is then multiplied by (1 + 4 * tier) so density scales linearly
   // with distance from home: 1x near home, up to 5x at PIRATE_TIER_RANGE.
-  const baseChance = density >= DENSITY_THRESHOLD ? 0.08 : 0.024;
+  const baseChance = density >= DENSITY_THRESHOLD ? 0.16 : 0.048;
   const distMult   = 1 + 4 * getPirateTier(centerX, centerY);
   const pirateChance = baseChance * distMult;
   if (rng() < pirateChance) {
@@ -6367,7 +6367,7 @@ for (const r of RESOURCE_DEFS) resources[r.id] = STARTING_RESOURCES[r.id] != nul
 // 1x game-time = 1x real-time. Constants below are written in real-seconds.
 // Movement and combat have their own secondary multipliers (WORLD_SPEED_MULT,
 // COMBAT_TIME_SCALE) so they can be tuned independently of the global base.
-const BASE_GAME_SPEED = 1.0;
+const BASE_GAME_SPEED = 2.0;
 let gameSpeed = 1;             // player-facing multiplier (1x, 2x, 4x, …)
 let lastTickTime = 0;
 let tickAccumulator = 0;
@@ -6409,8 +6409,8 @@ let nextCombatId = 1;
 // Replaces the old per-draw 1.5x stacking + 60s decay system.
 const BASE_DRAW_COST     = 500;  // credits, brand-new colony first draw
 const BASE_DRAW_INTERVAL = 30;   // real-seconds, brand-new colony first draw
-const DRAW_K_C = 2.5;            // per-colony exponent
-const DRAW_K_E = 1.5;            // empire-wide exponent
+const DRAW_K_C = 1.25;           // per-colony exponent
+const DRAW_K_E = 0.75;           // empire-wide exponent
 const EXPECTED_PER_COLONY = { building: 10, ship: 5, captain: 3, admiral: 3, leader: 1 };
 
 // Population system
@@ -6672,6 +6672,14 @@ function getColonyOutput(colony, planet) {
     }
     if (l && l.upkeep) {
       for (const id of RESOURCE_IDS) raw[id] -= (l.upkeep[id] || 0);
+    }
+  }
+  // Leader bonuses: percentage multipliers on resource output (planet bonuses compound on top).
+  for (const l of colony.leaders) {
+    if (l && l.bonuses) {
+      for (const id of RESOURCE_IDS) {
+        if (l.bonuses[id]) raw[id] *= (1 + l.bonuses[id] / 100);
+      }
     }
   }
   // Planet bonuses: multiplicative on top of building+leader totals (stacks on leader bonuses).

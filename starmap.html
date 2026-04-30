@@ -2270,6 +2270,13 @@ function rollStats(template) {
       rolled[key] = val;  // pass through non-numeric stats (e.g., weapon range strings)
       continue;
     }
+    if (val === 0) {
+      // Schema-expansion zero (e.g. a ship without missile weaponry has
+      // missileDmg:0). Don't roll these up — the min=max(1,...) floor below
+      // would otherwise produce 1-2 instead of the intended 0.
+      rolled[key] = 0;
+      continue;
+    }
     const min = Math.max(1, Math.round(val * (1 - STAT_ROLL_VARIANCE)));
     const max = Math.max(min + 1, Math.round(val * (1 + STAT_ROLL_VARIANCE)));
     const tier = rollStatTier(template.rarity);
@@ -2525,6 +2532,10 @@ function rollPlanetCardOfRarity(rarity) {
   for (const [key, val] of Object.entries(template.bonuses || {})) {
     if (typeof val !== "number") {
       bonuses[key] = val;
+      continue;
+    }
+    if (val === 0) {
+      bonuses[key] = 0;
       continue;
     }
     const min = Math.max(1, Math.round(val * (1 - STAT_ROLL_VARIANCE)));

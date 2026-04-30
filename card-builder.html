@@ -901,8 +901,20 @@ function readKvRows(containerId, { forceString = false } = {}) {
     if (forceString) val = valEl.value.trim();
     else if (DROPDOWN_STATS[key]) val = valEl.value;
     else val = parseFloat(valEl.value) || 0;
+    // Drop empty / zero-valued numeric stats. A stat of 0 is semantically
+    // equivalent to "absent" for the game (rollStats and renderers treat a
+    // missing key the same way). The editor UI keeps showing all
+    // CATEGORY_DEFAULT_STATS rows so users can fill them in without
+    // polluting the saved card with empty rows.
+    if (!forceString && !DROPDOWN_STATS[key] && val === 0) return;
     out[key] = val;
   });
+  // Drop weapon-range entries whose damage counterpart wasn't saved (e.g. a
+  // ship without missiles shouldn't carry a stranded "missileRange: short").
+  const PAIRED = { energyRange: "energyDmg", kineticRange: "kineticDmg", missileRange: "missileDmg" };
+  for (const [rangeKey, dmgKey] of Object.entries(PAIRED)) {
+    if (rangeKey in out && !(dmgKey in out)) delete out[rangeKey];
+  }
   return out;
 }
 

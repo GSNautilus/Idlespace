@@ -1363,14 +1363,8 @@
         "armor": 3,
         "speed": 4,
         "sensorRange": 3,
-        "energyDmg": 0,
-        "energyRange": "short",
         "kineticDmg": 4,
-        "kineticRange": "medium",
-        "missileDmg": 0,
-        "missileRange": "short",
-        "stealth": 0,
-        "pointDefense": 0
+        "kineticRange": "medium"
       },
       "createdAt": "2026-04-22T00:04:36.704Z",
       "updatedAt": "2026-04-27T01:31:57.951Z",
@@ -1831,15 +1825,7 @@
         "shields": 4,
         "armor": 3,
         "speed": 3,
-        "sensorRange": 6,
-        "energyDmg": 0,
-        "energyRange": "short",
-        "kineticDmg": 0,
-        "kineticRange": "short",
-        "missileDmg": 0,
-        "missileRange": "short",
-        "stealth": 0,
-        "pointDefense": 0
+        "sensorRange": 6
       },
       "cost": {
         "minerals": 80,
@@ -2136,13 +2122,7 @@
         "speed": 8,
         "sensorRange": 5,
         "energyDmg": 3,
-        "energyRange": "short",
-        "kineticDmg": 0,
-        "kineticRange": "short",
-        "missileDmg": 0,
-        "missileRange": "short",
-        "stealth": 0,
-        "pointDefense": 0
+        "energyRange": "short"
       },
       "cost": {
         "minerals": 50,
@@ -2229,13 +2209,8 @@
         "speed": 60,
         "sensorRange": 12,
         "energyDmg": 50,
-        "energyRange": 0,
-        "kineticDmg": 0,
-        "kineticRange": 0,
-        "missileDmg": 0,
-        "missileRange": 0,
         "stealth": 3,
-        "pointDefense": 0
+        "energyRange": "short"
       },
       "cost": {
         "minerals": 12000,

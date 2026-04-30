@@ -944,12 +944,12 @@ function getEditorData() {
   if (category === "star") {
     const pg = readPlanetGen();
     if (pg) categoryData.planetGen = pg;
-  } else if (category === "planet") {
+  } else if (category === "planet" || category === "leader") {
     if (Object.keys(statsOrBonuses).length > 0) categoryData.bonuses = statsOrBonuses;
   }
 
-  // Planets store their values in categoryData.bonuses, not stats.
-  const stats = (category === "planet") ? {} : statsOrBonuses;
+  // Planets and leaders store their values in categoryData.bonuses, not stats.
+  const stats = (category === "planet" || category === "leader") ? {} : statsOrBonuses;
 
   const weight = parseFloat(document.getElementById("edit-weight").value);
 
@@ -989,10 +989,10 @@ function loadCardIntoEditor(card) {
 
   applyCategoryLayout(card.category);
 
-  // Stats / bonuses: planets store in categoryData.bonuses; fall back to legacy stats
-  // so pre-Phase-2 planet catalogs keep their values visible.
+  // Stats / bonuses: planets and leaders store in categoryData.bonuses; fall back
+  // to legacy stats so pre-Phase-2 catalogs keep their values visible.
   const bonuses = card.categoryData && card.categoryData.bonuses;
-  const statSource = (card.category === "planet")
+  const statSource = (card.category === "planet" || card.category === "leader")
     ? (bonuses || card.stats || {})
     : (card.stats || {});
   const defaultStats = CATEGORY_DEFAULT_STATS[card.category] || [];
@@ -1682,15 +1682,16 @@ function buildLeaderCardHtml(data) {
   const rarity = data.rarity || "common";
   const subLabel = `${rarity} · Leader`;
 
-  const entries = Object.entries(data.stats || {});
+  const bonuses = (data.categoryData && data.categoryData.bonuses) || {};
+  const entries = Object.entries(bonuses);
   const row = entries.length === 0 ? "" :
     `<div class="row">${entries.map(([key, val]) => {
       const iconId = STAT_ICON_IDS[key] || "i-spark";
       const label = statLabelFor(key);
-      const colorStyle = statColorStyle(data, "statRanges", key, val);
-      return `<div class="stat" title="${label}: ${formatResourceValue(val)}">`
-        + `<svg class="ico"><use href="#${iconId}"/></svg>`
-        + `<span class="sv"${colorStyle}>${formatResourceValue(val)}</span></div>`;
+      const colorStyle = statColorStyle(data, "bonusRanges", key, val, "var(--success-fg)");
+      return `<div class="stat" title="${label}: +${val}%">`
+        + `<svg class="ico ${key}"><use href="#${iconId}"/></svg>`
+        + `<span class="sv"${colorStyle}>+${val}%</span></div>`;
     }).join("")}</div>`;
 
   const imageHtml = data.image
@@ -1851,7 +1852,7 @@ function highlightCatalogItem(id) {
 // for these keys take precedence over the previously-stored value (including
 // clearing them), while still preserving any *unknown* sub-keys for
 // forward-compatibility.
-const CATEGORY_DATA_KEYS = { star: ["planetGen"], planet: ["bonuses"] };
+const CATEGORY_DATA_KEYS = { star: ["planetGen"], planet: ["bonuses"], leader: ["bonuses"] };
 
 function mergeCategoryData(existing, fresh, category) {
   const result = { ...(existing || {}) };

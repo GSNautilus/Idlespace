@@ -962,7 +962,7 @@
         "research": 690000,
         "credits": 13000000
       },
-      "special": "All colony output +15%.",
+      "special": "",
       "flavor": "Under her rule, empires flourish.",
       "createdAt": "2026-04-22T00:04:36.704Z",
       "updatedAt": "2026-04-27T05:01:01.206Z",
@@ -1018,7 +1018,7 @@
         "energy": 74000,
         "credits": 920000
       },
-      "special": "Prevents war declarations for 10 ticks.",
+      "special": "",
       "flavor": "Peace is not weakness. It is the hardest victory.",
       "createdAt": "2026-04-22T00:04:36.704Z",
       "updatedAt": "2026-04-27T04:59:19.723Z",
@@ -1075,7 +1075,7 @@
         "energy": 290,
         "credits": 1700
       },
-      "special": "Boosts colony growth by 10%.",
+      "special": "",
       "flavor": "The truth is whatever keeps them working.",
       "createdAt": "2026-04-22T00:04:36.704Z",
       "updatedAt": "2026-04-27T04:56:38.222Z",
@@ -1130,7 +1130,7 @@
         "energy": 6500,
         "credits": 38000
       },
-      "special": "Reveals enemy fleet composition.",
+      "special": "",
       "flavor": "Information is the only currency that never devalues.",
       "createdAt": "2026-04-22T00:04:36.704Z",
       "updatedAt": "2026-04-27T05:00:07.993Z",
@@ -1186,7 +1186,7 @@
         "energy": 6200,
         "credits": 38000
       },
-      "special": "Trade routes yield 20% more.",
+      "special": "",
       "flavor": "Credits are just a way of keeping score.",
       "createdAt": "2026-04-22T00:04:36.704Z",
       "updatedAt": "2026-04-27T05:02:28.234Z",
@@ -1215,7 +1215,7 @@
         "research": 32000,
         "credits": 650000
       },
-      "special": "Buildings cost 20% less.",
+      "special": "",
       "flavor": "She sees the city that will stand in a thousand years.",
       "createdAt": "2026-04-22T00:04:36.704Z",
       "updatedAt": "2026-04-27T05:00:13.851Z",
@@ -1244,7 +1244,7 @@
         "energy": 5000,
         "credits": 40000
       },
-      "special": "All ships gain +1 attack.",
+      "special": "",
       "flavor": "Strategy wins battles. Logistics wins wars.",
       "createdAt": "2026-04-22T00:04:36.704Z",
       "updatedAt": "2026-04-27T04:58:55.755Z",

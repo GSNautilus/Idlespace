@@ -1977,7 +1977,7 @@ function normalizeCard(raw) {
     if (raw.planetGen && !c.categoryData.planetGen) c.categoryData.planetGen = raw.planetGen;
     if (c.categoryData.planetGen) c.planetGen = c.categoryData.planetGen;
   }
-  if (c.category === "planet") {
+  if (c.category === "planet" || c.category === "leader") {
     if (raw.bonuses && !c.categoryData.bonuses) c.categoryData.bonuses = raw.bonuses;
     if (c.categoryData.bonuses) c.bonuses = c.categoryData.bonuses;
   }
@@ -5345,15 +5345,16 @@ function buildLeaderCardHtml(card) {
   const rarity = card.rarity || "common";
   const subLabel = `${rarity} · Leader`;
 
-  const entries = Object.entries(card.stats || {});
+  const bonuses = (card.categoryData && card.categoryData.bonuses) || card.bonuses || {};
+  const entries = Object.entries(bonuses);
   const row = entries.length === 0 ? "" :
     `<div class="row">${entries.map(([key, val]) => {
       const iconId = STAT_ICON_IDS[key] || "i-spark";
       const label = statLabelFor(key);
-      const colorStyle = statColorStyle(card, "statRanges", key, val);
-      return `<div class="stat" title="${label}: ${formatResourceValue(val)}">`
-        + `<svg class="ico"><use href="#${iconId}"/></svg>`
-        + `<span class="sv"${colorStyle}>${formatResourceValue(val)}</span></div>`;
+      const colorStyle = statColorStyle(card, "bonusRanges", key, val, "var(--success-fg)");
+      return `<div class="stat" title="${label}: +${val}%">`
+        + `<svg class="ico ${key}"><use href="#${iconId}"/></svg>`
+        + `<span class="sv"${colorStyle}>+${val}%</span></div>`;
     }).join("")}</div>`;
 
   const imageHtml = card.image
@@ -5829,10 +5830,6 @@ function exploreSelectedStar() {
 
   star.visibility = "explored";
 
-  // Detect nearby stars within sensor range
-  detectStarsInRange(star.x, star.y, BASE_SENSOR_RANGE);
-  markSeenInRange(star.x, star.y, BASE_SENSOR_RANGE);
-
   // Transition to system view within overlay
   document.getElementById("system-detected").classList.remove("visible");
   generatePlanets(star);
@@ -6004,8 +6001,6 @@ function exploreFromPanel() {
   if (!star || star.visibility !== "detected") return;
   if (!isInPlayerSensorRange(star.x, star.y)) return;
   star.visibility = "explored";
-  detectStarsInRange(star.x, star.y, BASE_SENSOR_RANGE);
-  markSeenInRange(star.x, star.y, BASE_SENSOR_RANGE);
   showSelectPanel(star); // refresh panel with explored state
 }
 

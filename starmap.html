@@ -6433,9 +6433,10 @@ function getFoodMaintenance(pop) {
 }
 
 function getPopGrowthCost(nextLevel) {
+  const k = Math.pow(2, nextLevel - 1);
   return {
-    credits: Math.ceil(200 * Math.pow(3.5, nextLevel - 1)),
-    food:    Math.ceil(100 * Math.pow(3.0, nextLevel - 1)),
+    credits: Math.ceil(2500 * k),
+    food:    Math.ceil(1250 * k),
   };
 }
 
@@ -6648,6 +6649,17 @@ function getTradeIncome(colony, output) {
   return TRADE_BASE_CREDITS + total / 4;
 }
 
+const TERRAFORM_BASE_FOOD = 5;
+function getTerraformIncome(colony, output) {
+  if (!colony.activeAction || colony.activeAction !== "terraform") return 0;
+  let total = 0;
+  for (const id of RESOURCE_IDS) {
+    if (id === "food") continue;
+    total += Math.max(0, output[id] || 0);
+  }
+  return TERRAFORM_BASE_FOOD + total / 4;
+}
+
 function getColonyOutput(colony, planet) {
   const raw = {};
   for (const id of RESOURCE_IDS) raw[id] = 0;
@@ -6702,7 +6714,7 @@ function tickEconomy(dt) {
   for (const c of colonies) {
     const col = c.planet.colony;
     if (!col || !col.activeAction) continue;
-    if (col.activeAction === "trade") continue; // Trade generates credits, not cards
+    if (col.activeAction === "trade" || col.activeAction === "terraform") continue; // Trade/Terraform generate resources, not cards
     const cat = ACTION_TO_CATEGORY[col.activeAction];
     if (!cat) continue;
     const genInterval = getColonyGenInterval(col, cat);
@@ -6734,6 +6746,8 @@ function tickEconomy(dt) {
       for (const id of RESOURCE_IDS) resources[id] += (out[id] || 0);
       // Trade income
       resources.credits += getTradeIncome(col, out);
+      // Terraform income (food mirror of Trade)
+      resources.food += getTerraformIncome(col, out);
       // Population growth is buy-only; starvation only reduces production (see getColonyOutput)
     }
 
@@ -6898,15 +6912,14 @@ const colonies = []; // array of { starId, planetIdx, planet } references
 
 function getColonizationCost(colonyCount) {
   if (colonyCount === 0) return {}; // first colony is free
-  // Phase-1.1 colonization curve. Softer exponent than the legacy 4^n so
-  // late-game expansion stays achievable; 2nd colony (n=1) lands as a real
-  // gate but not a wall, scaling at 2.2^(n-1) from the base.
+  // Linear for the first 5 colonies (n = 1..4), then doubles per extra
+  // colony so late-game expansion becomes a real credit sink.
   const n = colonyCount;
-  const k = Math.pow(2.2, n - 1);
+  const k = n <= 4 ? n : 4 * Math.pow(2, n - 4);
   return {
-    credits:  Math.ceil(30000 * k),
-    minerals: Math.ceil( 6000 * k),
-    food:     Math.ceil( 3000 * k),
+    credits:  Math.ceil(10000 * k),
+    minerals: Math.ceil( 5000 * k),
+    food:     Math.ceil( 1000 * k),
   };
 }
 
@@ -7949,7 +7962,7 @@ document.querySelectorAll(".colony-action-btn").forEach(btn => {
     const col = getActiveColony();
     if (!col) return;
     const action = btn.dataset.action;
-    const isActive = ["buildings", "admirals", "leaders", "ships", "trade"].includes(action);
+    const isActive = ["buildings", "admirals", "leaders", "ships", "trade", "terraform"].includes(action);
     if (col.activeAction === action) {
       // Deactivate
       col.activeAction = null;

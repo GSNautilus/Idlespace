@@ -689,6 +689,18 @@ body.scaled {
   padding: 14px 4px 16px;
   justify-content: start;
 }
+.col-section-header {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a9ab8;
+  border-bottom: 1px solid rgba(120, 140, 180, 0.18);
+  padding: 6px 2px 4px;
+  margin-top: 4px;
+}
+.col-section-header:first-child { margin-top: 0; }
 .col-card-cell {
   position: relative;
   width: var(--col-card-w);
@@ -1755,7 +1767,7 @@ body.scaled {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.1.1</span>
+        <span class="tb-logo-version">v0.1.2</span>
       </div>
     </div>
     <div class="tb-nav">
@@ -2322,34 +2334,76 @@ function showCardLoadError(detail) {
 // ═══════════════════════════════════════════
 
 
-// Pirate power tier 0..1 based on distance from home (origin). The ratio
-// (dist/RANGE) is raised to TIER_EXPONENT > 1 so power ramps slowly near
-// home and only reaches max at the far edge — finding legendary pirates
-// should be a long-distance journey, not a few screens out.
-const PIRATE_TIER_RANGE = 80000;     // was 18000 — 4.4x slower linear ramp
-const PIRATE_TIER_EXPONENT = 1.5;    // > 1 = slower near home, sharper near edge
-// No pirate spawns within this radius of the home star (origin).
-const PIRATE_HOME_SAFE_RADIUS = 1500;
-function getPirateTier(x, y) {
-  const r = Math.min(1, Math.hypot(x, y) / PIRATE_TIER_RANGE);
-  return Math.pow(r, PIRATE_TIER_EXPONENT);
+// NPC faction registry. Each entry plugs into the same spawn / loot / render
+// pipeline; adding a new hostile NPC type is a data add, not a refactor.
+// Tier (0..1, distance-from-home, raised to tierExponent > 1) ramps slowly
+// near home and only peaks at the far edge — finding legendary NPCs should
+// be a long-distance journey, not a few screens out.
+const NPC_FACTIONS = {
+  pirate: {
+    id: "pirate",
+    label: "Pirates",
+    cardCategory: "pirate",
+    color: "#c04040",                 // crimson — unchanged from pre-faction era
+    safeRadius: 1500,                 // no spawns within this radius of (0,0)
+    tierRange: 80000,
+    tierExponent: 1.5,
+    spawnChanceMul: 1.0,              // multiplier on base chunk-spawn chance
+    fleetSize: { mode: "exponential", base: 1, perTier: 5, max: 30 },
+    rarityWeights: (tier) => ({
+      common:    Math.max(0, 60 - 55 * tier),
+      uncommon:  Math.max(0, 35 - 10 * tier),
+      rare:      5  + 25 * tier,
+      epic:      0  + 20 * tier,
+      legendary: 0  + 20 * tier,
+    }),
+    cardFilter: null,                 // optional fn(card, tier) => boolean
+    artifactDrop: true,               // hooks rollPirateArtifactDrop()
+    cardLootBucket: "pirate",         // pirateLoot[id] for trophies
+  },
+  dragon: {
+    id: "dragon",
+    label: "Dragon",
+    cardCategory: "dragon",
+    color: "#d4a020",                 // gold — distinguishes on map vs crimson pirates
+    safeRadius: 2500,                 // dragons are far nastier — wider safe zone
+    tierRange: 80000,
+    tierExponent: 1.5,
+    spawnChanceMul: 0.1,              // ~10x rarer per chunk than pirates
+    fleetSize: { mode: "fixed", count: 1 },
+    rarityWeights: (_tier) => ({ legendary: 1 }),
+    cardFilter: (card, tier) => {     // tier-gate the two outliers
+      if (card.id === "drg_white" && tier < 0.5) return false;
+      if (card.id === "drg_singularity" && tier < 0.85) return false;
+      return true;
+    },
+    artifactDrop: false,
+    cardLootBucket: "pirate",         // shared trophy pool with pirates for v0.1.2
+  },
+};
+
+// Legacy aliases — callers and saves still reference these names.
+const PIRATE_TIER_RANGE = NPC_FACTIONS.pirate.tierRange;
+const PIRATE_TIER_EXPONENT = NPC_FACTIONS.pirate.tierExponent;
+const PIRATE_HOME_SAFE_RADIUS = NPC_FACTIONS.pirate.safeRadius;
+
+function getFactionTier(x, y, faction) {
+  const r = Math.min(1, Math.hypot(x, y) / faction.tierRange);
+  return Math.pow(r, faction.tierExponent);
 }
-function rollPirateRarity(rng, tier) {
-  // Near home: almost all common. Far: epic/legendary become plausible.
-  const weights = {
-    common:    Math.max(0, 60 - 55 * tier),
-    uncommon:  Math.max(0, 35 - 10 * tier),
-    rare:      5  + 25 * tier,
-    epic:      0  + 20 * tier,
-    legendary: 0  + 20 * tier,
-  };
-  const total = weights.common + weights.uncommon + weights.rare + weights.epic + weights.legendary;
+function getPirateTier(x, y) { return getFactionTier(x, y, NPC_FACTIONS.pirate); }
+
+function rollFactionRarity(rng, tier, faction) {
+  const weights = faction.rarityWeights(tier);
+  let total = 0;
+  for (const v of Object.values(weights)) total += v;
+  if (total <= 0) return "common";
   let r = rng() * total;
   for (const [k, v] of Object.entries(weights)) {
     if (r < v) return k;
     r -= v;
   }
-  return "common";
+  return Object.keys(weights)[0] || "common";
 }
 // Pick a random element using each item's `weight` field (default 1).
 // weight 0 excludes the item; returns null if the array is empty or every
@@ -2372,11 +2426,55 @@ function pickWeighted(arr, rng) {
   return arr[arr.length - 1];
 }
 
+function rollNpcShip(rng, tier, faction) {
+  const rarity = rollFactionRarity(rng, tier, faction);
+  let pool = getTemplates(faction.cardCategory);
+  if (faction.cardFilter) pool = pool.filter(c => faction.cardFilter(c, tier));
+  const filtered = pool.filter(s => s.rarity === rarity);
+  return pickWeighted(filtered, rng) || pickWeighted(pool, rng);
+}
+// Thin shim — anomaly spawner ("spawnPirates") still calls rollPirateShip.
 function rollPirateShip(rng, tier) {
-  const rarity = rollPirateRarity(rng, tier);
-  const pirates = getTemplates("pirate");
-  const pool = pirates.filter(s => s.rarity === rarity);
-  return pickWeighted(pool, rng) || pickWeighted(pirates, rng);
+  return rollNpcShip(rng, tier, NPC_FACTIONS.pirate);
+}
+
+// One chunk-spawn roll for a single faction. Called once per faction per chunk.
+// Heavy-tail "exponential" mode produces occasional large fleets (pirates);
+// "fixed" mode always produces the configured count (dragons → 1).
+function maybeSpawnNpcFleet(rng, cx, cy, density, centerX, centerY, faction) {
+  const baseChance = density >= DENSITY_THRESHOLD ? 0.16 : 0.048;
+  const distMult = 1 + 4 * getFactionTier(centerX, centerY, faction);
+  const chance = baseChance * faction.spawnChanceMul * distMult;
+  if (rng() >= chance) return;
+
+  const px = cx * CHUNK_SIZE + rng() * CHUNK_SIZE;
+  const py = cy * CHUNK_SIZE + rng() * CHUNK_SIZE;
+  if (Math.hypot(px, py) < faction.safeRadius) return;
+
+  const tier = getFactionTier(px, py, faction);
+  let shipCount;
+  if (faction.fleetSize.mode === "fixed") {
+    shipCount = faction.fleetSize.count;
+  } else {
+    const mean = faction.fleetSize.base + tier * faction.fleetSize.perTier;
+    const u = Math.max(1e-6, rng());
+    shipCount = Math.max(1, Math.min(faction.fleetSize.max, Math.floor(1 + (-Math.log(u)) * mean)));
+  }
+
+  const ships = [];
+  for (let i = 0; i < shipCount; i++) {
+    const tpl = rollNpcShip(rng, tier, faction);
+    if (tpl) ships.push({ ...tpl, stats: { ...tpl.stats } });
+  }
+  if (!ships.length) return;
+
+  mapEntities.push({
+    type: "fleet", owner: "npc", faction: faction.id, ships, admiral: null,
+    stance: "aggressive", x: px, y: py, destX: null, destY: null,
+    speed: Math.min(...ships.map(s => s.stats.speed || 1)),
+    sensorRange: Math.max(...ships.map(s => s.stats.sensorRange || 0)),
+    stealth: 0, label: faction.label, inCombat: null,
+  });
 }
 
 const ACTION_TO_CATEGORY = { buildings:"building", admirals:"admiral", leaders:"leader", ships:"ship" };
@@ -2877,40 +2975,11 @@ function generateChunk(cx, cy) {
   const centerY = (cy + 0.5) * CHUNK_SIZE;
   const density = fractalNoise(centerX * NOISE_SCALE, centerY * NOISE_SCALE);
 
-  // Pirate fleet spawning — base rate is the previous "rate / 5" times 4.
-  // The base is then multiplied by (1 + 4 * tier) so density scales linearly
-  // with distance from home: 1x near home, up to 5x at PIRATE_TIER_RANGE.
-  const baseChance = density >= DENSITY_THRESHOLD ? 0.16 : 0.048;
-  const distMult   = 1 + 4 * getPirateTier(centerX, centerY);
-  const pirateChance = baseChance * distMult;
-  if (rng() < pirateChance) {
-    const px = cx * CHUNK_SIZE + rng() * CHUNK_SIZE;
-    const py = cy * CHUNK_SIZE + rng() * CHUNK_SIZE;
-    // No pirate spawns too close to the player's home star.
-    if (Math.hypot(px, py) < PIRATE_HOME_SAFE_RADIUS) {
-      // fall through — skip pirate spawn for this chunk
-    } else {
-      const tier = getPirateTier(px, py);
-      // Heavy-tail fleet size: most spawns are tiny, but the right tail can
-      // produce occasional large fleets, with the tail growing wider at high
-      // tier. Sampled from an exponential with mean = 1 + tier*5 (so ~1 ship
-      // near home, ~6 at max tier), then floored and clamped.
-      const meanFleetSize = 1 + tier * 5;
-      const u = Math.max(1e-6, rng());
-      const shipCount = Math.max(1, Math.min(30, Math.floor(1 + (-Math.log(u)) * meanFleetSize)));
-      const pirateShips = [];
-      for (let pi = 0; pi < shipCount; pi++) {
-        const tpl = rollPirateShip(rng, tier);
-        pirateShips.push({ ...tpl, stats: { ...tpl.stats } });
-      }
-      mapEntities.push({
-        type: "fleet", owner: "npc", ships: pirateShips, admiral: null,
-        stance: "aggressive", x: px, y: py, destX: null, destY: null,
-        speed: Math.min(...pirateShips.map(s => s.stats.speed || 1)),
-        sensorRange: Math.max(...pirateShips.map(s => s.stats.sensorRange || 0)),
-        stealth: 0, label: "Pirates", inCombat: null,
-      });
-    }
+  // NPC fleet spawning — each registered faction rolls independently per chunk.
+  // Base rate is multiplied by faction.spawnChanceMul and a distance-from-home
+  // multiplier (1 + 4 * tier), so density scales linearly with distance.
+  for (const faction of Object.values(NPC_FACTIONS)) {
+    maybeSpawnNpcFleet(rng, cx, cy, density, centerX, centerY, faction);
   }
 
   if (density < DENSITY_THRESHOLD) return; // void — no stars here
@@ -3011,6 +3080,469 @@ function findColonyShipFleet(star) {
     if (d2 < bestD2) { bestD2 = d2; best = ent; }
   }
   return best;
+}
+
+// ═══════════════════════════════════════════
+//  SCOUTING (detected → scouting → explored)
+// ═══════════════════════════════════════════
+// Starting a scout locks in:
+//   - star.scout.total    — required game-seconds (function of distance)
+//   - star.scout.progress — game-seconds accumulated each tick
+//   - star.scout.fleetEnt — direct ref to the bound scout fleet, or null for
+//                            colony-only scouts (sensor coverage from a colony).
+// Each tick verifies the bound fleet hasn't moved, entered combat, or been
+// destroyed; any of those cancels the scout. Colony-only scouts can't be
+// cancelled by movement (colonies don't move) and progress until completion.
+// When progress ≥ total: roll SCOUT_ANOMALY_CHANCE, flip visibility to
+// "explored", and show the anomaly modal (if one fired).
+//
+// Distance scaling: home star is exempt (already explored at boot). Nearest
+// detected stars (~500 units) take a few game-minutes; stars beyond
+// SCOUT_DISTANCE_RANGE saturate at SCOUT_MAX_SEC = 24 game-hours.
+const SCOUT_MIN_SEC          = 60;            // game-seconds at distance 0
+const SCOUT_MAX_SEC          = 24 * 3600;     // 24 game-hours
+const SCOUT_DISTANCE_RANGE   = 40000;         // world units to reach SCOUT_MAX_SEC
+const SCOUT_DISTANCE_EXPONENT = 1.3;          // gentle ramp; most of the curve sits in the back half
+const SCOUT_ANOMALY_CHANCE   = 0.15;          // probability a scout completion fires an anomaly
+
+function getScoutDuration(star) {
+  const d = Math.hypot(star.x || 0, star.y || 0);
+  const t = Math.min(1, d / SCOUT_DISTANCE_RANGE);
+  return SCOUT_MIN_SEC + (SCOUT_MAX_SEC - SCOUT_MIN_SEC) * Math.pow(t, SCOUT_DISTANCE_EXPONENT);
+}
+
+// Begin scouting a detected star. Prefers binding a stationary, non-combat
+// player fleet/ship in sensor range; if only a colony sensor covers the star
+// the scout proceeds unbound (no fleet to cancel via movement, no scout-fleet
+// damage anomaly target).
+function startScoutingStar(star) {
+  if (!star || star.visibility !== "detected" || star.scout) return false;
+  if (!isInPlayerSensorRange(star.x, star.y)) return false;
+  star.scout = {
+    total: getScoutDuration(star),
+    progress: 0,
+    fleetEnt: pickScoutFleetEnt(star),
+  };
+  return true;
+}
+
+// Closest stationary, non-combat player entity with `star` in sensor range.
+// Returns the entity or null. Moving entities are excluded so the next tick
+// doesn't immediately cancel the scout via the "fleet moved" rule.
+function pickScoutFleetEnt(star) {
+  let best = null;
+  let bestD2 = Infinity;
+  for (const ent of mapEntities) {
+    if (ent.owner !== "player") continue;
+    if (ent.inCombat) continue;
+    if (ent.destX !== null || ent.destY !== null) continue;
+    const range = (ent.sensorRange || 0) * 50;
+    if (range <= 0) continue;
+    const dx = star.x - ent.x, dy = star.y - ent.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 > range * range) continue;
+    if (d2 < bestD2) { bestD2 = d2; best = ent; }
+  }
+  return best;
+}
+
+function tickScouts(dt) {
+  if (dt <= 0) return;
+  for (const star of stars.values()) {
+    if (!star.scout) continue;
+    // Cancellation: a bound fleet must remain on the map, out of combat,
+    // and stationary. New movement orders or combat abort the scout.
+    // Colony-only scouts (fleetEnt === null) skip these checks.
+    const ent = star.scout.fleetEnt;
+    if (ent) {
+      if (!mapEntities.includes(ent)) {
+        cancelScoutingStar(star, "lost");
+        continue;
+      }
+      if (ent.inCombat) {
+        cancelScoutingStar(star, "combat");
+        continue;
+      }
+      if (ent.destX !== null || ent.destY !== null) {
+        cancelScoutingStar(star, "moved");
+        continue;
+      }
+    }
+    star.scout.progress += dt;
+    if (star.scout.progress >= star.scout.total) {
+      completeScoutingStar(star);
+    }
+  }
+  // Live-refresh the open detected panel / select panel if it's showing a
+  // scout-in-progress star. Cheap — just innerHTML for one node, gated by
+  // visibility checks below.
+  if (selectedStarId != null) {
+    const star = stars.get(selectedStarId);
+    if (star && star.scout) refreshScoutPanelsFor(star);
+  }
+}
+
+// Abort an in-progress scout. Resets to the detected/no-scout state so the
+// player can re-issue the order. reason is informational — used by the
+// reverted panel's hint text.
+function cancelScoutingStar(star, reason) {
+  star.scout = null;
+  star._lastScoutCancelReason = reason || "other";
+  if (selectedStarId === star.id) {
+    const sysDetected = document.getElementById("system-detected");
+    const selectPanel = document.getElementById("select-panel");
+    if (sysDetected && sysDetected.classList.contains("visible")) {
+      showSystemOverlay(star);
+    } else if (selectPanel && selectPanel.classList.contains("visible")) {
+      showSelectPanel(star);
+    }
+  }
+}
+
+// One-line hint shown in the detected-state info text after a scout was
+// cancelled. Cleared after being read so it doesn't stick across reopens.
+// Returns null if no recent cancel.
+function scoutCancelMessage(star) {
+  if (!star || !star._lastScoutCancelReason) return null;
+  const reason = star._lastScoutCancelReason;
+  star._lastScoutCancelReason = null;
+  if (reason === "combat") return "Scout aborted — scouting fleet entered combat.";
+  if (reason === "moved")  return "Scout aborted — scouting fleet received movement orders.";
+  if (reason === "lost")   return "Scout aborted — scouting fleet was destroyed.";
+  return "Scout was cancelled.";
+}
+
+function renderScoutProgressHtml(star) {
+  if (!star || !star.scout) return "";
+  const pct = Math.max(0, Math.min(100, (star.scout.progress / star.scout.total) * 100));
+  const remaining = Math.max(0, star.scout.total - star.scout.progress);
+  return `
+    <div class="scout-progress" data-star-id="${star.id}" style="width:100%">
+      <div style="font-size:11px;color:#90a8c8;letter-spacing:1.5px;margin-bottom:4px;text-align:center">SCOUTING ${pct.toFixed(0)}%</div>
+      <div style="background:#0a1428;border:1px solid #2a3a5a;border-radius:3px;height:12px;overflow:hidden;position:relative">
+        <div style="background:linear-gradient(90deg,#4a7ac0,#7aa8e0);height:100%;width:${pct}%;transition:width 0.2s"></div>
+      </div>
+      <div style="font-size:11px;color:#7090b0;text-align:center;margin-top:4px">${formatETA(remaining)} remaining</div>
+    </div>`;
+}
+
+// Update only the progress bar's inner styles + numeric label without
+// re-rendering the surrounding panel. Called from tickScouts.
+function refreshScoutPanelsFor(star) {
+  const containers = document.querySelectorAll(`.scout-progress[data-star-id="${star.id}"]`);
+  if (containers.length === 0) return;
+  const pct = Math.max(0, Math.min(100, (star.scout.progress / star.scout.total) * 100));
+  const remaining = Math.max(0, star.scout.total - star.scout.progress);
+  for (const c of containers) {
+    const label = c.children[0];
+    const bar = c.children[1] && c.children[1].children[0];
+    const eta = c.children[2];
+    if (label) label.textContent = `SCOUTING ${pct.toFixed(0)}%`;
+    if (bar) bar.style.width = `${pct}%`;
+    if (eta) eta.textContent = `${formatETA(remaining)} remaining`;
+  }
+}
+
+// Finalize a scouted star: flip to explored, roll an anomaly, refresh the
+// open panel if the player happens to be looking at this star.
+function completeScoutingStar(star) {
+  // fleetEnt may be null (colony-only scout) or stale (entity destroyed
+  // between checks); applyScoutAnomaly's damageScout case guards with a
+  // mapEntities.includes() check before reading.
+  const scoutFleetEnt = star.scout ? (star.scout.fleetEnt || null) : null;
+  star.scout = null;
+  star.visibility = "explored";
+
+  let anomaly = null;
+  if (Math.random() < SCOUT_ANOMALY_CHANCE) {
+    anomaly = rollScoutAnomaly();
+    if (anomaly) applyScoutAnomaly(anomaly, star, scoutFleetEnt);
+  }
+
+  // Re-render any open panels pointing at this star. Only refresh what's
+  // actually on-screen — selectedStarId can outlive a closed panel.
+  if (selectedStarId === star.id) {
+    const sysDetected = document.getElementById("system-detected");
+    const selectPanel = document.getElementById("select-panel");
+    if (sysDetected && sysDetected.classList.contains("visible")) {
+      showSystemOverlay(star);
+    } else if (selectPanel && selectPanel.classList.contains("visible")) {
+      showSelectPanel(star);
+    }
+  }
+  if (anomaly) showAnomalyModal(star, anomaly);
+}
+
+// ── Anomaly registry ─────────────────────────────────────────────────────
+// Each entry: { id, weight, label, flavor, kind, … }. `weight` is relative
+// within SCOUT_ANOMALIES; `kind` is the resolver branch. resolve() returns a
+// summary string used by the anomaly modal (or null on no-op fallback).
+//
+// Why this lives next to the scout system: anomaly outcomes are produced
+// only by scout completions today. If a future system (e.g. "deep-space
+// probes") wants the same pool, lift this out then.
+const SCOUT_ANOMALIES = [
+  { id: "scoutDamage",         weight: 22, kind: "damageScout",       label: "Hostile Environment", flavor: "The scout ship took fire breaching the system." },
+  { id: "techRandom",          weight: 22, kind: "randomTech",        label: "Strange Technology",  flavor: "Ancient automation activated on contact." },
+  { id: "pirateAmbush",        weight: 18, kind: "spawnPirates",      label: "Pirate Ambush",       flavor: "Raiders were lying in wait at the heliopause." },
+  { id: "resourceCache",       weight: 14, kind: "resourceCache",     label: "Resource Cache",      flavor: "Derelict crates drifted in a stable orbit." },
+  { id: "techGift",            weight: 10, kind: "techGift",          label: "Salvaged Schematic",  flavor: "A working datacore in the wreckage." },
+  { id: "artifactRelic",       weight: 10, kind: "artifactRelic",     label: "Ancient Relic",       flavor: "Something older than the system itself." },
+  { id: "researchBreakthrough", weight: 4, kind: "researchBreakthrough", label: "Eureka",           flavor: "Field data closes a long-standing gap." },
+];
+
+function rollScoutAnomaly() {
+  let total = 0;
+  for (const a of SCOUT_ANOMALIES) total += a.weight;
+  if (total <= 0) return null;
+  let roll = Math.random() * total;
+  for (const a of SCOUT_ANOMALIES) {
+    roll -= a.weight;
+    if (roll <= 0) return a;
+  }
+  return SCOUT_ANOMALIES[SCOUT_ANOMALIES.length - 1];
+}
+
+// Mutates global state per the anomaly kind. Always sets anomaly.result with
+// a player-facing summary so showAnomalyModal can describe what happened
+// (including degradations like "no scout fleet to damage" → benign result).
+function applyScoutAnomaly(anomaly, star, scoutFleetEnt) {
+  switch (anomaly.kind) {
+    case "damageScout": {
+      // Drain 25-50% of each scout ship's max HP via the tech-damage helper.
+      // If no scout fleet survived to anchor on, degrade to a small credit
+      // loss flavored as "lost a probe" so the slot still has a payload.
+      if (!scoutFleetEnt || !mapEntities.includes(scoutFleetEnt)) {
+        anomaly.result = "A long-range probe was lost in transit.";
+        break;
+      }
+      const ships = scoutFleetEnt.type === "ship"
+        ? [scoutFleetEnt.card].filter(Boolean)
+        : (scoutFleetEnt.ships || []);
+      if (ships.length === 0) {
+        anomaly.result = "The scouts arrived too late — the threat had passed.";
+        break;
+      }
+      const pct = 0.25 + Math.random() * 0.25;
+      const removed = [];
+      const survivors = [];
+      for (const card of ships) {
+        const dmg = (_maxOf(card, "shields") + _maxOf(card, "armor")) * pct;
+        if (applyTechShipDamage(card, dmg)) removed.push(card);
+        else survivors.push(card);
+      }
+      const losses = removed.length;
+      if (scoutFleetEnt.type === "fleet") {
+        scoutFleetEnt.ships = survivors;
+        if (survivors.length === 0) {
+          const idx = mapEntities.indexOf(scoutFleetEnt);
+          if (idx >= 0) {
+            mapEntities.splice(idx, 1);
+            if (selectedEntityIdx === idx) selectedEntityIdx = null;
+            else if (selectedEntityIdx !== null && selectedEntityIdx > idx) selectedEntityIdx--;
+          }
+        } else recalcFleetStats(scoutFleetEnt);
+      } else if (scoutFleetEnt.type === "ship" && losses > 0) {
+        const idx = mapEntities.indexOf(scoutFleetEnt);
+        if (idx >= 0) {
+          mapEntities.splice(idx, 1);
+          if (selectedEntityIdx === idx) selectedEntityIdx = null;
+          else if (selectedEntityIdx !== null && selectedEntityIdx > idx) selectedEntityIdx--;
+        }
+      }
+      anomaly.result = losses > 0
+        ? `${Math.round(pct * 100)}% damage dealt; ${losses} ship${losses === 1 ? "" : "s"} destroyed.`
+        : `${Math.round(pct * 100)}% damage dealt to scout ships.`;
+      break;
+    }
+    case "randomTech": {
+      const techPool = getTemplates("tech");
+      if (techPool.length === 0) { anomaly.result = "Nothing fired."; break; }
+      const card = techPool[Math.floor(Math.random() * techPool.length)];
+      const eff = card && card.categoryData && card.categoryData.effect;
+      const def = eff && TECH_EFFECTS[eff.kind];
+      if (def) {
+        try { def.resolve(eff || {}, star.x, star.y); } catch (e) { console.warn("[anomaly] tech resolve failed:", e); }
+        anomaly.result = `${card.name} activated at the system.`;
+      } else {
+        anomaly.result = "An unknown device sparked and went dark.";
+      }
+      break;
+    }
+    case "spawnPirates": {
+      // Small fleet at the star's location. Tier sampled at the star's
+      // position so frontier scouts get nastier ambushes than home-system ones.
+      const tier = (typeof getPirateTier === "function") ? getPirateTier(star.x, star.y) : 0;
+      const rng = Math.random; // anomaly spawns aren't seeded by chunk
+      const meanFleetSize = 1 + tier * 4;
+      const u = Math.max(1e-6, rng());
+      const shipCount = Math.max(1, Math.min(8, Math.floor(1 + (-Math.log(u)) * meanFleetSize)));
+      const pirateShips = [];
+      for (let pi = 0; pi < shipCount; pi++) {
+        const tpl = rollPirateShip(rng, tier);
+        if (!tpl) continue;
+        pirateShips.push({ ...tpl, stats: { ...tpl.stats } });
+      }
+      if (pirateShips.length === 0) { anomaly.result = "An ambush sensor pinged but nothing arrived."; break; }
+      // Small offset from the star so they don't spawn dead-center on top of it.
+      const jitterAng = Math.random() * Math.PI * 2;
+      const jitterR = 80 + Math.random() * 120;
+      mapEntities.push({
+        type: "fleet", owner: "npc", faction: "pirate", ships: pirateShips, admiral: null,
+        stance: "aggressive",
+        x: star.x + Math.cos(jitterAng) * jitterR,
+        y: star.y + Math.sin(jitterAng) * jitterR,
+        destX: null, destY: null,
+        speed: Math.min(...pirateShips.map(s => s.stats.speed || 1)),
+        sensorRange: Math.max(...pirateShips.map(s => s.stats.sensorRange || 0)),
+        stealth: 0, label: "Pirates", inCombat: null,
+      });
+      anomaly.result = `${pirateShips.length} hostile ship${pirateShips.length === 1 ? "" : "s"} dropped out of stealth at the heliopause.`;
+      break;
+    }
+    case "resourceCache": {
+      // Single resource burst, weighted toward credits/minerals. Amount scales
+      // mildly with distance so far-frontier rewards feel commensurate.
+      const types = ["credits", "credits", "minerals", "minerals", "energy", "food"];
+      const id = types[Math.floor(Math.random() * types.length)];
+      const distScale = 1 + Math.min(2, Math.hypot(star.x, star.y) / SCOUT_DISTANCE_RANGE) * 2;
+      const baseByRes = { credits: 6000, minerals: 4000, energy: 3000, food: 2000 };
+      const amount = Math.round((baseByRes[id] || 3000) * distScale * (0.7 + Math.random() * 0.6));
+      resources[id] = (resources[id] || 0) + amount;
+      anomaly.result = `Recovered +${formatResourceValue(amount)} ${id}.`;
+      break;
+    }
+    case "techGift": {
+      // A random tech card lands in inventory (researched flag included so
+      // it appears in the Collection tab and counts as seen).
+      const techPool = getTemplates("tech");
+      if (techPool.length === 0) { anomaly.result = "An empty schematic crystal."; break; }
+      const card = techPool[Math.floor(Math.random() * techPool.length)];
+      techInventory[card.id] = (techInventory[card.id] || 0) + 1;
+      researchedCards.add(card.id);
+      markCardSeen(card);
+      anomaly.card = card;
+      anomaly.result = `Acquired tech: ${card.name}.`;
+      break;
+    }
+    case "artifactRelic": {
+      // Prefer exploration-source artifacts; fall back to any un-owned
+      // artifact so the slot never wastes when the explore pool is empty.
+      let pool = getTemplates("artifact").filter(t =>
+        t.categoryData && t.categoryData.source === "exploration" && !ownedArtifacts.has(t.id));
+      if (pool.length === 0) {
+        pool = getTemplates("artifact").filter(t => !ownedArtifacts.has(t.id));
+      }
+      if (pool.length === 0) {
+        // No artifacts left to grant — bonus resources as consolation.
+        const amount = 8000;
+        resources.credits = (resources.credits || 0) + amount;
+        anomaly.result = `Vault was empty, but salvage was worth +${formatResourceValue(amount)} credits.`;
+        break;
+      }
+      let total = 0;
+      const weighted = pool.map(t => {
+        const w = (RARITY_WEIGHTS[t.rarity] || 10) * (typeof t.weight === "number" ? Math.max(0, t.weight) : 1);
+        total += w;
+        return { template: t, weight: w };
+      });
+      let roll = Math.random() * total, pick = weighted[weighted.length - 1].template;
+      for (const e of weighted) { roll -= e.weight; if (roll <= 0) { pick = e.template; break; } }
+      grantArtifact(pick.id);
+      markCardSeen(pick);
+      anomaly.card = pick;
+      anomaly.result = `Recovered artifact: ${pick.name}.`;
+      break;
+    }
+    case "researchBreakthrough": {
+      // Instantly completes the active research and opens the 3-choice modal.
+      // If no research is active, downgrade to a research-point payout.
+      if (activeResearch) {
+        activeResearch.progress = activeResearch.cost;
+        const choices = rollResearchChoices();
+        activeResearch = null;
+        if (choices.length > 0) {
+          pendingResearch = { choices };
+          openResearchChoiceModal(choices);
+        }
+        const rb = document.getElementById("research-backdrop");
+        if (rb && rb.classList.contains("visible")) refreshResearchPanel();
+        anomaly.result = "Active research completed instantly.";
+      } else {
+        const amount = 500;
+        resources.research = (resources.research || 0) + amount;
+        anomaly.result = `Field notes worth +${formatResourceValue(amount)} research.`;
+      }
+      break;
+    }
+    default:
+      anomaly.result = "Nothing notable happened.";
+  }
+}
+
+function showAnomalyModal(star, anomaly) {
+  const existing = document.getElementById("anomaly-backdrop");
+  if (existing) existing.remove();
+
+  const backdrop = document.createElement("div");
+  backdrop.id = "anomaly-backdrop";
+  backdrop.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.3s;";
+
+  const modal = document.createElement("div");
+  modal.style.cssText = "background:linear-gradient(160deg,#1a2040,#0a1428);border:2px solid #4a6a9b;border-radius:8px;padding:32px 40px;min-width:380px;max-width:520px;text-align:center;color:#c0d0e8;box-shadow:0 12px 40px rgba(74,106,155,0.4);";
+
+  const label = document.createElement("div");
+  label.style.cssText = "font-size:12px;letter-spacing:3px;color:#7090c0;margin-bottom:6px;";
+  label.textContent = "✦ ANOMALY ✦";
+
+  const title = document.createElement("div");
+  title.style.cssText = "font-size:22px;font-weight:700;color:#e0e8f8;margin-bottom:4px;";
+  title.textContent = anomaly.label;
+
+  const subtitle = document.createElement("div");
+  subtitle.style.cssText = "font-size:13px;color:#8aa0c0;margin-bottom:18px;";
+  subtitle.textContent = (star && star.card && star.card.name) ? `at ${star.card.name}` : "";
+
+  const flavor = document.createElement("div");
+  flavor.style.cssText = "font-style:italic;color:#a0b0d0;font-size:14px;margin-bottom:14px;";
+  flavor.textContent = anomaly.flavor || "";
+
+  const result = document.createElement("div");
+  result.style.cssText = "font-size:14px;color:#d4e4ff;margin-bottom:24px;line-height:1.5;";
+  result.textContent = anomaly.result || "";
+
+  modal.appendChild(label);
+  modal.appendChild(title);
+  if (subtitle.textContent) modal.appendChild(subtitle);
+  if (flavor.textContent) modal.appendChild(flavor);
+  modal.appendChild(result);
+
+  // Optional card preview (artifact / tech gift)
+  if (anomaly.card) {
+    const cardWrap = document.createElement("div");
+    cardWrap.style.cssText = "display:flex;justify-content:center;margin-bottom:24px;transform:scale(0.85);transform-origin:top center;height:300px;";
+    cardWrap.innerHTML = buildCardHtml(anomaly.card);
+    modal.appendChild(cardWrap);
+  }
+
+  const btn = document.createElement("button");
+  btn.textContent = "Continue";
+  btn.style.cssText = "background:#2a4a7a;color:#e0e8f8;border:1px solid #5a8acc;padding:8px 24px;border-radius:4px;font-size:14px;cursor:pointer;";
+  btn.addEventListener("mouseenter", () => btn.style.background = "#3a5a8a");
+  btn.addEventListener("mouseleave", () => btn.style.background = "#2a4a7a");
+  const dismiss = () => {
+    backdrop.style.opacity = "0";
+    document.removeEventListener("keydown", onKey);
+    setTimeout(() => backdrop.remove(), 300);
+  };
+  const onKey = (e) => { if (e.key === "Escape" || e.key === "Enter") dismiss(); };
+  btn.addEventListener("click", dismiss);
+  document.addEventListener("keydown", onKey);
+
+  modal.appendChild(btn);
+  backdrop.appendChild(modal);
+  document.body.appendChild(backdrop);
+  requestAnimationFrame(() => backdrop.style.opacity = "1");
 }
 
 // Remove one Colony Ship from the given entity. Solo Colony Ships delete the
@@ -3647,9 +4179,11 @@ function rollCombatLoot(winner, loser) {
   }
   // Single artifact roll per combat — duplicates filtered pre-roll so the
   // player only sees genuine new finds; once all pirate-source artifacts are
-  // owned this slot stops dropping.
+  // owned this slot stops dropping. Only factions with artifactDrop=true
+  // contribute to this roll (e.g. dragons currently don't drop artifacts).
   let artifact = null;
-  if (Math.random() < LOOT_ARTIFACT_DROP_CHANCE) {
+  const loserFaction = NPC_FACTIONS[loser.entity.faction] || NPC_FACTIONS.pirate;
+  if (loserFaction.artifactDrop && Math.random() < LOOT_ARTIFACT_DROP_CHANCE) {
     artifact = rollPirateArtifactDrop();
   }
   return { resources, cards, artifact };
@@ -3899,7 +4433,7 @@ function drawEntities(ctx, time) {
     // Entity icon
     const isFleet = ent.type === "fleet";
     const size = (isFleet ? 8 : 6) * camera.zoom;
-    const rarityColor = ent.owner === "npc" ? "#c04040"
+    const rarityColor = ent.owner === "npc" ? ((NPC_FACTIONS[ent.faction] || NPC_FACTIONS.pirate).color)
       : ent.type === "ship"
       ? (RARITY_COLORS[ent.card.rarity] || "#4a7ac0")
       : (ent.admiral ? (RARITY_COLORS[ent.admiral.rarity] || "#4a7ac0") : "#6a7a9b");
@@ -4052,7 +4586,7 @@ function drawEntities(ctx, time) {
 
           const shipRarity = ship.rarity || "common";
           const shipCol = ent.owner === "npc"
-            ? "#c04040"
+            ? ((NPC_FACTIONS[ent.faction] || NPC_FACTIONS.pirate).color)
             : (RARITY_COLORS[shipRarity] || "#4a7ac0");
           const ts = (MINI_SHIP_SIZES[shipRarity] || 3.5) * camera.zoom;
           // Crossfade: tiny chevron glyph at far zoom, detailed silhouette
@@ -4872,6 +5406,24 @@ function drawStar(ctx, star, time) {
     ctx.restore();
   }
 
+  // Scouting progress ring — partial arc around a detected star while a
+  // scout is underway. Sweeps clockwise from the top as star.scout.progress
+  // approaches star.scout.total.
+  if (isDetected && star.scout) {
+    const ringRadius = radius + 6 * camera.zoom;
+    const pct = Math.max(0, Math.min(1, star.scout.progress / star.scout.total));
+    ctx.strokeStyle = "rgba(74,122,192,0.35)";
+    ctx.lineWidth = 2 * camera.zoom;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, ringRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "#7aa8e0";
+    ctx.lineWidth = 2.5 * camera.zoom;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, ringRadius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+    ctx.stroke();
+  }
+
   // Colonized star highlight (green glow if any planet colonized)
   if (isExplored && star.planets && star.planets.some(p => p.colony)) {
     const colR = radius + 8 * camera.zoom;
@@ -5359,7 +5911,9 @@ function buildShipCardHtml(card) {
     ? getStatQualityColor(val, card.statRanges[key][0], card.statRanges[key][1]) : null;
   const colored = (color) => color ? ` style="color:${color}"` : "";
 
-  const subLabel = `${card.rarity || "common"} · ${card.category === "pirate" ? "Pirate" : "Ship"}`;
+  const npcFaction = Object.values(NPC_FACTIONS).find(f => f.cardCategory === card.category);
+  const shipKind = npcFaction ? (npcFaction.id === "pirate" ? "Pirate" : npcFaction.label) : "Ship";
+  const subLabel = `${card.rarity || "common"} · ${shipKind}`;
 
   let costHtml = "";
   if (card.cost && Object.keys(card.cost).length > 0) {
@@ -5829,7 +6383,8 @@ function formatTechEffectInner(eff) {
 function buildCardHtml(card /* , watermark */) {
   switch (card.category) {
     case "ship":
-    case "pirate":   return buildShipCardHtml(card);
+    case "pirate":
+    case "dragon":   return buildShipCardHtml(card);
     case "star":     return buildStarCardHtml(card);
     case "planet":   return buildPlanetCardHtml(card);
     case "building": return buildBuildingCardHtml(card);
@@ -6181,13 +6736,22 @@ function showSystemOverlay(star) {
         </div>
       </div>`;
     const inSensor = isInPlayerSensorRange(star.x, star.y);
-    const exploreBtn = inSensor
-      ? `<button class="card-action-btn" onclick="exploreSelectedStar()">Explore</button>`
-      : `<button class="card-action-btn" disabled title="A player ship or colony must have this star in sensor range to explore.">Explore</button>`;
-    document.getElementById("detected-actions").innerHTML = exploreBtn;
-    document.getElementById("detected-info").textContent = inSensor
-      ? "Send a ship to explore this star."
-      : "Move a fleet within sensor range to explore.";
+    const scoutDur = getScoutDuration(star);
+    if (star.scout) {
+      // Scouting in progress — render a read-only progress bar; tickScouts
+      // calls refreshScoutPanelsFor(star) each frame for live updates.
+      document.getElementById("detected-actions").innerHTML = renderScoutProgressHtml(star);
+      document.getElementById("detected-info").textContent = "Scout en route — analyzing this system.";
+    } else {
+      const etaStr = formatETA(scoutDur);
+      const exploreBtn = inSensor
+        ? `<button class="card-action-btn" onclick="exploreSelectedStar()">Scout (${etaStr})</button>`
+        : `<button class="card-action-btn" disabled title="A player ship or colony must have this star in sensor range to scout.">Scout (${etaStr})</button>`;
+      document.getElementById("detected-actions").innerHTML = exploreBtn;
+      document.getElementById("detected-info").textContent = inSensor
+        ? scoutCancelMessage(star) || `Scouting will take about ${etaStr} of game time.`
+        : "Move a fleet within sensor range to scout.";
+    }
     // No system canvas
     if (systemAnimFrame) { cancelAnimationFrame(systemAnimFrame); systemAnimFrame = null; }
   } else {
@@ -6217,18 +6781,10 @@ function hideSystemOverlay() {
 
 function exploreSelectedStar() {
   const star = stars.get(selectedStarId);
-  if (!star || star.visibility !== "detected") return;
-  if (!isInPlayerSensorRange(star.x, star.y)) return;
-
-  star.visibility = "explored";
-
-  // Transition to system view within overlay
-  document.getElementById("system-detected").classList.remove("visible");
-  generatePlanets(star);
-  document.getElementById("system-star-card").innerHTML = buildCardHtml(star.card);
-  resizeSystemCanvas();
-  if (systemAnimFrame) cancelAnimationFrame(systemAnimFrame);
-  systemAnimFrame = requestAnimationFrame(systemLoop);
+  if (!star || star.visibility !== "detected" || star.scout) return;
+  if (!startScoutingStar(star)) return;
+  // Re-render the detected overlay so the button switches to a progress display.
+  showSystemOverlay(star);
 }
 
 function hidePlanetCard() {
@@ -6265,12 +6821,19 @@ function showSelectPanel(star) {
         </div>
       </div>`;
     const inSensor = isInPlayerSensorRange(star.x, star.y);
-    actions.innerHTML = inSensor
-      ? `<button class="card-action-btn" onclick="exploreFromPanel()">Explore</button>`
-      : `<button class="card-action-btn" disabled title="A player ship or colony must have this star in sensor range to explore.">Explore</button>`;
-    info.textContent = inSensor
-      ? "Send a ship to explore this star."
-      : "Move a fleet within sensor range to explore.";
+    const scoutDur = getScoutDuration(star);
+    if (star.scout) {
+      actions.innerHTML = renderScoutProgressHtml(star);
+      info.textContent = "Scout en route — analyzing this system.";
+    } else {
+      const etaStr = formatETA(scoutDur);
+      actions.innerHTML = inSensor
+        ? `<button class="card-action-btn" onclick="exploreFromPanel()">Scout (${etaStr})</button>`
+        : `<button class="card-action-btn" disabled title="A player ship or colony must have this star in sensor range to scout.">Scout (${etaStr})</button>`;
+      info.textContent = inSensor
+        ? scoutCancelMessage(star) || `Scouting will take about ${etaStr} of game time.`
+        : "Move a fleet within sensor range to scout.";
+    }
   } else {
     markCardSeen(star.card);
     slot.innerHTML = buildCardHtml(star.card);
@@ -6390,10 +6953,9 @@ function hideSelectPanel() {
 
 function exploreFromPanel() {
   const star = stars.get(selectedStarId);
-  if (!star || star.visibility !== "detected") return;
-  if (!isInPlayerSensorRange(star.x, star.y)) return;
-  star.visibility = "explored";
-  showSelectPanel(star); // refresh panel with explored state
+  if (!star || star.visibility !== "detected" || star.scout) return;
+  if (!startScoutingStar(star)) return;
+  showSelectPanel(star); // refresh panel with scouting state
 }
 
 function openSystemFromPanel() {
@@ -8069,8 +8631,15 @@ const COLLECTION_TABS = [
   { id: "admiral",  label: "Admirals",  icon: "i-command" },
   { id: "planet",   label: "Planets",   icon: "i-planet-verdant" },
   { id: "star",     label: "Stars",     icon: "i-spark" },
-  { id: "pirate",   label: "Pirates",   icon: "i-swords" },
+  { id: "entities", label: "Entities",  icon: "i-swords" },
 ];
+
+// Tabs that aggregate cards across multiple categories. The Entities tab
+// pulls every NPC faction in one place, grouped by faction sub-header.
+function getTabCategories(tabId) {
+  if (tabId === "entities") return Object.values(NPC_FACTIONS).map(f => f.cardCategory);
+  return [tabId];
+}
 let _activeCollectionTab = "ship";
 
 function showCollection() {
@@ -8089,11 +8658,16 @@ function renderCollection() {
   const summaryEl = document.getElementById("collection-summary");
   const owned = computeOwnedCounts();
 
-  // Build tab strip with per-category seen/total counts.
+  // Build tab strip with per-tab seen/total counts. Aggregating tabs (Entities)
+  // sum across every category they include.
   tabsEl.innerHTML = COLLECTION_TABS.map(t => {
-    const tpls = getTemplates(t.id) || [];
-    const total = tpls.length;
-    const known = tpls.reduce((n, tpl) => n + ((seenCards.has(tpl.id) || owned[tpl.id]) ? 1 : 0), 0);
+    const cats = getTabCategories(t.id);
+    let total = 0, known = 0;
+    for (const cat of cats) {
+      const tpls = getTemplates(cat) || [];
+      total += tpls.length;
+      known += tpls.reduce((n, tpl) => n + ((seenCards.has(tpl.id) || owned[tpl.id]) ? 1 : 0), 0);
+    }
     const cls = t.id === _activeCollectionTab ? "col-tab active" : "col-tab";
     return `<button class="${cls}" onclick="setCollectionTab('${t.id}')">`
          + `<svg class="ico sm"><use href="#${t.icon}"/></svg>`
@@ -8101,16 +8675,6 @@ function renderCollection() {
          + `<span class="col-tab-count">${known}/${total}</span>`
          + `</button>`;
   }).join("");
-
-  const tpls = getTemplates(_activeCollectionTab) || [];
-  // Sort by rarity (legendary->common), then name, so the strongest of each
-  // category sit at the top of the page.
-  const RARITY_ORDER = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
-  const sorted = tpls.slice().sort((a, b) => {
-    const dr = (RARITY_ORDER[a.rarity] ?? 5) - (RARITY_ORDER[b.rarity] ?? 5);
-    if (dr !== 0) return dr;
-    return (a.name || "").localeCompare(b.name || "");
-  });
 
   // Stars never get an "owned" state — colonies don't grant ownership of
   // a star template, only stars whose card has been viewed are "seen".
@@ -8120,8 +8684,16 @@ function renderCollection() {
   // can be activated.
   const isTechTab = _activeCollectionTab === "tech";
 
+  // Sort by rarity (legendary->common), then name.
+  const RARITY_ORDER = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
+  const sortCards = (arr) => arr.slice().sort((a, b) => {
+    const dr = (RARITY_ORDER[a.rarity] ?? 5) - (RARITY_ORDER[b.rarity] ?? 5);
+    if (dr !== 0) return dr;
+    return (a.name || "").localeCompare(b.name || "");
+  });
+
   let seenN = 0, ownedN = 0, undiscN = 0;
-  gridEl.innerHTML = sorted.map(tpl => {
+  const renderCell = (tpl) => {
     const count = allowOwned ? (owned[tpl.id] || 0) : 0;
     const isOwned = count > 0;
     const isSeen = !isOwned && seenCards.has(tpl.id);
@@ -8137,11 +8709,28 @@ function renderCollection() {
         : "";
       return `<div class="col-card-cell ${stateClass}" data-card-id="${tpl.id}">${badge}${buildCardHtml(tpl)}${label}${playBtn}</div>`;
     }
-    // Undiscovered — card back placeholder, no data-card-id (not clickable)
     return `<div class="col-card-cell undiscovered">`
          + `<div class="card-back"><div class="qmark">?</div><div>Undiscovered</div></div>`
          + `</div>`;
-  }).join("");
+  };
+
+  // Multi-category tabs render one section per category with a sub-header.
+  // Single-category tabs render a flat grid (no header).
+  const cats = getTabCategories(_activeCollectionTab);
+  if (cats.length > 1) {
+    gridEl.innerHTML = cats.map(cat => {
+      const tpls = sortCards(getTemplates(cat) || []);
+      if (!tpls.length) return "";
+      const faction = Object.values(NPC_FACTIONS).find(f => f.cardCategory === cat);
+      const raw = faction ? faction.label : cat;
+      const sectionLabel = raw.endsWith("s") ? raw : raw + "s";
+      return `<div class="col-section-header">${sectionLabel}</div>`
+           + tpls.map(renderCell).join("");
+    }).join("");
+  } else {
+    const tpls = sortCards(getTemplates(cats[0]) || []);
+    gridEl.innerHTML = tpls.map(renderCell).join("");
+  }
 
   summaryEl.textContent = `${ownedN} owned · ${seenN} seen · ${undiscN} undiscovered`;
 }
@@ -8995,6 +9584,7 @@ function gameLoop(timestamp) {
   tickEconomy(scaledDt);
   tickEntities(scaledDt);
   tickCombats(scaledDt);
+  tickScouts(scaledDt);
   // Combat particles and weapon-flash visuals were tuned for the pre-rebase
   // 0.1x base; keep them at that effective tempo so flashes/trails read the
   // same regardless of the BASE_GAME_SPEED switch to 1.0.
@@ -9400,6 +9990,10 @@ function serializeGame() {
       id: s.id, x: s.x, y: s.y, visibility: s.visibility,
       card: serializeCardRef(s.card),
       planets: s.planets ? s.planets.map(serializePlanet) : null,
+      // Scout state (in-flight scouts only). The bound fleet ref is dropped
+      // on save — entity refs don't survive serialization; loaded scouts
+      // proceed as colony-style (no cancel-on-move, no damage-anomaly target).
+      scout: s.scout ? { progress: s.scout.progress, total: s.scout.total } : null,
     })),
     generatedChunks: [...generatedChunks.keys()],
     chunkSeenBits: [...chunkSeenBits.entries()],
@@ -9528,6 +10122,9 @@ function deserializeGame(data) {
     const star = { id: s.id, x: s.x, y: s.y, visibility: s.visibility, card };
     if (s.planets) {
       star.planets = s.planets.map(hydratePlanet).filter(Boolean);
+    }
+    if (s.scout && typeof s.scout.progress === "number" && typeof s.scout.total === "number") {
+      star.scout = { progress: s.scout.progress, total: s.scout.total, fleetEnt: null };
     }
     stars.set(s.id, star);
   }

@@ -1,8 +1,8 @@
 # IdleSpace — Game Design & Implementation Reference
 
-**Version pinned:** `v0.1.1`
+**Version pinned:** `v0.1.2`
 **Last verified against code:** 2026-05-11
-**Primary source:** [`starmap.html`](starmap.html) (9,952 lines)
+**Primary source:** [`starmap.html`](starmap.html) (~10,200 lines)
 **Card data:** [`data/game-cards.json`](data/game-cards.json) (120 cards, schema v1)
 
 This is the single living reference for "how does IdleSpace work today, and where does each system live in the code." It is the only design / implementation doc in the repo.
@@ -60,7 +60,7 @@ IdleSpace is an **idle space 4X collectible card game**. Every meaningful in-gam
 
 ## 3. Core Game Loop
 
-1. **Explore.** Click a detected star → select panel; double-click to enter its system view. Exploring a star reveals the star card itself but **no longer auto-reveals neighbours** (v0.0.9.23). Sensor range from colonies and traveling entities is what surfaces new stars.
+1. **Explore.** Click a detected star → select panel; double-click to enter its system view. Pressing **Scout** starts a timed survey (see §5b); on completion the star card flips to explored, with a ~15% chance of an anomaly outcome. Exploring a star reveals the star card itself but **no longer auto-reveals neighbours** (v0.0.9.23). Sensor range from colonies and traveling entities is what surfaces new stars.
 2. **Discover.** System view rolls planets via `generatePlanets(star)` ([starmap.html:2556](starmap.html)). Higher-rarity stars produce more and rarer planets.
 3. **Colonize.** Move a fleet carrying a card with `special: "colonize"` into the star's sensor range, click the planet's **Colonize** button, pay the cost. The Colony Ship card is consumed.
 4. **Build.** Set the colony's action (Trade / Buildings / Admirals / Leaders / Ships / Terraform). For card-generating actions, face-down cards appear in the deck pile on an escalating timer. Click pile → pick 1 of 3 rarity-weighted choices → land in queue → drag into a slot.
@@ -72,7 +72,7 @@ IdleSpace is an **idle space 4X collectible card game**. Every meaningful in-gam
 
 ## 4. Card System
 
-### Categories (canonical: 8 + 1 NPC)
+### Categories (canonical: 8 + 2 NPC factions)
 
 | Category | Templates in `game-cards.json` | Notes |
 |---|---|---|
@@ -84,7 +84,8 @@ IdleSpace is an **idle space 4X collectible card game**. Every meaningful in-gam
 | admiral | 13 (4/3/3/2/1) | One per fleet. `stats.commandBonus` (% to all ship stats), `stats.maxFleetSize` (ship cap, default 3 without admiral). |
 | **artifact** | 6 (sample set) | Permanent passive effects. **No stat rolls** — flat effect per template. `categoryData.source ∈ {"pirate","research","exploration",...}` gates which gameplay path can drop it. `categoryData.effect` resolved through `ARTIFACT_EFFECTS` (see §10b). Owned set: `ownedArtifacts: Set<id>`. Duplicates filtered pre-roll — never offered twice. |
 | **tech** | 6 (sample set) | Consumable activatable cards. Effects via `categoryData.effect` resolved through `TECH_EFFECTS` (see §10c). Inventory: `techInventory: { id → count }`. Played from the Collection's Tech tab. Some effects target a world point ("Targeted") and enter a reticle-based targeting mode. |
-| **pirate** | 6 | NPC-only ship variant; reuses ship renderer with `category === "pirate"`. Dropped as loot trophies, not yet deployable. |
+| **pirate** | 6 | NPC faction (sub-tag of NPCs). Reuses ship renderer with `category === "pirate"`. Dropped as loot trophies, not yet deployable. |
+| **dragon** | 8 (all legendary) | NPC faction. Solo apex-predator fleets at ~10% pirate spawn density. Stats are 2× Dreadlord Prime for the six colored Star Dragons (Red/Orange/Yellow/Green/Blue/Purple), 10× for White Star Dragon, 100× for Singularity Dragon. Sensor range 2 → 100-unit detection — only aggro at point-blank distance. White and Singularity tier-gated to deep frontier. |
 
 `captain` no longer exists as a category — Admiral replaces it (rename completed in CORE_PLAN Phase 3). `ACTION_TO_CATEGORY = { buildings:"building", admirals:"admiral", leaders:"leader", ships:"ship" }` ([starmap.html:2221](starmap.html)). Trade and Terraform actions are resource-only — they don't generate cards.
 
@@ -175,11 +176,60 @@ Visual rendering: `buildCardHtml(card)` ([starmap.html](starmap.html)) dispatche
 
 ### Visibility
 
-- States: **unknown** (no render) → **detected** (sensor-revealed; mystery-card preview) → **explored** (full card data + planet generation).
+- States: **unknown** (no render) → **detected** (sensor-revealed; mystery-card preview, may be **scouting**) → **explored** (full card data + planet generation).
 - `BASE_SENSOR_RANGE = 500` world units for colonies and the home star ([starmap.html:2792](starmap.html)).
 - Entity sensor radius = `card.stats.sensorRange × 50` world units. Fleet's effective sensor = max across its ships.
 - **v0.0.9.23 change:** Exploring a star no longer reveals its neighbours. You must move a sensor-equipped entity to surface the next stars.
 - Fog-of-war is a memory bitmap per chunk (`TILES_PER_CHUNK = 4` → 16-bit visited map), rendered via offscreen canvas + `destination-out` composite. Detected stars keep a small permanent fog hole so they don't vanish.
+
+### 5b. Scouting & Anomalies (v0.1.2)
+
+Scouting replaces the previous instant-explore step. `startScoutingStar(star)` ([starmap.html](starmap.html)) records a `star.scout = { progress, total, fleetIdx }` object; `tickScouts(scaledDt)` advances every in-progress scout each frame. When `progress ≥ total`, `completeScoutingStar(star)` flips visibility to `explored`, rolls `SCOUT_ANOMALY_CHANCE = 0.15` for an anomaly, and (if one fires) opens an anomaly modal.
+
+**Distance scaling** — `getScoutDuration(star)`:
+```
+d = hypot(star.x, star.y)
+t = min(1, d / SCOUT_DISTANCE_RANGE)
+seconds = SCOUT_MIN_SEC + (SCOUT_MAX_SEC - SCOUT_MIN_SEC) × t^SCOUT_DISTANCE_EXPONENT
+```
+
+| Constant | Value | Notes |
+|---|---|---|
+| `SCOUT_MIN_SEC` | `60` | game-seconds at d=0 (home-adjacent stars feel quick) |
+| `SCOUT_MAX_SEC` | `86400` | 24 game-hours (cap at the long-range frontier) |
+| `SCOUT_DISTANCE_RANGE` | `40000` | world-units; distance at which scout time saturates |
+| `SCOUT_DISTANCE_EXPONENT` | `1.3` | gentle curve — most of the ramp sits in the back half |
+| `SCOUT_ANOMALY_CHANCE` | `0.15` | per-completion roll |
+
+`star.scout.fleetEnt` is a direct reference to the bound scout fleet — the closest **stationary, non-combat** player entity with the star in sensor range when scouting starts. If only a colony's sensor disc covers the star, `fleetEnt` is `null` (colony-style scout, can't be cancelled by movement).
+
+**Cancellation rules** (checked every tick in `tickScouts`): the bound fleet must remain on the map, out of combat, and stationary. Any of these triggers `cancelScoutingStar(star, reason)`, which clears `star.scout` and re-renders the open panel back to the **Scout** button:
+
+| Trigger | reason | Hint shown |
+|---|---|---|
+| Fleet picks a new destination | `moved` | "Scout aborted — scouting fleet received movement orders." |
+| Fleet enters combat | `combat` | "Scout aborted — scouting fleet entered combat." |
+| Fleet destroyed / removed | `lost`  | "Scout aborted — scouting fleet was destroyed." |
+
+`fleetEnt` is dropped on save (object refs don't serialize); reloaded scouts proceed as colony-style — they can't cancel-on-move, and the damage-anomaly degrades to a benign "probe lost" result.
+
+**Scout state on stars** survives save/load (added in `serializeGame` / `deserializeGame`). Older v1/v2 saves with no `scout` field load cleanly (defaults to none).
+
+**Anomaly registry** — `SCOUT_ANOMALIES` table; one is rolled by weight when the chance fires:
+
+| id | weight | kind | Effect |
+|---|---|---|---|
+| `scoutDamage` | 22 | `damageScout` | 25–50% combat damage spread across the scout fleet's ships; deaths remove the entity if wiped. |
+| `techRandom` | 22 | `randomTech` | Picks a random `tech` template and fires its `TECH_EFFECTS` resolve at the star's world coords (instant or area). |
+| `pirateAmbush` | 18 | `spawnPirates` | Spawns a small pirate fleet (1–8 ships, tier-scaled) at a small jitter from the star. Aggressive stance. |
+| `resourceCache` | 14 | `resourceCache` | Random single resource (credits/minerals/energy/food, weighted), 2,000–18,000 scaled by distance. |
+| `techGift` | 10 | `techGift` | Adds a random tech card to `techInventory`, also marked `researchedCards` + seen. |
+| `artifactRelic` | 10 | `artifactRelic` | Prefers `categoryData.source === "exploration"` artifacts; falls back to any un-owned artifact; final fallback grants +8000 credits. Uses `grantArtifact(id)`. |
+| `researchBreakthrough` | 4 | `researchBreakthrough` | Sets `activeResearch.progress = activeResearch.cost` and opens the 3-choice modal. If no active research, grants +500 research instead. |
+
+Modal: `showAnomalyModal(star, anomaly)` builds an inline backdrop with title, flavor, result line, and (for `techGift` / `artifactRelic`) a card preview. Escape/Enter dismiss.
+
+UI: while scouting, both the select panel and the system-overlay detected card render `renderScoutProgressHtml(star)` (progress bar + ETA). `tickScouts` calls `refreshScoutPanelsFor(star)` each frame for the live update. `drawStar` paints a sweeping arc around detected+scouting stars indicating progress.
 
 ### Camera
 
@@ -608,16 +658,36 @@ Loser removed from map. Winner's surviving ships persist damage on `card._combat
 
 ---
 
-## 14. NPC Pirates
+## 14. NPC Factions
 
-- Deterministic spawn in `generateChunk()` via the chunk-seeded RNG ([starmap.html:2703–2738](starmap.html)).
-- Spawn probability: cluster chunks (density ≥ threshold) `~0.16 × tierMul`, void chunks `~0.048 × tierMul`, where `tierMul = 1 + 4 × getPirateTier(x, y)`.
-- `PIRATE_TIER_RANGE = 80000`, `PIRATE_TIER_EXPONENT = 1.5`, `PIRATE_HOME_SAFE_RADIUS = 1500` ([starmap.html:2168–2174](starmap.html)). Tier ramps from 0 (home) to 1 (edge) as `pow(min(1, dist / PIRATE_TIER_RANGE), 1.5)`. Higher tier = rarer pirate ships in the spawn pool.
-- No spawns within `PIRATE_HOME_SAFE_RADIUS = 1500` of (0, 0).
+NPCs are organized as a registry of **factions** ([`NPC_FACTIONS`, starmap.html:2330](starmap.html)). Each faction plugs into a single shared spawn / loot / render pipeline; adding a new hostile NPC is a data add (one registry entry + N cards), not a refactor. Every NPC fleet carries a `faction` field on its entity (`"pirate" | "dragon" | …`); old saves without the field default to `pirate`.
+
+Per-chunk: `generateChunk()` iterates every faction and rolls each independently against the chunk's base spawn chance (`0.16` cluster / `0.048` void), multiplied by `faction.spawnChanceMul × (1 + 4 × tier)`. Each faction has its own `safeRadius`, `tierRange`, `tierExponent`, `fleetSize` distribution (`exponential` heavy-tail or `fixed` count), `rarityWeights(tier)` curve, and optional `cardFilter(card, tier)` predicate for tier-gating specific templates. Loot routing is controlled by `cardLootBucket` (currently both factions write to `pirateLoot`) and `artifactDrop` (per-combat artifact roll fires only for factions that opt in).
+
+The shared spawner is `maybeSpawnNpcFleet(rng, cx, cy, density, centerX, centerY, faction)` ([starmap.html:2432](starmap.html)); the shared card-pick is `rollNpcShip(rng, tier, faction)` ([starmap.html:2417](starmap.html)). Legacy `getPirateTier` / `rollPirateShip` are thin shims onto these.
+
+### Pirates
+
+- Spawn probability: cluster chunks `~0.16 × tierMul`, void chunks `~0.048 × tierMul`, where `tierMul = 1 + 4 × getPirateTier(x, y)`.
+- `safeRadius: 1500`, `tierRange: 80000`, `tierExponent: 1.5` (legacy aliases `PIRATE_HOME_SAFE_RADIUS`, `PIRATE_TIER_RANGE`, `PIRATE_TIER_EXPONENT` retained at [starmap.html:2374–2376](starmap.html)). Tier ramps from 0 (home) to 1 (edge) as `pow(min(1, dist / PIRATE_TIER_RANGE), 1.5)`. Higher tier = rarer pirate ships in the spawn pool.
+- Fleet size: heavy-tail exponential (`base: 1, perTier: 5, max: 30`) — most spawns 1–2 ships, occasional ~6-ship fleets at max tier.
 - Behaviour: always aggressive, patrol random (~0.2%/frame chance to pick a new destination ±150 units).
 - Rendered in crimson `#c04040`; chevron icon with ship count.
 - `pirate` is a real card category (6 templates in `game-cards.json`) — uses the ship renderer with subtype "Pirate".
-- **Pirate loot** (v0.1.0 Phase 4 #9, commit `1fb9c83`): destroyed enemy fleets drop pirate cards as trophies into `pirateLoot[id]`. They count toward Collection ownership but are not yet deployable into colonies or map entities — "trophies only for v0.1.0; deployable-pirate-ships is a possible future phase" ([starmap.html:6470–6473](starmap.html)).
+- **Pirate loot** (v0.1.0 Phase 4 #9, commit `1fb9c83`): destroyed pirate fleets drop pirate cards as trophies into `pirateLoot[id]`. They count toward Collection ownership but are not yet deployable into colonies or map entities — "trophies only for v0.1.0; deployable-pirate-ships is a possible future phase" ([starmap.html:6470–6473](starmap.html)).
+- Per-combat artifact-drop roll (`LOOT_ARTIFACT_DROP_CHANCE`) fires only against pirate fleets (`artifactDrop: true`).
+
+### Dragons
+
+- Spawn probability: `0.1 ×` the pirate base — one dragon per chunk where ~10 pirate fleets would have spawned. Same `tierRange/tierExponent` ramp.
+- `safeRadius: 2500` — wider than pirates because even the weakest dragon is ~2× a `Dreadlord Prime`.
+- Fleet size: **fixed at 1**. Always solo; no escorts, no swarms.
+- Card pool: 8 templates, all `legendary`. `cardFilter` tier-gates the two outliers — `drg_white` only spawns at `tier ≥ 0.5` (~28k units from home), `drg_singularity` only at `tier ≥ 0.85` (~60k units).
+- Stat scaling vs. `Dreadlord Prime` (`shields 70 / armor 90`, total dmg 108): six colored Star Dragons at 2×, White Star at 10×, Singularity at 100×. Damage budget redistributes by color theme (red = kinetic-heavy, blue = energy-heavy, etc.) without changing total threat.
+- `sensorRange: 2` (→ 100 world units of detection). `ENGAGED_DISTANCE = 200`, so dragons only aggro the player at point-blank distance. They sit and patrol until you're nearly on top of them.
+- Behaviour: always aggressive, same idle-patrol as pirates.
+- Rendered in gold `#d4a020` to distinguish from crimson pirates.
+- Loot: dragon cards land in the shared `pirateLoot` bucket and surface in the Collection's "Entities" tab, which groups every NPC faction under per-faction section headers. Dragons opt out of the artifact-drop roll for now — `artifactDrop: false`.
 
 ---
 
@@ -736,7 +806,8 @@ Tagged releases plus notable untagged commits, newest first.
 
 | Version | Headline |
 |---|---|
-| **v0.1.1** (HEAD) | **Artifact & Tech card systems** — two new card categories. Artifacts are permanent passive unlocks with 6 effect kinds (resource/colony, resource/tick, fleet cap, sensor%, research speed%, colonization discount). Tech cards are consumable activatables with 5 effect kinds (gain resources, area damage / heal, instant reveal, heal all ships). **Research reworked** into a single-pool, 1-of-3 choice modal (~⅔ tech / ⅓ non-tech per slot); cost climbs only on non-tech unlocks. Pirate combat has a per-combat artifact-drop roll, surfaced in the salvage screen. `SAVE_VERSION = 2` with silent v1 → v2 migration. |
+| **v0.1.2** (HEAD) | **Scouting & anomalies** — `Explore` becomes a timed scout. Duration scales with distance from origin (60 s at home → 24 game-hours past `SCOUT_DISTANCE_RANGE = 40000`). The bound scout fleet must remain stationary and out of combat or the scout cancels. On completion, 15% chance of an anomaly: scout-fleet damage, random tech effect, pirate ambush, resource cache, tech gift, artifact relic, or (rare) research breakthrough. Adds in-flight scout state to per-star save/load; older saves load cleanly. |
+| v0.1.1 | **Artifact & Tech card systems** — two new card categories. Artifacts are permanent passive unlocks with 6 effect kinds (resource/colony, resource/tick, fleet cap, sensor%, research speed%, colonization discount). Tech cards are consumable activatables with 5 effect kinds (gain resources, area damage / heal, instant reveal, heal all ships). **Research reworked** into a single-pool, 1-of-3 choice modal (~⅔ tech / ⅓ non-tech per slot); cost climbs only on non-tech unlocks. Pirate combat has a per-combat artifact-drop roll, surfaced in the salvage screen. `SAVE_VERSION = 2` with silent v1 → v2 migration. |
 | **v0.1.0** | Milestone release: consolidates the entire v0.0.9.x balance + QoL line into the 0.1.0 minor bump. Introduces this canonical IDLESPACE.md reference doc as the single source of truth for the project. |
 | v0.0.9.25 | Terraform actually visible; saves starving colonies (terraform folds into raw food before starvation); flicker fix; right-click drag no longer deselects. |
 | v0.0.9.24 | Tamer pop/colonize curves; Terraform action introduced. |
@@ -803,13 +874,46 @@ Single table of every named constant in the game, with current value and approxi
 | `BASE_SENSOR_RANGE` | `500` | 2792 |
 | `GALAXY_SEED` | `Math.floor(Math.random()*2147483647)` | 2576 |
 
-### Pirates
+### NPC Factions
+
+Faction config lives in the `NPC_FACTIONS` registry; spawn / loot / render code is faction-generic and reads from there.
 
 | Name | Value | Line |
 |---|---|---|
-| `PIRATE_TIER_RANGE` | `80000` | 2168 |
-| `PIRATE_TIER_EXPONENT` | `1.5` | 2169 |
-| `PIRATE_HOME_SAFE_RADIUS` | `1500` | 2171 |
+| `NPC_FACTIONS` | registry — `{ pirate, dragon }` | 2330 |
+| `NPC_FACTIONS.pirate.safeRadius` | `1500` | 2330+ |
+| `NPC_FACTIONS.pirate.tierRange` | `80000` | 2330+ |
+| `NPC_FACTIONS.pirate.tierExponent` | `1.5` | 2330+ |
+| `NPC_FACTIONS.pirate.spawnChanceMul` | `1.0` | 2330+ |
+| `NPC_FACTIONS.dragon.safeRadius` | `2500` | 2352+ |
+| `NPC_FACTIONS.dragon.spawnChanceMul` | `0.1` (10× rarer than pirates) | 2352+ |
+| `NPC_FACTIONS.dragon.fleetSize` | `{ mode: "fixed", count: 1 }` | 2352+ |
+| Legacy `PIRATE_TIER_RANGE` alias | `NPC_FACTIONS.pirate.tierRange` | 2374 |
+| Legacy `PIRATE_TIER_EXPONENT` alias | `NPC_FACTIONS.pirate.tierExponent` | 2375 |
+| Legacy `PIRATE_HOME_SAFE_RADIUS` alias | `NPC_FACTIONS.pirate.safeRadius` | 2376 |
+| `getFactionTier(x, y, faction)` | shared tier function | 2378 |
+| `rollFactionRarity(rng, tier, faction)` | shared rarity weighter | 2385 |
+| `rollNpcShip(rng, tier, faction)` | shared card pick | 2417 |
+| `maybeSpawnNpcFleet(...)` | shared chunk-spawn entry | 2432 |
+
+### Scouting (v0.1.2)
+
+| Name | Value | Line |
+|---|---|---|
+| `SCOUT_MIN_SEC` | `60` (game-s at d=0) | ~3030 |
+| `SCOUT_MAX_SEC` | `86400` (24 game-hours) | ~3031 |
+| `SCOUT_DISTANCE_RANGE` | `40000` (world units) | ~3032 |
+| `SCOUT_DISTANCE_EXPONENT` | `1.3` | ~3033 |
+| `SCOUT_ANOMALY_CHANCE` | `0.15` | ~3034 |
+| `SCOUT_ANOMALIES` | 7 outcomes, weighted (see §5b) | ~3105 |
+| `getScoutDuration(star)` | distance → game-seconds | ~3036 |
+| `startScoutingStar(star)` | begins scout (gated by sensor coverage) | ~3045 |
+| `tickScouts(dt)` | advances all scouts; cancels on fleet move/combat/loss | ~3135 |
+| `cancelScoutingStar(star, reason)` | aborts a scout; reverts panel to Scout button | ~3170 |
+| `completeScoutingStar(star)` | flips visibility + rolls anomaly | ~3225 |
+| `rollScoutAnomaly()` | weighted pick from `SCOUT_ANOMALIES` | ~3120 |
+| `applyScoutAnomaly(a, star, fleet)` | dispatches per `kind` | ~3134 |
+| `showAnomalyModal(star, anomaly)` | inline backdrop modal | ~3265 |
 
 ### Time
 

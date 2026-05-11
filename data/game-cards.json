@@ -2993,6 +2993,264 @@
       "weight": 1,
       "image": "assets/cards/building/bld_032.webp",
       "notes": ""
+    },
+    {
+      "id": "art_001",
+      "name": "Forerunner Sigil",
+      "category": "artifact",
+      "rarity": "rare",
+      "stats": {},
+      "cost": {},
+      "upkeep": {},
+      "special": "",
+      "flavor": "Etched in a script no living tongue can speak.",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {
+        "source": "research",
+        "effect": { "kind": "flatResourcePerColony", "id": "minerals", "amount": 5 }
+      },
+      "weight": 1,
+      "image": "",
+      "notes": ""
+    },
+    {
+      "id": "art_002",
+      "name": "Imperial Tribute Vault",
+      "category": "artifact",
+      "rarity": "rare",
+      "stats": {},
+      "cost": {},
+      "upkeep": {},
+      "special": "",
+      "flavor": "Tithes from a dozen vassal worlds, perpetually flowing.",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {
+        "source": "pirate",
+        "effect": { "kind": "flatResourcePerTick", "id": "credits", "amount": 20 }
+      },
+      "weight": 1,
+      "image": "",
+      "notes": ""
+    },
+    {
+      "id": "art_003",
+      "name": "Admiralty Star",
+      "category": "artifact",
+      "rarity": "epic",
+      "stats": {},
+      "cost": {},
+      "upkeep": {},
+      "special": "",
+      "flavor": "Once pinned to the chest of a fleet that never lost.",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {
+        "source": "pirate",
+        "effect": { "kind": "bonusFleetSize", "amount": 1 }
+      },
+      "weight": 1,
+      "image": "",
+      "notes": ""
+    },
+    {
+      "id": "art_004",
+      "name": "Listening Crown",
+      "category": "artifact",
+      "rarity": "uncommon",
+      "stats": {},
+      "cost": {},
+      "upkeep": {},
+      "special": "",
+      "flavor": "Hears every whisper across the dark between stars.",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {
+        "source": "research",
+        "effect": { "kind": "sensorRangePercent", "amount": 25 }
+      },
+      "weight": 1,
+      "image": "",
+      "notes": ""
+    },
+    {
+      "id": "art_005",
+      "name": "Sage's Codex",
+      "category": "artifact",
+      "rarity": "rare",
+      "stats": {},
+      "cost": {},
+      "upkeep": {},
+      "special": "",
+      "flavor": "Every page already turned, every answer already known.",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {
+        "source": "research",
+        "effect": { "kind": "researchSpeedPercent", "amount": 50 }
+      },
+      "weight": 1,
+      "image": "",
+      "notes": ""
+    },
+    {
+      "id": "art_006",
+      "name": "Settler's Charter",
+      "category": "artifact",
+      "rarity": "epic",
+      "stats": {},
+      "cost": {},
+      "upkeep": {},
+      "special": "",
+      "flavor": "Title to any unclaimed world, signed by hands long dead.",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {
+        "source": "pirate",
+        "effect": { "kind": "colonyShipDiscount", "percent": 25 }
+      },
+      "weight": 1,
+      "image": "",
+      "notes": ""
+    },
+    {
+      "id": "tech_001",
+      "name": "Emergency Stipend",
+      "category": "tech",
+      "rarity": "common",
+      "stats": {},
+      "cost": {},
+      "upkeep": {},
+      "special": "",
+      "flavor": "Funds wired the moment the situation calls for it.",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {
+        "effect": { "kind": "gainResources", "deltas": { "credits": 5000 } }
+      },
+      "weight": 1,
+      "image": "",
+      "notes": ""
+    },
+    {
+      "id": "tech_002",
+      "name": "Mineral Manifest",
+      "category": "tech",
+      "rarity": "common",
+      "stats": {},
+      "cost": {},
+      "upkeep": {},
+      "special": "",
+      "flavor": "A bulk shipment, paperwork already filed.",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {
+        "effect": { "kind": "gainResources", "deltas": { "minerals": 3000, "energy": 1500 } }
+      },
+      "weight": 1,
+      "image": "",
+      "notes": ""
+    },
+    {
+      "id": "tech_003",
+      "name": "Lance Strike",
+      "category": "tech",
+      "rarity": "uncommon",
+      "stats": {},
+      "cost": {},
+      "upkeep": {},
+      "special": "",
+      "flavor": "Orbital fire on a heading, no questions asked.",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {
+        "effect": { "kind": "areaDamage", "radius": 250, "damage": 200 }
+      },
+      "weight": 1,
+      "image": "",
+      "notes": ""
+    },
+    {
+      "id": "tech_004",
+      "name": "Field Repair Drones",
+      "category": "tech",
+      "rarity": "uncommon",
+      "stats": {},
+      "cost": {},
+      "upkeep": {},
+      "special": "",
+      "flavor": "Swarms of welders, racing the count to zero.",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {
+        "effect": { "kind": "areaHeal", "radius": 250, "amount": 150 }
+      },
+      "weight": 1,
+      "image": "",
+      "notes": ""
+    },
+    {
+      "id": "tech_005",
+      "name": "Sensor Pulse",
+      "category": "tech",
+      "rarity": "common",
+      "stats": {},
+      "cost": {},
+      "upkeep": {},
+      "special": "",
+      "flavor": "A shout into the dark — and an answer that lasts.",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {
+        "effect": { "kind": "instantRevealRadius", "radius": 800 }
+      },
+      "weight": 1,
+      "image": "",
+      "notes": ""
+    },
+    {
+      "id": "tech_006",
+      "name": "Fleet Triage",
+      "category": "tech",
+      "rarity": "rare",
+      "stats": {},
+      "cost": {},
+      "upkeep": {},
+      "special": "",
+      "flavor": "Every ship you have, brought back to fighting trim.",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "tags": [],
+      "attributes": {},
+      "categoryData": {
+        "effect": { "kind": "instantHealAllPlayerShips", "percent": 50 }
+      },
+      "weight": 1,
+      "image": "",
+      "notes": ""
     }
   ]
 }

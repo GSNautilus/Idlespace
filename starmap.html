@@ -14,6 +14,8 @@
 <link rel="stylesheet" href="ui/building-card.css">
 <link rel="stylesheet" href="ui/leader-card.css">
 <link rel="stylesheet" href="ui/admiral-card.css">
+<link rel="stylesheet" href="ui/artifact-card.css">
+<link rel="stylesheet" href="ui/tech-card.css">
 <style>
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1482,6 +1484,124 @@ body.scaled {
   transition: width 0.3s;
 }
 
+/* Tech targeting banner — floating instructions while a targeted tech is mid-cast. */
+#tech-targeting-banner {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20,30,50,0.94);
+  border: 1px solid #4a7ac0;
+  border-radius: 6px;
+  padding: 10px 18px;
+  color: #d0e0f0;
+  font-size: 13px;
+  z-index: 70;
+  display: none;
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(74,122,192,0.4);
+}
+#tech-targeting-banner.visible { display: flex; align-items: center; gap: 12px; }
+#tech-targeting-banner .banner-cancel { color: #6a7a9b; font-size: 11px; font-style: italic; }
+
+/* Tech tab Play button — overlays the bottom-center of the cell when owned. */
+.tech-play-btn {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(95,180,214,0.92), rgba(60,120,160,0.92));
+  border: 1px solid #5fb4d6;
+  color: #fff;
+  padding: 5px 16px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  z-index: 5;
+  transition: transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+.tech-play-btn:hover {
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 6px 16px rgba(95,180,214,0.55);
+}
+.tech-play-btn .ico { width: 11px; height: 11px; }
+
+/* Research Choice Modal — shown when a research completes (Phase 3 rework). */
+#research-choice-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.78);
+  z-index: 60;
+}
+#research-choice-backdrop.visible { display: flex; align-items: center; justify-content: center; }
+#research-choice-modal {
+  background: rgba(5,5,8,0.97);
+  border: 1px solid #1e2744;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 90vw;
+}
+#research-choice-modal h3 {
+  font-size: 15px;
+  color: #a0b4d0;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+#research-choice-options {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.research-choice-option {
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  border-radius: 10px;
+}
+.research-choice-option:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 24px rgba(74,122,192,0.4);
+}
+#research-choice-hint {
+  font-size: 11px;
+  color: #6a7a9b;
+  font-style: italic;
+}
+.research-pending-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: rgba(74,155,90,0.12);
+  border: 1px solid rgba(74,155,90,0.4);
+  border-radius: 6px;
+  color: #b4e0b4;
+  font-size: 12px;
+}
+.research-pending-banner button {
+  background: #2a5a3a;
+  border: 1px solid #4a9b5a;
+  color: #d8f0d8;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.research-pending-banner button:hover { background: #3a7a4a; }
+
 /* Research reveal animations */
 @keyframes revealFlip {
   0% { transform: scale(0.3) rotateY(180deg); opacity: 0; }
@@ -1544,6 +1664,29 @@ body.scaled {
   opacity: 0.25;
   pointer-events: none; z-index: -1;
   animation: revealGlow 1.4s ease-out;
+}
+
+/* Artifact section in the salvage screen — distinct framing so a permanent
+   unlock reads as a bigger event than a trophy card. */
+#salvage-artifact-section {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+  animation: revealFadeIn 0.5s ease-out 0.05s both;
+}
+#salvage-artifact-label {
+  font-size: 14px;
+  letter-spacing: 0.15em;
+  color: #f0d28a;
+  text-transform: uppercase;
+  font-weight: 700;
+  text-shadow: 0 0 14px rgba(212,168,74,0.7);
+}
+.salvage-artifact-cell .salvage-card-glow {
+  /* Bump the glow intensity for the artifact so it visibly overpowers the
+     pirate-card glows below it. */
+  opacity: 0.55;
+  inset: -56px;
 }
 #salvage-resources {
   display: flex; gap: 16px; flex-wrap: wrap;
@@ -1612,7 +1755,7 @@ body.scaled {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.0.9.21</span>
+        <span class="tb-logo-version">v0.1.1</span>
       </div>
     </div>
     <div class="tb-nav">
@@ -1852,6 +1995,24 @@ body.scaled {
     </div>
     <div id="research-active"></div>
     <div id="research-list"></div>
+  </div>
+</div>
+
+<!-- Tech card targeting banner — visible while a targeted tech card is mid-cast.
+     Hidden by default; .visible toggles display. Floats above the map; pointer
+     events disabled so clicks pass through to the canvas. -->
+<div id="tech-targeting-banner"></div>
+
+<!-- Research Choice Modal — shown when a research completes; player picks 1 of 3.
+     Lives at top level (vs. card-select which sits inside the colony overlay)
+     because research can complete from anywhere in the game. Backdrop click
+     dismisses but preserves pendingResearch so the same choices reappear when
+     the player reopens the Research panel. -->
+<div id="research-choice-backdrop">
+  <div id="research-choice-modal">
+    <h3>Research Complete — Choose One</h3>
+    <div id="research-choice-options"></div>
+    <div id="research-choice-hint">Click a card to add it to your collection. Close the dialog to decide later.</div>
   </div>
 </div>
 
@@ -2263,6 +2424,11 @@ function rollStatTier(cardRarity) {
 }
 
 function rollStats(template) {
+  // Artifacts and tech cards never roll — their effect lives in
+  // categoryData.effect, and any `stats` are flat (e.g. for display only).
+  if (template && (template.category === "artifact" || template.category === "tech")) {
+    return { stats: { ...(template.stats || {}) }, statRanges: {} };
+  }
   const rolled = {};
   const ranges = {};
   for (const [key, val] of Object.entries(template.stats || {})) {
@@ -2304,6 +2470,12 @@ function getStatQualityColor(value, min, max) {
 }
 
 function rollCardFromCategory(category) {
+  // Tech and artifact never enter colony decks — they're research-modal /
+  // loot drops only. Catch wiring mistakes loudly in dev.
+  if (category === "tech" || category === "artifact") {
+    console.warn("[draw] rollCardFromCategory called with non-deck category:", category);
+    return null;
+  }
   const pool = getTemplates(category);
   if (!pool) return null;
   // Filter to only researched cards for gated categories
@@ -2458,6 +2630,7 @@ const CATEGORY_WATERMARK_IDS = {
   ship: "i-solo-ship", pirate: "i-solo-ship",
   star: "i-star", planet: "i-planet",
   building: "i-building", leader: "i-leader", admiral: "i-admiral",
+  artifact: "i-artifact", tech: "i-tech",
 };
 
 // ═══════════════════════════════════════════
@@ -2796,10 +2969,12 @@ const BASE_SENSOR_RANGE = 500;  // default reveal radius for colonies / explorat
 // ent.sensorRange * 50). Mirrors the activeZones the fog renderer uses, so
 // "you can see fog clear here" implies "Explore is available."
 function isInPlayerSensorRange(wx, wy) {
+  const colonyR = getEffectiveBaseSensorRange();
+  const colonyR2 = colonyR * colonyR;
   for (const star of stars.values()) {
     if (star.planets && star.planets.some(p => p.colony)) {
       const dx = wx - star.x, dy = wy - star.y;
-      if (dx * dx + dy * dy <= BASE_SENSOR_RANGE * BASE_SENSOR_RANGE) return true;
+      if (dx * dx + dy * dy <= colonyR2) return true;
     }
   }
   for (const ent of mapEntities) {
@@ -2894,8 +3069,9 @@ function generateGalaxy() {
   const home = createStar(0, 0, "explored", homeCard);
 
   // Detect nearby stars around home
-  detectStarsInRange(0, 0, BASE_SENSOR_RANGE);
-  markSeenInRange(0, 0, BASE_SENSOR_RANGE);
+  const homeRange = getEffectiveBaseSensorRange();
+  detectStarsInRange(0, 0, homeRange);
+  markSeenInRange(0, 0, homeRange);
 
   return home;
 }
@@ -2983,6 +3159,9 @@ function recalcFleetStats(ent) {
     ent.speed = Math.round(ent.speed * bonus);
     ent.sensorRange = Math.round(ent.sensorRange * bonus);
   }
+  // Artifact sensorRangePercent: stacks on top of admiral bonus.
+  const sensorMul = getArtifactBonuses().sensorMul;
+  if (sensorMul) ent.sensorRange = Math.round(ent.sensorRange * (1 + sensorMul / 100));
 }
 
 // ── Fleet formation layout ──
@@ -3059,7 +3238,8 @@ function getShipWorldPos(ent, shipIdx, _time) {
 }
 
 function getMaxFleetShips(admiral) {
-  return admiral ? (admiral.stats.maxFleetSize || 4) : 3;
+  const base = admiral ? (admiral.stats.maxFleetSize || 4) : 3;
+  return base + getArtifactBonuses().fleetSize;
 }
 
 // Check if entity is at a colony star (within snap distance)
@@ -3418,8 +3598,33 @@ const LOOT_VALUE_RANGES = {
 const LOOT_RESOURCE_WEIGHTS = { credits: 1, food: 1, minerals: 2, energy: 2 };
 const LOOT_RESOURCE_TYPES   = ["credits", "minerals", "energy", "food"];
 const LOOT_CARD_DROP_CHANCE = 0.05; // independent roll per defeated ship
+// One roll per combat (not per ship) so a 12-ship pirate fleet doesn't get
+// disproportionate artifact luck. Tunable; raise temporarily to test.
+const LOOT_ARTIFACT_DROP_CHANCE = 0.05;
 
-// Roll resources + (rarely) a pirate card from each destroyed enemy ship.
+// Pick one not-yet-owned artifact whose categoryData.source === "pirate".
+// Weighted by RARITY_WEIGHTS × per-card weight. Returns null if pool empty.
+function rollPirateArtifactDrop() {
+  const pool = getTemplates("artifact").filter(t =>
+    t.categoryData && t.categoryData.source === "pirate" && !ownedArtifacts.has(t.id)
+  );
+  if (pool.length === 0) return null;
+  let total = 0;
+  const weighted = pool.map(t => {
+    const rarityW = RARITY_WEIGHTS[t.rarity] || 10;
+    const cardW = (typeof t.weight === "number") ? Math.max(0, t.weight) : 1;
+    const w = rarityW * cardW;
+    total += w;
+    return { template: t, weight: w };
+  });
+  if (total <= 0) return null;
+  let roll = Math.random() * total;
+  for (const e of weighted) { roll -= e.weight; if (roll <= 0) return e.template; }
+  return pool[pool.length - 1];
+}
+
+// Roll resources + (rarely) a pirate card from each destroyed enemy ship,
+// plus one separate per-combat roll for an artifact drop.
 // Returns null if no loot fired (player wipe, friendly-on-friendly, etc.).
 function rollCombatLoot(winner, loser) {
   if (!winner || !loser) return null;
@@ -3440,7 +3645,14 @@ function rollCombatLoot(winner, loser) {
     resources[resType] = (resources[resType] || 0) + amount;
     if (Math.random() < LOOT_CARD_DROP_CHANCE) cards.push(card);
   }
-  return { resources, cards };
+  // Single artifact roll per combat — duplicates filtered pre-roll so the
+  // player only sees genuine new finds; once all pirate-source artifacts are
+  // owned this slot stops dropping.
+  let artifact = null;
+  if (Math.random() < LOOT_ARTIFACT_DROP_CHANCE) {
+    artifact = rollPirateArtifactDrop();
+  }
+  return { resources, cards, artifact };
 }
 
 function cleanupCombat(combat, arrayIndex) {
@@ -3467,6 +3679,8 @@ function cleanupCombat(combat, arrayIndex) {
 
   // Apply loot + show salvage screen. Resources go into the global pool now;
   // any dropped cards land in the pirateLoot inventory and are marked seen.
+  // A dropped artifact (if any) immediately unlocks via grantArtifact so its
+  // effect is live the moment the salvage screen appears.
   if (loot) {
     for (const k of Object.keys(loot.resources)) {
       resources[k] = (resources[k] || 0) + loot.resources[k];
@@ -3475,7 +3689,11 @@ function cleanupCombat(combat, arrayIndex) {
       pirateLoot[card.id] = (pirateLoot[card.id] || 0) + 1;
       markCardSeen(card);
     }
-    if (Object.keys(loot.resources).length > 0 || loot.cards.length > 0) {
+    if (loot.artifact) {
+      grantArtifact(loot.artifact.id);
+      markCardSeen(loot.artifact);
+    }
+    if (Object.keys(loot.resources).length > 0 || loot.cards.length > 0 || loot.artifact) {
       showSalvageScreen(loot);
     }
   }
@@ -4926,10 +5144,11 @@ function drawFogOfWar(ctx) {
   // ── PASS 2: ACTIVE SIGHT ──────────────────────────────────────────────
   // Full-clear holes from colonies, detected-star peeks, and entities.
   const activeZones = [];
+  const colonySensorRange = getEffectiveBaseSensorRange();
   for (const star of stars.values()) {
     const hasColony = star.planets && star.planets.some(p => p.colony);
     if (hasColony) {
-      activeZones.push({ wx: star.x, wy: star.y, range: BASE_SENSOR_RANGE });
+      activeZones.push({ wx: star.x, wy: star.y, range: colonySensorRange });
     } else if (star.visibility === "detected") {
       activeZones.push({ wx: star.x, wy: star.y, range: 30 });
     }
@@ -5000,6 +5219,36 @@ function render() {
   // Empire territory contour renders above fog so the boundary is always
   // visible, but it draws no stars — revealed space is still star-based.
   drawTerritoryContour(ctx);
+
+  // Tech-targeting reticle on top of everything (fog included) so the player
+  // can always see exactly where they're aiming.
+  drawTechTargetingReticle(ctx);
+}
+
+function drawTechTargetingReticle(ctx) {
+  if (!techTargetingMode) return;
+  const radius = techTargetingMode.args && techTargetingMode.args.radius;
+  if (typeof radius !== "number" || radius <= 0) return;
+  const screen = worldToScreen(techTargetingCursor.x, techTargetingCursor.y);
+  const screenR = radius * camera.zoom;
+  const color = TECH_RETICLE_COLOR[techTargetingMode.kind] || "#a0c0ff";
+  ctx.save();
+  // Filled disc with low alpha; outline at full alpha.
+  ctx.fillStyle = color + "22";
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(screen.x, screen.y, screenR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // Crosshair at center for precision.
+  ctx.beginPath();
+  ctx.moveTo(screen.x - 8, screen.y);
+  ctx.lineTo(screen.x + 8, screen.y);
+  ctx.moveTo(screen.x, screen.y - 8);
+  ctx.lineTo(screen.x, screen.y + 8);
+  ctx.stroke();
+  ctx.restore();
 }
 
 // ═══════════════════════════════════════════
@@ -5434,6 +5683,145 @@ function buildAdmiralCardHtml(card) {
 }
 
 // ═══════════════════════════════════════════
+//  ARTIFACT CARD — permanent passive effect
+//  (no stat rolls; flat effect from categoryData.effect)
+// ═══════════════════════════════════════════
+function buildArtifactCardHtml(card) {
+  const rarity = card.rarity || "common";
+  const subLabel = `${rarity} · Artifact`;
+
+  const imageHtml = card.image
+    ? buildArtImageHtml(card.image, subLabel, card.name)
+    : buildGlyphImageHtml("i-artifact", subLabel);
+
+  const effectHtml = describeArtifactEffectHtml(card);
+
+  return `
+    <div class="card-preview tpl-metal is-artifact ${rarity}">
+      <div class="bg"></div>
+      <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
+      <div class="c">
+        <div class="hdr"><span class="hdr-name">${card.name || ""}</span></div>
+        ${imageHtml}
+        ${effectHtml}
+        ${buildSpecialHtml(getSpecialDisplay(card))}
+        ${buildFlavorHtml(card.flavor)}
+        ${buildWatermarkHtml("i-artifact")}
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  TECH CARD — consumable activated effect
+//  (effect kind in categoryData.effect; played from Collection)
+// ═══════════════════════════════════════════
+function buildTechCardHtml(card) {
+  const rarity = card.rarity || "common";
+  const subLabel = `${rarity} · Tech`;
+
+  const imageHtml = card.image
+    ? buildArtImageHtml(card.image, subLabel, card.name)
+    : buildGlyphImageHtml("i-tech", subLabel);
+
+  const effectHtml = describeTechEffectHtml(card);
+
+  return `
+    <div class="card-preview tpl-metal is-tech ${rarity}">
+      <div class="bg"></div>
+      <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
+      <div class="c">
+        ${buildCostPillHtml(card.cost)}
+        <div class="hdr"><span class="hdr-name">${card.name || ""}</span></div>
+        ${imageHtml}
+        ${effectHtml}
+        ${buildSpecialHtml(getSpecialDisplay(card))}
+        ${buildFlavorHtml(card.flavor)}
+        ${buildWatermarkHtml("i-tech")}
+      </div>
+    </div>`;
+}
+
+// Human-readable effect descriptions. Each formatter returns inline HTML
+// (icon + text) suitable for the `.effect-chip`. Returns `""` if the effect
+// payload is missing required args; the caller hides the chip in that case.
+function describeArtifactEffectHtml(card) {
+  const eff = card.categoryData && card.categoryData.effect;
+  if (!eff || !eff.kind) return "";
+  const inner = formatArtifactEffectInner(eff);
+  if (!inner) return "";
+  return `<div class="effect-chip" title="Permanent passive effect">${inner}</div>`;
+}
+function describeTechEffectHtml(card) {
+  const eff = card.categoryData && card.categoryData.effect;
+  if (!eff || !eff.kind) return "";
+  const inner = formatTechEffectInner(eff);
+  if (!inner) return "";
+  const targeted = eff.kind === "areaDamage" || eff.kind === "areaHeal" || eff.kind === "instantRevealRadius";
+  const hint = targeted ? `<div class="target-hint">Targeted — click world to activate</div>` : "";
+  return `<div class="effect-chip" title="One-shot activated effect">${inner}</div>${hint}`;
+}
+
+function _resIconHtml(id) {
+  const iconId = RES_ICON_BY_KEY[id];
+  return iconId ? `<svg class="ico ${id}"><use href="#${iconId}"/></svg>` : "";
+}
+function _resLabel(id) {
+  return (RESOURCE_LABELS && RESOURCE_LABELS[id]) || id;
+}
+
+function formatArtifactEffectInner(eff) {
+  switch (eff.kind) {
+    case "flatResourcePerColony":
+      if (!eff.id || typeof eff.amount !== "number") return null;
+      return `${_resIconHtml(eff.id)}+${formatResourceValue(eff.amount)} ${_resLabel(eff.id)} / colony`;
+    case "flatResourcePerTick":
+      if (!eff.id || typeof eff.amount !== "number") return null;
+      return `${_resIconHtml(eff.id)}+${formatResourceValue(eff.amount)} ${_resLabel(eff.id)} / tick`;
+    case "bonusFleetSize":
+      if (typeof eff.amount !== "number") return null;
+      return `<svg class="ico"><use href="#i-fleet-cap"/></svg>+${eff.amount} fleet size`;
+    case "sensorRangePercent":
+      if (typeof eff.amount !== "number") return null;
+      return `<svg class="ico"><use href="#i-sensor"/></svg>+${eff.amount}% sensor range`;
+    case "researchSpeedPercent":
+      if (typeof eff.amount !== "number") return null;
+      return `<svg class="ico research"><use href="#i-research"/></svg>+${eff.amount}% research speed`;
+    case "colonyShipDiscount":
+      if (typeof eff.percent !== "number") return null;
+      return `<svg class="ico"><use href="#i-colony"/></svg>−${eff.percent}% colonization cost`;
+  }
+  return null;
+}
+
+function formatTechEffectInner(eff) {
+  switch (eff.kind) {
+    case "gainResources": {
+      const deltas = eff.deltas || {};
+      const parts = [];
+      for (const [id, amt] of Object.entries(deltas)) {
+        if (typeof amt !== "number") continue;
+        parts.push(`${_resIconHtml(id)}+${formatResourceValue(amt)}`);
+      }
+      if (parts.length === 0) return null;
+      return `Gain ${parts.join(" ")}`;
+    }
+    case "areaDamage":
+      if (typeof eff.damage !== "number" || typeof eff.radius !== "number") return null;
+      return `<svg class="ico"><use href="#i-swords"/></svg>${formatResourceValue(eff.damage)} dmg · r${eff.radius}`;
+    case "areaHeal":
+      if (typeof eff.amount !== "number" || typeof eff.radius !== "number") return null;
+      return `<svg class="ico"><use href="#i-shield"/></svg>+${formatResourceValue(eff.amount)} HP · r${eff.radius}`;
+    case "instantRevealRadius":
+      if (typeof eff.radius !== "number") return null;
+      return `<svg class="ico"><use href="#i-sensor"/></svg>Reveal r${eff.radius}`;
+    case "instantHealAllPlayerShips":
+      if (typeof eff.percent !== "number") return null;
+      return `<svg class="ico"><use href="#i-shield"/></svg>Heal all ships ${eff.percent}%`;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════
 //  ROUTER — dispatches on card.category
 //  (the old `watermark` 2nd arg is ignored; kept
 //  in the signature so existing call sites still compile)
@@ -5447,7 +5835,11 @@ function buildCardHtml(card /* , watermark */) {
     case "building": return buildBuildingCardHtml(card);
     case "leader":   return buildLeaderCardHtml(card);
     case "admiral":  return buildAdmiralCardHtml(card);
-    default:         return buildShipCardHtml(card);
+    case "artifact": return buildArtifactCardHtml(card);
+    case "tech":     return buildTechCardHtml(card);
+    default:
+      console.warn("[render] unknown card category:", card && card.category, card && card.id);
+      return buildShipCardHtml(card);
   }
 }
 
@@ -6051,7 +6443,8 @@ function isOverBlockingOverlay(target) {
          target.closest("#colony-backdrop") || target.closest("#colonies-list-overlay") ||
          target.closest("#colonies-backdrop") || target.closest("#fleets-list-overlay") ||
          target.closest("#fleets-backdrop") || target.closest("#card-select-backdrop") ||
-         target.closest("#research-backdrop") || target.closest("#combat-overlay") ||
+         target.closest("#research-backdrop") || target.closest("#research-choice-backdrop") ||
+         target.closest("#combat-overlay") ||
          target.closest("#combat-backdrop") || target.closest("#collection-overlay") ||
          target.closest("#collection-backdrop");
 }
@@ -6091,6 +6484,16 @@ container.addEventListener("pointerdown", (e) => {
 window.addEventListener("pointermove", (e) => {
   if (activePointers.has(e.pointerId)) {
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  }
+
+  // Tech targeting — track the cursor in world coords so the reticle stays
+  // glued to the same point under camera pan/zoom. Updates every move; the
+  // render() pass reads from techTargetingCursor each frame.
+  if (techTargetingMode) {
+    const m = pointerToCanvas(canvasEl, e.clientX, e.clientY);
+    const w = screenToWorld(m.x, m.y);
+    techTargetingCursor.x = w.x;
+    techTargetingCursor.y = w.y;
   }
 
   // Pinch-zoom: two active pointers, anchor to starting midpoint
@@ -6194,6 +6597,14 @@ function handlePointerEnd(e) {
     const sx = m.x;
     const sy = m.y;
 
+    // Tech targeting takes precedence over every other click handler so the
+    // player can't accidentally select a star/entity while a card is mid-cast.
+    if (techTargetingMode) {
+      const world = screenToWorld(sx, sy);
+      resolveTechTarget(world.x, world.y);
+      return;
+    }
+
     // Check combat icon click first
     const combatHit = getCombatAtScreen(sx, sy);
     if (combatHit) {
@@ -6244,9 +6655,24 @@ container.addEventListener("contextmenu", (e) => {
   // A right-click *drag* is the camera-pan gesture; only a clean right-click
   // (no movement past the 3px threshold) should deselect the active entity.
   if (dragMoved) return;
+  // Tech targeting cancel takes precedence over deselect — otherwise a quick
+  // right-click would both cancel AND deselect, surprising the player.
+  if (techTargetingMode) {
+    cancelTechTargeting();
+    return;
+  }
   if (selectedEntityIdx !== null) {
     selectedEntityIdx = null;
     hideSelectPanel();
+  }
+});
+
+// ESC cancels tech targeting. Doesn't intercept other ESC handlers (e.g.
+// the salvage screen registers its own one-shot listener) since this only
+// fires when techTargetingMode is set.
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && techTargetingMode) {
+    cancelTechTargeting();
   }
 });
 
@@ -6263,7 +6689,7 @@ canvasEl.addEventListener("dblclick", (e) => {
 });
 
 container.addEventListener("wheel", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#combat-overlay") || e.target.closest("#collection-overlay")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#research-choice-backdrop") || e.target.closest("#combat-overlay") || e.target.closest("#collection-overlay")) return;
   e.preventDefault();
   const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
   const newZoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomFactor));
@@ -6462,7 +6888,7 @@ function buyPopulation() {
 const RESEARCH_BASE_COST = 500;
 const RESEARCH_COST_MULTIPLIER = 2.0;
 const RESEARCH_SPEND_RATE = 5; // max points consumed per game-second
-const researchCounts = { building: 0, ship: 0, admiral: 0, leader: 0 };
+const researchCounts = { building: 0, ship: 0, admiral: 0, leader: 0, tech: 0, artifact: 0 };
 const researchedCards = new Set(); // card IDs that have been researched
 // Card template IDs the player has ever viewed (full card render). Drives
 // the Collection overlay's "Seen" state for cards not currently owned.
@@ -6472,6 +6898,332 @@ const seenCards = new Set();
 // but are NOT placed into any colony queue / map entity — they're trophies
 // only for v0.1.0; deployable-pirate-ships is a possible future phase.
 const pirateLoot = {};
+// Permanent artifact unlocks. Once an id is in this set, the artifact's
+// effect applies forever (see ARTIFACT_EFFECTS below). Duplicates are
+// filtered pre-roll so this Set never grows beyond one entry per template.
+const ownedArtifacts = new Set();
+// Consumable tech card inventory. Keyed by template id, value = count.
+// Decremented on Play from the Collection's Tech tab (Phase 4).
+const techInventory = {};
+
+// ── Artifact effect registry ─────────────────────────────────────────────
+// Each entry describes how an artifact's `categoryData.effect` payload
+// contributes to a global aggregate. The aggregate is recomputed lazily;
+// callers reference the aggregate, never the registry directly.
+//
+// Effect args (per kind):
+//   flatResourcePerColony:  { id: "minerals", amount: 5 }   → adds amount to each colony's per-tick output
+//   flatResourcePerTick:    { id: "credits",  amount: 20 }  → adds amount to empire-wide income each tick
+//   bonusFleetSize:         { amount: 1 }                   → +N to base fleet cap (with or without admiral)
+//   sensorRangePercent:     { amount: 25 }                  → +N% to BASE_SENSOR_RANGE and to fleet sensorRange
+//   researchSpeedPercent:   { amount: 50 }                  → +N% to RESEARCH_SPEND_RATE
+//   colonyShipDiscount:     { percent: 25 }                 → -N% on colonization resource cost
+const ARTIFACT_EFFECTS = {
+  flatResourcePerColony: true,
+  flatResourcePerTick:   true,
+  bonusFleetSize:        true,
+  sensorRangePercent:    true,
+  researchSpeedPercent:  true,
+  colonyShipDiscount:    true,
+};
+
+// Bumped any time ownedArtifacts mutates so the aggregate cache invalidates.
+let _artifactVersion = 0;
+function bumpArtifactVersion() { _artifactVersion++; }
+let _artifactBonusCache = { version: -1 };
+function getArtifactBonuses() {
+  if (_artifactBonusCache.version === _artifactVersion) return _artifactBonusCache;
+  const perColony = {}, perTick = {};
+  let fleetSize = 0, sensorMul = 0, researchMul = 0, colonyDiscount = 0;
+  for (const id of ownedArtifacts) {
+    const card = getCardById(id);
+    if (!card) continue;
+    const eff = card.categoryData && card.categoryData.effect;
+    if (!eff || !eff.kind) continue;
+    switch (eff.kind) {
+      case "flatResourcePerColony":
+        if (eff.id && typeof eff.amount === "number") perColony[eff.id] = (perColony[eff.id] || 0) + eff.amount;
+        break;
+      case "flatResourcePerTick":
+        if (eff.id && typeof eff.amount === "number") perTick[eff.id] = (perTick[eff.id] || 0) + eff.amount;
+        break;
+      case "bonusFleetSize":
+        if (typeof eff.amount === "number") fleetSize += eff.amount;
+        break;
+      case "sensorRangePercent":
+        if (typeof eff.amount === "number") sensorMul += eff.amount;
+        break;
+      case "researchSpeedPercent":
+        if (typeof eff.amount === "number") researchMul += eff.amount;
+        break;
+      case "colonyShipDiscount":
+        if (typeof eff.percent === "number") colonyDiscount += eff.percent;
+        break;
+      default:
+        if (!ARTIFACT_EFFECTS[eff.kind]) console.warn("[artifact] unknown effect kind:", eff.kind, "on", id);
+    }
+  }
+  _artifactBonusCache = { version: _artifactVersion, perColony, perTick, fleetSize, sensorMul, researchMul, colonyDiscount };
+  return _artifactBonusCache;
+}
+
+// Convenience: every place that adds/removes an artifact must keep the
+// version up to date. These helpers centralize that — call them instead of
+// touching ownedArtifacts directly outside of save/load.
+function grantArtifact(id) {
+  if (!id || ownedArtifacts.has(id)) return false;
+  ownedArtifacts.add(id);
+  bumpArtifactVersion();
+  // sensorRangePercent multiplies ent.sensorRange. Existing fleets / solo
+  // ships have the old value cached on the entity — force a refresh so the
+  // visible sensor disc on the starmap updates immediately.
+  const sensorMul = 1 + getArtifactBonuses().sensorMul / 100;
+  for (const ent of mapEntities) {
+    if (ent.owner !== "player") continue;
+    if (ent.type === "fleet") {
+      recalcFleetStats(ent);
+    } else if (ent.type === "ship" && ent.card && ent.card.stats) {
+      ent.sensorRange = Math.round((ent.card.stats.sensorRange || 0) * sensorMul);
+    }
+  }
+  return true;
+}
+
+// Apply the sensor% artifact aggregate to BASE_SENSOR_RANGE. Used by
+// startup, fog rendering, and the explore-button gate so artifacts that
+// boost sensor range visibly grow the colony reveal disc.
+function getEffectiveBaseSensorRange() {
+  return BASE_SENSOR_RANGE * (1 + getArtifactBonuses().sensorMul / 100);
+}
+
+// ── Tech effect registry ─────────────────────────────────────────────────
+// Each entry: { instant: bool, resolve(args, wx?, wy?) → bool }. Instant
+// effects apply immediately on Play; non-instant ("targeted") effects enter
+// targeting mode where the next world click resolves them at (wx, wy).
+//
+// The resolve function returns true on any successful application; the
+// caller uses that to decide whether to consume the inventory charge. For
+// instant effects: false = no-op (e.g. heal already at full, no targets).
+// For targeted effects: the click is the player's commitment, so the charge
+// is consumed regardless of whether anything was hit.
+const TECH_EFFECTS = {
+  gainResources: {
+    instant: true,
+    resolve(args) {
+      const deltas = args.deltas || {};
+      let any = false;
+      for (const [id, v] of Object.entries(deltas)) {
+        if (typeof v !== "number") continue;
+        resources[id] = (resources[id] || 0) + v;
+        any = true;
+      }
+      return any;
+    },
+  },
+  instantHealAllPlayerShips: {
+    instant: true,
+    resolve(args) {
+      const pct = (typeof args.percent === "number") ? args.percent : 0;
+      if (pct <= 0) return false;
+      let any = false;
+      for (const ent of mapEntities) {
+        if (ent.owner !== "player") continue;
+        if (ent.inCombat) continue;
+        const ships = ent.type === "ship" ? [ent.card] : (ent.ships || []);
+        for (const card of ships) {
+          if (applyTechShipHeal(card, _maxOf(card, "shields") * pct / 100, _maxOf(card, "armor") * pct / 100)) any = true;
+        }
+      }
+      return any;
+    },
+  },
+  areaDamage: {
+    instant: false,
+    resolve(args, wx, wy) {
+      const radius = args.radius || 0;
+      const damage = args.damage || 0;
+      if (radius <= 0 || damage <= 0) return false;
+      const r2 = radius * radius;
+      const toRemove = [];
+      let hit = false;
+      for (let i = 0; i < mapEntities.length; i++) {
+        const ent = mapEntities[i];
+        if (ent.owner !== "npc") continue;
+        if (ent.inCombat) continue;  // v1: refuse to target in-combat ships
+        const dx = ent.x - wx, dy = ent.y - wy;
+        if (dx * dx + dy * dy > r2) continue;
+        hit = true;
+        if (ent.type === "ship" && ent.card) {
+          if (applyTechShipDamage(ent.card, damage)) toRemove.push(i);
+        } else if (ent.type === "fleet" && ent.ships) {
+          // Spread damage evenly across the fleet's surviving ships.
+          const per = Math.ceil(damage / Math.max(1, ent.ships.length));
+          const survivors = [];
+          for (const card of ent.ships) {
+            if (!applyTechShipDamage(card, per)) survivors.push(card);
+          }
+          ent.ships = survivors;
+          if (survivors.length === 0) toRemove.push(i);
+          else recalcFleetStats(ent);
+        }
+      }
+      // Reverse-iterate so splices don't shift indices we still need.
+      for (let i = toRemove.length - 1; i >= 0; i--) {
+        const idx = toRemove[i];
+        mapEntities.splice(idx, 1);
+        if (selectedEntityIdx === idx) selectedEntityIdx = null;
+        else if (selectedEntityIdx !== null && selectedEntityIdx > idx) selectedEntityIdx--;
+      }
+      return hit;
+    },
+  },
+  areaHeal: {
+    instant: false,
+    resolve(args, wx, wy) {
+      const radius = args.radius || 0;
+      const amount = args.amount || 0;
+      if (radius <= 0 || amount <= 0) return false;
+      const r2 = radius * radius;
+      let hit = false;
+      for (const ent of mapEntities) {
+        if (ent.owner !== "player") continue;
+        if (ent.inCombat) continue;
+        const dx = ent.x - wx, dy = ent.y - wy;
+        if (dx * dx + dy * dy > r2) continue;
+        const ships = ent.type === "ship" ? [ent.card] : (ent.ships || []);
+        for (const card of ships) {
+          if (applyTechShipHeal(card, amount, amount)) hit = true;
+        }
+      }
+      return hit;
+    },
+  },
+  instantRevealRadius: {
+    instant: false,
+    resolve(args, wx, wy) {
+      const radius = args.radius || 0;
+      if (radius <= 0) return false;
+      detectStarsInRange(wx, wy, radius);
+      markSeenInRange(wx, wy, radius);
+      return true;
+    },
+  },
+};
+
+// Reticle color per targeted-effect kind. Falls back to a neutral blue.
+const TECH_RETICLE_COLOR = {
+  areaDamage:          "#ff6464",
+  areaHeal:            "#5be080",
+  instantRevealRadius: "#60a8ff",
+};
+
+// Targeting state. Both reset on cancel/resolve. cursor lives in WORLD
+// coords so the reticle stays glued to the same point under camera pans.
+let techTargetingMode = null;     // { cardId, kind, args }
+const techTargetingCursor = { x: 0, y: 0 };
+
+function _maxOf(card, statKey) {
+  return ((card && card.stats && card.stats[statKey]) || 0) * COMBAT_HP_SCALE;
+}
+
+// Apply `dmg` to a ship's _combatShields → _combatArmor pool. Returns true
+// iff the ship died (armor reached 0). Initializes pools to max if absent.
+function applyTechShipDamage(card, dmg) {
+  if (!card || !card.stats) return false;
+  const maxS = _maxOf(card, "shields");
+  const maxA = _maxOf(card, "armor");
+  let curS = card._combatShields != null ? card._combatShields : maxS;
+  let curA = card._combatArmor   != null ? card._combatArmor   : maxA;
+  let remaining = dmg;
+  if (curS > 0 && remaining > 0) {
+    const absorbed = Math.min(curS, remaining);
+    curS -= absorbed;
+    remaining -= absorbed;
+  }
+  if (remaining > 0) curA = Math.max(0, curA - remaining);
+  card._combatShields = curS;
+  card._combatArmor   = curA;
+  return curA <= 0;
+}
+
+// Restore up to `armorAmt` to armor, then `shieldsAmt` to shields, capped at
+// each pool's max. Returns true iff anything was restored.
+function applyTechShipHeal(card, shieldsAmt, armorAmt) {
+  if (!card || !card.stats) return false;
+  const maxS = _maxOf(card, "shields");
+  const maxA = _maxOf(card, "armor");
+  const curS = card._combatShields != null ? card._combatShields : maxS;
+  const curA = card._combatArmor   != null ? card._combatArmor   : maxA;
+  if (curS >= maxS && curA >= maxA) return false;
+  const newA = Math.min(maxA, curA + Math.max(0, armorAmt));
+  const newS = Math.min(maxS, curS + Math.max(0, shieldsAmt));
+  if (newA === curA && newS === curS) return false;
+  card._combatArmor   = newA;
+  card._combatShields = newS;
+  return true;
+}
+
+// Top-level entry from the Collection Tech tab Play button. Branches by
+// effect kind: instant fires immediately, targeted enters targeting mode
+// (closing the Collection so the player can see the map).
+function playTechCard(id) {
+  if (!techInventory[id] || techInventory[id] <= 0) return;
+  const card = getCardById(id);
+  if (!card) return;
+  const eff = card.categoryData && card.categoryData.effect;
+  if (!eff || !eff.kind) { console.warn("[tech] card has no effect:", id); return; }
+  const handler = TECH_EFFECTS[eff.kind];
+  if (!handler) { console.warn("[tech] unknown effect kind:", eff.kind); return; }
+  if (handler.instant) {
+    if (handler.resolve(eff)) {
+      consumeTechCharge(id);
+      if (document.getElementById("collection-overlay").classList.contains("visible")) {
+        renderCollection();
+      }
+    }
+    return;
+  }
+  // Targeted: enter targeting mode and close the Collection so the player
+  // can see the map. Reticle starts at camera center until the first
+  // pointermove updates it.
+  techTargetingMode = { cardId: id, kind: eff.kind, args: eff };
+  techTargetingCursor.x = camera.x;
+  techTargetingCursor.y = camera.y;
+  hideCollection();
+  showTechTargetingBanner(card);
+}
+
+function consumeTechCharge(id) {
+  techInventory[id] = (techInventory[id] || 0) - 1;
+  if (techInventory[id] <= 0) delete techInventory[id];
+}
+
+function resolveTechTarget(wx, wy) {
+  if (!techTargetingMode) return;
+  const handler = TECH_EFFECTS[techTargetingMode.kind];
+  const id = techTargetingMode.cardId;
+  if (handler) handler.resolve(techTargetingMode.args, wx, wy);
+  // Click is commitment — consume the charge whether or not anything was hit.
+  consumeTechCharge(id);
+  techTargetingMode = null;
+  hideTechTargetingBanner();
+}
+
+function cancelTechTargeting() {
+  if (!techTargetingMode) return;
+  techTargetingMode = null;
+  hideTechTargetingBanner();
+}
+
+function showTechTargetingBanner(card) {
+  const el = document.getElementById("tech-targeting-banner");
+  el.innerHTML = `<strong>${card.name}</strong>`
+    + ` <span class="banner-cancel">— click on the map to deploy · ESC or right-click to cancel</span>`;
+  el.classList.add("visible");
+}
+function hideTechTargetingBanner() {
+  document.getElementById("tech-targeting-banner").classList.remove("visible");
+}
 function markCardSeen(card) {
   if (!card) return;
   const id = typeof card === "string" ? card : card.id;
@@ -6502,22 +7254,44 @@ function computeOwnedCounts() {
   for (const id of Object.keys(pirateLoot)) {
     counts[id] = (counts[id] || 0) + pirateLoot[id];
   }
+  // Tech cards count by inventory size; artifacts are binary owned.
+  for (const id of Object.keys(techInventory)) {
+    counts[id] = (counts[id] || 0) + (techInventory[id] || 0);
+  }
+  for (const id of ownedArtifacts) {
+    counts[id] = (counts[id] || 0) + 1;
+  }
   return counts;
 }
-let activeResearch = null;         // { category, cost, progress }
+let activeResearch = null;         // { cost, progress } — single-pool research (no per-category arg)
+// Set when activeResearch completes; holds the 3-choice candidates until the
+// player picks one. Survives modal dismissal so the choice carries across
+// closing/reopening the panel and across save/load.
+let pendingResearch = null;        // { choices: [card, card, card] } | null
 
-// All 4 card categories require research (stars/planets discovered via exploration)
-const RESEARCH_GATED_CATEGORIES = ["building", "ship", "admiral", "leader"];
+// Categories whose draws are gated by `researchedCards`. `tech` is in this
+// list so colony-deck filters consistently, but `rollCardFromCategory` will
+// hard-warn if it's ever called with `tech` or `artifact` — those categories
+// only enter the player's collection through the research-choice modal /
+// loot drops, never colony deck draws.
+const RESEARCH_GATED_CATEGORIES = ["building", "ship", "admiral", "leader", "tech"];
 
-function getResearchCost(category) {
-  const count = researchCounts[category] || 0;
-  return Math.ceil(RESEARCH_BASE_COST * Math.pow(RESEARCH_COST_MULTIPLIER, count));
+// Single-pool research cost: scales on count of NON-tech researched cards.
+// Tech is excluded so spamming tech cards (the consumable side) doesn't
+// inflate the next research price; only permanent unlocks do.
+function getResearchCost() {
+  const nonTech = (researchCounts.building || 0)
+                + (researchCounts.ship     || 0)
+                + (researchCounts.admiral  || 0)
+                + (researchCounts.leader   || 0)
+                + (researchCounts.artifact || 0);
+  return Math.ceil(RESEARCH_BASE_COST * Math.pow(RESEARCH_COST_MULTIPLIER, nonTech));
 }
 
-function startResearch(category) {
-  if (activeResearch) return;
-  const cost = getResearchCost(category);
-  activeResearch = { category, cost, progress: 0 };
+function startResearch() {
+  if (activeResearch || pendingResearch) return;
+  const cost = getResearchCost();
+  activeResearch = { cost, progress: 0 };
   refreshResearchPanel();
 }
 
@@ -6548,10 +7322,137 @@ function rollResearchResult(category) {
   return candidates[candidates.length - 1];
 }
 
+// Roll a single artifact eligible for the research pool: source === "research"
+// and not already owned. Same rarity weighting as rollResearchResult so a
+// legendary artifact is genuinely as rare as a legendary card unlock.
+function rollResearchArtifactChoice() {
+  const pool = getTemplates("artifact").filter(t =>
+    t.categoryData && t.categoryData.source === "research" && !ownedArtifacts.has(t.id)
+  );
+  if (pool.length === 0) return null;
+  const weights = { common: 200, uncommon: 60, rare: 15, epic: 3, legendary: 0.3 };
+  let total = 0;
+  const weighted = pool.map(t => {
+    const rarityW = weights[t.rarity] || 10;
+    const cardW = (typeof t.weight === "number") ? Math.max(0, t.weight) : 1;
+    const w = rarityW * cardW;
+    total += w;
+    return { template: t, weight: w };
+  });
+  if (total <= 0) return null;
+  let roll = Math.random() * total;
+  for (const e of weighted) { roll -= e.weight; if (roll <= 0) return e.template; }
+  return pool[pool.length - 1];
+}
+
+// Pick the category for one research-modal slot. ~66% chance tech; ~34%
+// split across non-tech categories with weights [3,3,3,3,2] so artifact is
+// slightly rarer than the gated categories (matches its permanence).
+const _NON_TECH_CATS    = ["building", "ship", "admiral", "leader", "artifact"];
+const _NON_TECH_WEIGHTS = [3, 3, 3, 3, 2];
+const _NON_TECH_TOTAL   = _NON_TECH_WEIGHTS.reduce((a, b) => a + b, 0);
+
+function pickResearchSlotCategory() {
+  if (Math.random() < 0.66) return "tech";
+  let roll = Math.random() * _NON_TECH_TOTAL;
+  for (let i = 0; i < _NON_TECH_CATS.length; i++) {
+    roll -= _NON_TECH_WEIGHTS[i];
+    if (roll <= 0) return _NON_TECH_CATS[i];
+  }
+  return _NON_TECH_CATS[_NON_TECH_CATS.length - 1];
+}
+
+function rollOneSlotCard(category) {
+  return category === "artifact" ? rollResearchArtifactChoice() : rollResearchResult(category);
+}
+
+// Roll 3 distinct cards for the research-completion modal.
+//   - per-slot independent 66% tech / 34% non-tech distribution
+//   - dedupe across slots (re-roll on collision)
+//   - if a slot's chosen category has nothing eligible, retry up to 5 times,
+//     then fall back to scanning every category. Returns fewer than 3 only
+//     if literally every gated pool is exhausted.
+function rollResearchChoices() {
+  const choices = [];
+  const taken = new Set();
+  for (let slot = 0; slot < 3; slot++) {
+    let card = null;
+    for (let attempt = 0; attempt < 8 && !card; attempt++) {
+      const cat = pickResearchSlotCategory();
+      const c = rollOneSlotCard(cat);
+      if (c && !taken.has(c.id)) card = c;
+    }
+    // Last-resort sweep: try every category in turn.
+    if (!card) {
+      for (const cat of ["tech", "building", "ship", "admiral", "leader", "artifact"]) {
+        const c = rollOneSlotCard(cat);
+        if (c && !taken.has(c.id)) { card = c; break; }
+      }
+    }
+    if (card) { choices.push(card); taken.add(card.id); }
+  }
+  return choices;
+}
+
+// Apply the player's pick from the research-choice modal. Branches by the
+// chosen card's category: tech → consumable inventory, artifact → permanent
+// unlock, others → researchedCards. researchCounts is incremented for the
+// chosen category so the next cost climbs correctly (tech excluded by
+// getResearchCost — see Phase 3 design).
+function acceptResearchChoice(card) {
+  if (!card) return;
+  const cat = card.category;
+  markCardSeen(card);
+  if (cat === "tech") {
+    techInventory[card.id] = (techInventory[card.id] || 0) + 1;
+    researchedCards.add(card.id);
+    researchCounts.tech = (researchCounts.tech || 0) + 1;
+  } else if (cat === "artifact") {
+    grantArtifact(card.id);
+    researchCounts.artifact = (researchCounts.artifact || 0) + 1;
+  } else {
+    researchedCards.add(card.id);
+    researchCounts[cat] = (researchCounts[cat] || 0) + 1;
+  }
+  pendingResearch = null;
+}
+
+function openResearchChoiceModal(choices) {
+  if (!choices || choices.length === 0) {
+    // Should be impossible if rollResearchChoices runs first, but defend
+    // against an empty pendingResearch on save-load corruption.
+    pendingResearch = null;
+    return;
+  }
+  for (const c of choices) markCardSeen(c);
+  const optionsEl = document.getElementById("research-choice-options");
+  optionsEl.innerHTML = "";
+  for (const card of choices) {
+    const wrap = document.createElement("div");
+    wrap.className = "research-choice-option";
+    wrap.innerHTML = buildCardHtml(card);
+    wrap.addEventListener("click", () => {
+      acceptResearchChoice(card);
+      hideResearchChoiceModal();
+      if (document.getElementById("research-backdrop").classList.contains("visible")) {
+        refreshResearchPanel();
+      }
+    });
+    optionsEl.appendChild(wrap);
+  }
+  document.getElementById("research-choice-backdrop").classList.add("visible");
+}
+
+function hideResearchChoiceModal() {
+  document.getElementById("research-choice-backdrop").classList.remove("visible");
+}
+
 function initResearch() {
   // Auto-unlock all common cards across all gated categories EXCEPT those
   // tagged "non-starter" (which require research like uncommon+).
   for (const catName of RESEARCH_GATED_CATEGORIES) {
+    // Tech cards never auto-unlock — they're a research reward, not a starter.
+    if (catName === "tech") continue;
     const templates = getTemplates(catName);
     for (const t of templates) {
       if (t.rarity === "common" && !(t.tags || []).includes("non-starter")) {
@@ -6562,6 +7463,8 @@ function initResearch() {
   // Stars and planets are never gated
   for (const t of getTemplates("star")) researchedCards.add(t.id);
   for (const t of getTemplates("planet")) researchedCards.add(t.id);
+  // Artifacts never auto-unlock — they only enter ownedArtifacts via research
+  // choice modal or loot drops.
 }
 
 // Count cards of `category` held at a single colony — placed slots + queue + face-down deck.
@@ -6699,6 +7602,11 @@ function getColonyOutput(colony, planet) {
       if (bonuses[id]) raw[id] *= (1 + bonuses[id] / 100);
     }
   }
+  // Artifact flatResourcePerColony: applies once per colony, after percentage
+  // multipliers, before terraform/starvation. Stacks linearly across owned
+  // artifacts of the same kind.
+  const perColony = getArtifactBonuses().perColony;
+  for (const id of RESOURCE_IDS) raw[id] += (perColony[id] || 0);
   // Terraform bonus folds into raw food BEFORE the starvation check so a
   // Terraforming colony can rescue itself from a deficit. Computed from raw
   // (pre-starvation) non-food production so terraform doesn't get gimped at
@@ -6765,23 +7673,27 @@ function tickEconomy(dt) {
       resources.credits += getTradeIncome(col, out);
       // Population growth is buy-only; starvation only reduces production (see getColonyOutput)
     }
+    // Artifact flatResourcePerTick: empire-wide additions, once per tick.
+    const perTick = getArtifactBonuses().perTick;
+    for (const id of RESOURCE_IDS) resources[id] += (perTick[id] || 0);
 
     // Research spending — capped rate per game-second so research takes real time
     if (activeResearch && resources.research > 0) {
-      const spend = Math.min(RESEARCH_SPEND_RATE, resources.research, activeResearch.cost - activeResearch.progress);
+      const spendRate = RESEARCH_SPEND_RATE * (1 + getArtifactBonuses().researchMul / 100);
+      const spend = Math.min(spendRate, resources.research, activeResearch.cost - activeResearch.progress);
       if (spend > 0) {
         resources.research -= spend;
         activeResearch.progress += spend;
         if (activeResearch.progress >= activeResearch.cost) {
-          // Roll a random card from the researched category — the "card pack opening" moment
-          const cat = activeResearch.category;
-          const result = rollResearchResult(cat);
-          if (result) {
-            researchedCards.add(result.id);
-            researchCounts[cat] = (researchCounts[cat] || 0) + 1;
-            showResearchReveal(result, cat);
-          }
+          // Roll the 1-of-3 candidate set. Cleared activeResearch immediately
+          // so the next research can be queued while the modal is up; the
+          // pendingResearch slot holds the choices until the player picks.
+          const choices = rollResearchChoices();
           activeResearch = null;
+          if (choices.length > 0) {
+            pendingResearch = { choices };
+            openResearchChoiceModal(choices);
+          }
           // Refresh research panel if visible
           if (document.getElementById("research-backdrop").classList.contains("visible")) {
             refreshResearchPanel();
@@ -6940,10 +7852,13 @@ function getColonizationCost(colonyCount) {
   // colony so late-game expansion becomes a real credit sink.
   const n = colonyCount;
   const k = n <= 4 ? n : 4 * Math.pow(2, n - 4);
+  // Artifact colonyShipDiscount stacks linearly, capped at 90% off so a
+  // stack of artifacts can't make colonization free by accident.
+  const discount = Math.max(0.1, 1 - Math.min(0.9, getArtifactBonuses().colonyDiscount / 100));
   return {
-    credits:  Math.ceil(10000 * k),
-    minerals: Math.ceil( 5000 * k),
-    food:     Math.ceil( 1000 * k),
+    credits:  Math.ceil(10000 * k * discount),
+    minerals: Math.ceil( 5000 * k * discount),
+    food:     Math.ceil( 1000 * k * discount),
   };
 }
 
@@ -7146,6 +8061,8 @@ document.getElementById("fleets-backdrop").addEventListener("click", hideFleetsL
 // or owned (full preview + count badge). Owned counts are derived live from
 // colonies + map entities; "seen" comes from the persistent seenCards Set.
 const COLLECTION_TABS = [
+  { id: "tech",     label: "Tech",      icon: "i-tech" },
+  { id: "artifact", label: "Artifacts", icon: "i-artifact" },
   { id: "ship",     label: "Ships",     icon: "i-fleet" },
   { id: "building", label: "Buildings", icon: "i-building" },
   { id: "leader",   label: "Leaders",   icon: "i-leader" },
@@ -7199,6 +8116,10 @@ function renderCollection() {
   // a star template, only stars whose card has been viewed are "seen".
   const allowOwned = _activeCollectionTab !== "star";
 
+  // Tech tab gets a Play button on owned cells — the only place tech cards
+  // can be activated.
+  const isTechTab = _activeCollectionTab === "tech";
+
   let seenN = 0, ownedN = 0, undiscN = 0;
   gridEl.innerHTML = sorted.map(tpl => {
     const count = allowOwned ? (owned[tpl.id] || 0) : 0;
@@ -7211,7 +8132,10 @@ function renderCollection() {
       const stateClass = isOwned ? "owned" : "seen";
       const badge = isOwned ? `<div class="col-owned-badge">x${count}</div>` : "";
       const label = isOwned ? "" : `<div class="col-state-label">Seen</div>`;
-      return `<div class="col-card-cell ${stateClass}" data-card-id="${tpl.id}">${badge}${buildCardHtml(tpl)}${label}</div>`;
+      const playBtn = (isTechTab && isOwned)
+        ? `<button class="tech-play-btn" data-play-id="${tpl.id}"><svg class="ico"><use href="#i-play"/></svg>Play</button>`
+        : "";
+      return `<div class="col-card-cell ${stateClass}" data-card-id="${tpl.id}">${badge}${buildCardHtml(tpl)}${label}${playBtn}</div>`;
     }
     // Undiscovered — card back placeholder, no data-card-id (not clickable)
     return `<div class="col-card-cell undiscovered">`
@@ -7247,6 +8171,14 @@ function hideCardZoom() {
 }
 
 document.getElementById("collection-grid").addEventListener("click", (e) => {
+  // Tech Play button takes precedence over the cell's zoom click.
+  const playBtn = e.target.closest(".tech-play-btn");
+  if (playBtn) {
+    e.stopPropagation();
+    const id = playBtn.getAttribute("data-play-id");
+    if (id) playTechCard(id);
+    return;
+  }
   const cell = e.target.closest(".col-card-cell");
   if (!cell || cell.classList.contains("undiscovered")) return;
   const id = cell.getAttribute("data-card-id");
@@ -7881,6 +8813,12 @@ document.getElementById("card-select-backdrop").addEventListener("click", (e) =>
   // so the next deck click reopens the same three choices rather than re-rolling.
   if (e.target === document.getElementById("card-select-backdrop")) hideCardSelect();
 });
+// Same pattern for the research-choice modal — backdrop click hides the
+// modal but keeps pendingResearch so the player can revisit the choices via
+// the Research panel banner.
+document.getElementById("research-choice-backdrop").addEventListener("click", (e) => {
+  if (e.target === document.getElementById("research-choice-backdrop")) hideResearchChoiceModal();
+});
 
 // ── Magnified card popup (click queue card to inspect + discard) ──
 let magnifiedEl = null;
@@ -8093,6 +9031,11 @@ function gameLoop(timestamp) {
 function showResearchPanel() {
   document.getElementById("research-backdrop").classList.add("visible");
   refreshResearchPanel();
+  // If a previous research completed but the player closed the modal without
+  // picking, reopen the choice modal so the decision isn't easily forgotten.
+  if (pendingResearch && pendingResearch.choices && pendingResearch.choices.length > 0) {
+    openResearchChoiceModal(pendingResearch.choices);
+  }
 }
 
 function hideResearchPanel() {
@@ -8100,16 +9043,21 @@ function hideResearchPanel() {
 }
 
 function refreshResearchPanel() {
-  // Active research display
+  // ── Active section: pending pick → progress → idle (Start Research)
   const activeEl = document.getElementById("research-active");
-  if (activeResearch) {
+  if (pendingResearch && pendingResearch.choices && pendingResearch.choices.length > 0) {
+    activeEl.innerHTML = `
+      <div class="research-pending-banner">
+        <span style="display:inline-flex;align-items:center;gap:6px">${ico("i-cards")}<strong>Research complete!</strong> Pick your reward.</span>
+        <button onclick="openResearchChoiceModal(pendingResearch.choices)">Open</button>
+      </div>
+    `;
+  } else if (activeResearch) {
     const pct = Math.floor((activeResearch.progress / activeResearch.cost) * 100);
-    const catLabel = activeResearch.category.charAt(0).toUpperCase() + activeResearch.category.slice(1);
-    const activeIcon = CATEGORY_WATERMARK_IDS[activeResearch.category];
     activeEl.innerHTML = `
       <div style="color:#c0d0e0;font-size:14px;margin-bottom:6px;display:flex;align-items:center;gap:6px">
-        ${activeIcon ? ico(activeIcon) : ""}
-        <span>Researching: <strong>${catLabel}s</strong></span>
+        ${ico("i-research-tree")}
+        <span>Researching <strong>tech &amp; unlocks</strong></span>
       </div>
       <div style="color:#a4e4a4;font-size:12px;display:flex;align-items:center;gap:4px">
         <span id="research-progress-numeric">${formatResourceValue(Math.floor(activeResearch.progress))} / ${formatResourceValue(activeResearch.cost)}</span>
@@ -8119,53 +9067,55 @@ function refreshResearchPanel() {
       <button onclick="activeResearch=null;refreshResearchPanel()" style="margin-top:8px;background:#1a2040;border:1px solid #2a3460;color:#8090b0;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:11px">Cancel</button>
     `;
   } else {
-    activeEl.innerHTML = `<div style="color:#6a7a9b;font-size:13px">Choose a category to research. A random card will be revealed!</div>`;
+    const cost = getResearchCost();
+    activeEl.innerHTML = `
+      <div style="color:#a0b4d0;font-size:13px;margin-bottom:8px">Each research yields a 1-of-3 pick. Each slot has a ~⅔ chance to be a tech card; the other ⅓ rolls across building / ship / admiral / leader / artifact.</div>
+      <div style="color:#6a7a9b;font-size:12px;margin-bottom:10px">Cost climbs with non-tech unlocks owned. Tech cards do not raise the price.</div>
+      <button onclick="startResearch()" style="background:#2a5a3a;border:1px solid #4a9b5a;color:#d8f0d8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:8px">
+        ${ico("i-research", "sm research")} Start Research — ${formatResourceValue(cost)}
+      </button>
+    `;
   }
 
-  // Research categories — show 4 category buttons with costs
+  // ── Collection summary: per-category researched / unlocked totals ─
   const listEl = document.getElementById("research-list");
   listEl.innerHTML = "";
 
-  const researchableCategories = ["building", "ship", "admiral", "leader"];
-  for (const cat of researchableCategories) {
+  // Layout: permanent unlocks only. Tech is consumable inventory (visible in
+  // the Collection's Tech tab) so it doesn't fit the "X/Y unlocked" framing
+  // the panel uses.
+  const summaryCategories = ["artifact", "building", "ship", "admiral", "leader"];
+  for (const cat of summaryCategories) {
     const pool = getTemplates(cat);
-    if (pool.length === 0) continue;
-    const researchedCount = pool.filter(t => researchedCards.has(t.id)).length;
-    const remaining = pool.filter(t => !researchedCards.has(t.id));
-    const count = researchCounts[cat] || 0;
-    const cost = getResearchCost(cat);
-    const allDone = remaining.length === 0;
-    const catLabel = cat.charAt(0).toUpperCase() + cat.slice(1) + "s";
+    if (!pool || pool.length === 0) continue;
+    let unlockedCount;
+    if (cat === "artifact") {
+      unlockedCount = pool.filter(t => ownedArtifacts.has(t.id)).length;
+    } else {
+      unlockedCount = pool.filter(t => researchedCards.has(t.id)).length;
+    }
+    const allDone = unlockedCount >= pool.length;
+    const catLabel = cat.charAt(0).toUpperCase() + cat.slice(1) + (cat === "tech" ? "" : "s");
     const catIcon = CATEGORY_WATERMARK_IDS[cat];
-    const isActive = activeResearch && activeResearch.category === cat;
 
     const item = document.createElement("div");
-    item.className = "research-item" + (allDone ? " researched" : "") + (isActive ? " active" : "");
-    item.style.cssText = "cursor:" + (allDone || activeResearch ? "default" : "pointer") + ";padding:10px 12px;";
-
-    const costDisplay = allDone
-      ? `${ico("i-check")} <span>Complete</span>`
-      : `${ico("i-research", "sm research")} <span>${formatResourceValue(cost)}</span>`;
+    item.className = "research-item" + (allDone ? " researched" : "");
+    item.style.cssText = "cursor:default;padding:8px 12px;";
     item.innerHTML = `
       <span class="ri-category" style="font-size:18px;display:inline-flex;align-items:center">${catIcon ? ico(catIcon, "lg") : ""}</span>
       <span class="ri-name" style="flex:1">${catLabel}</span>
-      <span class="ri-rarity" style="background:rgba(100,130,180,0.15);color:#8090b0;border:1px solid rgba(100,130,180,0.3);font-size:10px;padding:2px 6px;border-radius:3px">${researchedCount}/${pool.length} unlocked</span>
-      <span class="ri-cost" style="min-width:80px;text-align:right;display:inline-flex;align-items:center;justify-content:flex-end;gap:4px">${costDisplay}</span>
+      <span class="ri-rarity" style="background:rgba(100,130,180,0.15);color:#8090b0;border:1px solid rgba(100,130,180,0.3);font-size:10px;padding:2px 6px;border-radius:3px">${unlockedCount}/${pool.length} unlocked</span>
     `;
-
-    if (!allDone && !activeResearch) {
-      item.addEventListener("click", () => startResearch(cat));
-      item.addEventListener("mouseenter", () => { item.style.background = "rgba(100,130,180,0.1)"; });
-      item.addEventListener("mouseleave", () => { item.style.background = ""; });
-    }
     listEl.appendChild(item);
 
-    // Show researched cards as sub-list
-    const researched = pool.filter(t => researchedCards.has(t.id));
-    if (researched.length > 0) {
+    // Pills: list the unlocked card names. Mirrors the previous panel's
+    // sub-list so players can scan what's available without opening the
+    // Collection.
+    const unlockedTpls = pool.filter(t => (cat === "artifact") ? ownedArtifacts.has(t.id) : researchedCards.has(t.id));
+    if (unlockedTpls.length > 0) {
       const subList = document.createElement("div");
       subList.style.cssText = "padding:2px 0 6px 32px;";
-      for (const t of researched) {
+      for (const t of unlockedTpls) {
         const rarityColor = RARITY_COLORS[t.rarity] || "#6a7a9b";
         const pill = document.createElement("span");
         pill.style.cssText = `display:inline-block;margin:2px 4px;padding:1px 8px;border-radius:10px;font-size:10px;background:${rarityColor}20;color:${rarityColor};border:1px solid ${rarityColor}40;`;
@@ -8194,9 +9144,29 @@ function showSalvageScreen(loot) {
 
   const subtitle = document.createElement("div");
   subtitle.id = "salvage-subtitle";
-  subtitle.textContent = loot.cards.length > 0
-    ? "Salvage recovered from the wreckage"
-    : "Salvage recovered";
+  subtitle.textContent = loot.artifact
+    ? "An ancient artifact emerged from the wreckage"
+    : (loot.cards.length > 0 ? "Salvage recovered from the wreckage" : "Salvage recovered");
+
+  // Artifact section — rendered above the regular pirate-card row so a rare
+  // unlock isn't lost in a row of trophies. Header label makes it clear this
+  // is permanent, not a trophy.
+  let artifactSection = null;
+  if (loot.artifact) {
+    artifactSection = document.createElement("div");
+    artifactSection.id = "salvage-artifact-section";
+    const label = document.createElement("div");
+    label.id = "salvage-artifact-label";
+    label.textContent = "✦ ARTIFACT RECOVERED ✦";
+    const cell = document.createElement("div");
+    cell.className = "salvage-card-cell salvage-artifact-cell";
+    cell.style.animationDelay = "0s";
+    const rarityColor = (typeof RARITY_COLORS !== "undefined" && RARITY_COLORS[loot.artifact.rarity]) || "#d4a84a";
+    cell.style.setProperty("--rc", rarityColor);
+    cell.innerHTML = `<div class="salvage-card-glow"></div>` + buildCardHtml(loot.artifact);
+    artifactSection.appendChild(label);
+    artifactSection.appendChild(cell);
+  }
 
   const cardsRow = document.createElement("div");
   cardsRow.id = "salvage-cards";
@@ -8236,6 +9206,7 @@ function showSalvageScreen(loot) {
 
   backdrop.appendChild(title);
   backdrop.appendChild(subtitle);
+  if (artifactSection) backdrop.appendChild(artifactSection);
   if (loot.cards.length > 0) backdrop.appendChild(cardsRow);
   if (resRow.childNodes.length > 0) backdrop.appendChild(resRow);
   backdrop.appendChild(btn);
@@ -8297,7 +9268,10 @@ function showResearchReveal(template, category) {
 // ═══════════════════════════════════════════
 //  SAVE / LOAD
 // ═══════════════════════════════════════════
-const SAVE_VERSION = 1;
+// v2 added ownedArtifacts + techInventory and the artifact/tech researchCounts
+// fields. v1 saves load silently; missing fields default to empty/0.
+const SAVE_VERSION = 2;
+const SAVE_LOAD_MIN_VERSION = 1;
 const AUTOSAVE_KEY = "idlespace_autosave_v1";
 const AUTOSAVE_INTERVAL_MS = 60000; // every 60 real seconds
 let lastSaveStatus = "";
@@ -8454,7 +9428,12 @@ function serializeGame() {
     researchedCards: [...researchedCards],
     seenCards:       [...seenCards],
     pirateLoot:      { ...pirateLoot },
+    ownedArtifacts:  [...ownedArtifacts],
+    techInventory:   { ...techInventory },
     activeResearch: activeResearch ? { ...activeResearch } : null,
+    pendingResearch: pendingResearch ? {
+      choices: pendingResearch.choices.map(serializeCardRef).filter(Boolean),
+    } : null,
 
     camera: { x: camera.x, y: camera.y, zoom: camera.zoom },
   };
@@ -8520,13 +9499,21 @@ function clearGameState() {
   researchedCards.clear();
   seenCards.clear();
   for (const k of Object.keys(pirateLoot)) delete pirateLoot[k];
+  ownedArtifacts.clear();
+  bumpArtifactVersion();
+  for (const k of Object.keys(techInventory)) delete techInventory[k];
   activeResearch = null;
+  pendingResearch = null;
 }
 
 function deserializeGame(data) {
   if (!data || typeof data !== "object") throw new Error("Save data is not an object.");
-  if (data.version !== SAVE_VERSION) {
-    throw new Error(`Incompatible save version ${data.version} (expected ${SAVE_VERSION}).`);
+  // Accept any save in [SAVE_LOAD_MIN_VERSION, SAVE_VERSION]. Newer fields
+  // default to empty when reading an older save (silent forward migration).
+  if (typeof data.version !== "number"
+      || data.version < SAVE_LOAD_MIN_VERSION
+      || data.version > SAVE_VERSION) {
+    throw new Error(`Incompatible save version ${data.version} (expected ${SAVE_LOAD_MIN_VERSION}–${SAVE_VERSION}).`);
   }
   // Minimal shape check before clobbering live state
   if (!Array.isArray(data.stars) || !Array.isArray(data.mapEntities)) {
@@ -8586,7 +9573,16 @@ function deserializeGame(data) {
   for (const id of (data.researchedCards || [])) researchedCards.add(id);
   for (const id of (data.seenCards || [])) seenCards.add(id);
   for (const k of Object.keys(data.pirateLoot || {})) pirateLoot[k] = data.pirateLoot[k];
+  for (const id of (data.ownedArtifacts || [])) ownedArtifacts.add(id);
+  bumpArtifactVersion();
+  for (const k of Object.keys(data.techInventory || {})) techInventory[k] = data.techInventory[k];
   activeResearch = data.activeResearch || null;
+  if (data.pendingResearch && Array.isArray(data.pendingResearch.choices)) {
+    const choices = data.pendingResearch.choices.map(hydrateCardRef).filter(Boolean);
+    pendingResearch = choices.length > 0 ? { choices } : null;
+  } else {
+    pendingResearch = null;
+  }
 
   if (data.camera) {
     camera.x = data.camera.x;

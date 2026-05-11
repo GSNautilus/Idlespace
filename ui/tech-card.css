@@ -1,0 +1,38 @@
+/* Tech card — consumable activatable.
+   Shared chrome lives in ui/card-chrome.css; this file owns the middle
+   content (effect chip + activation hint) styling specific to .is-tech. */
+
+.card-preview.tpl-metal.is-tech .img .glyph {
+  /* Cool cyan so tech glyphs read as circuit / spell. */
+  color: #5fb4d6;
+}
+
+.card-preview.tpl-metal.is-tech .effect-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin: 6px auto;
+  background: linear-gradient(180deg, rgba(95,180,214,0.18), rgba(95,180,214,0.06));
+  border: 1px solid rgba(95,180,214,0.45);
+  border-radius: 12px;
+  color: #a8e0f2;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.card-preview.tpl-metal.is-tech .effect-chip .ico {
+  width: 12px;
+  height: 12px;
+  color: #a8e0f2;
+}
+
+.card-preview.tpl-metal.is-tech .target-hint {
+  font-size: 10px;
+  font-style: italic;
+  color: #6a8a9a;
+  text-align: center;
+  margin-top: 2px;
+}

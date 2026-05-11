@@ -1,9 +1,9 @@
 # IdleSpace — Game Design & Implementation Reference
 
-**Version pinned:** `v0.1.0`
-**Last verified against code:** 2026-05-10
-**Primary source:** [`starmap.html`](starmap.html) (8,956 lines)
-**Card data:** [`data/game-cards.json`](data/game-cards.json) (108 cards, schema v1)
+**Version pinned:** `v0.1.1`
+**Last verified against code:** 2026-05-11
+**Primary source:** [`starmap.html`](starmap.html) (9,952 lines)
+**Card data:** [`data/game-cards.json`](data/game-cards.json) (120 cards, schema v1)
 
 This is the single living reference for "how does IdleSpace work today, and where does each system live in the code." It is the only design / implementation doc in the repo.
 
@@ -72,7 +72,7 @@ IdleSpace is an **idle space 4X collectible card game**. Every meaningful in-gam
 
 ## 4. Card System
 
-### Categories (canonical: 6 + 1 NPC)
+### Categories (canonical: 8 + 1 NPC)
 
 | Category | Templates in `game-cards.json` | Notes |
 |---|---|---|
@@ -82,6 +82,8 @@ IdleSpace is an **idle space 4X collectible card game**. Every meaningful in-gam
 | leader | 13 (4/3/3/2/1) | One per colony. `stats` add to output; `bonuses` multiply output %. |
 | ship | 18 (6/5/3/2/2) | Fleet components. Combat stats: `shields, armor, speed, sensorRange, stealth, pointDefense, energyDmg, energyRange, kineticDmg, kineticRange, missileDmg, missileRange`. |
 | admiral | 13 (4/3/3/2/1) | One per fleet. `stats.commandBonus` (% to all ship stats), `stats.maxFleetSize` (ship cap, default 3 without admiral). |
+| **artifact** | 6 (sample set) | Permanent passive effects. **No stat rolls** — flat effect per template. `categoryData.source ∈ {"pirate","research","exploration",...}` gates which gameplay path can drop it. `categoryData.effect` resolved through `ARTIFACT_EFFECTS` (see §10b). Owned set: `ownedArtifacts: Set<id>`. Duplicates filtered pre-roll — never offered twice. |
+| **tech** | 6 (sample set) | Consumable activatable cards. Effects via `categoryData.effect` resolved through `TECH_EFFECTS` (see §10c). Inventory: `techInventory: { id → count }`. Played from the Collection's Tech tab. Some effects target a world point ("Targeted") and enter a reticle-based targeting mode. |
 | **pirate** | 6 | NPC-only ship variant; reuses ship renderer with `category === "pirate"`. Dropped as loot trophies, not yet deployable. |
 
 `captain` no longer exists as a category — Admiral replaces it (rename completed in CORE_PLAN Phase 3). `ACTION_TO_CATEGORY = { buildings:"building", admirals:"admiral", leaders:"leader", ships:"ship" }` ([starmap.html:2221](starmap.html)). Trade and Terraform actions are resource-only — they don't generate cards.
@@ -417,23 +419,71 @@ tickEconomy(dt):
 
 ## 10. Research
 
-- **Gated categories**: `RESEARCH_GATED_CATEGORIES = ["building", "ship", "admiral", "leader"]` ([starmap.html:6510](starmap.html)). Stars and planets are never gated (discovered through exploration).
-- **Auto-unlock**: All common cards in gated categories are unlocked at game start **except** those tagged `non-starter` (v0.0.9.16) — non-starter commons must be researched like uncommons.
-- **Cost**: `cost = ceil(RESEARCH_BASE_COST × RESEARCH_COST_MULTIPLIER^count)` per category-research-count. Per-category counter in `researchCounts = { building:0, ship:0, admiral:0, leader:0 }`. `RESEARCH_BASE_COST = 500`, `RESEARCH_COST_MULTIPLIER = 2.0`. ([starmap.html:6512–6515](starmap.html))
+Single-pool, 1-of-3 modal at completion. The per-category-button UI is gone.
 
-| Research # | Cost |
+- **Gated categories**: `RESEARCH_GATED_CATEGORIES = ["building", "ship", "admiral", "leader", "tech"]` ([starmap.html:6716](starmap.html)). Stars and planets are never gated. Artifacts are never gated either — they live in `ownedArtifacts`, not `researchedCards`.
+- **Auto-unlock**: All common cards in `building/ship/admiral/leader` are unlocked at game start **except** those tagged `non-starter`. **Tech and artifact never auto-unlock** — they only enter via the research-choice modal or loot drops.
+- **Cost** ([starmap.html:6821](starmap.html)): `cost = ceil(RESEARCH_BASE_COST × RESEARCH_COST_MULTIPLIER^nonTechCount)`, where `nonTechCount = researchCounts.building + .ship + .admiral + .leader + .artifact`. **Tech is excluded from the count** — spamming tech picks doesn't raise the next research price; only permanent unlocks do. `RESEARCH_BASE_COST = 500`, `RESEARCH_COST_MULTIPLIER = 2.0`.
+
+| 5 unlocks owned | Cost |
 |---|---|
-| 1st | 500 |
-| 2nd | 1,000 |
-| 3rd | 2,000 |
-| 4th | 4,000 |
-| 5th | 8,000 |
-| 10th | 256,000 |
+| 0 | 500 |
+| 1 | 1,000 |
+| 2 | 2,000 |
+| 3 | 4,000 |
+| 4 | 8,000 |
+| 5 | 16,000 |
+| 10 | 512,000 |
 
-- **Spend rate**: `RESEARCH_SPEND_RATE = 5` points / game-second. Caps spending so completion takes meaningful real time even with overflowing research income.
-- **State**: `activeResearch = { category, cost, progress }`, `researchedCards = Set<id>` of unlocked card IDs.
-- **Card-pack opening**: on completion, `rollResearchResult(category)` ([starmap.html:6524](starmap.html)) draws from the unresearched pool with weights `{ common:200, uncommon:60, rare:15, epic:3, legendary:0.3 }` × per-card `weight`. `showResearchReveal(template, category)` ([starmap.html:8249](starmap.html)) plays the flip-reveal animation; the card is added to `researchedCards`.
-- **Rebalance history**: v0.0.9.15 tightened building upkeep on research-producers; v0.0.9.16 reworked costs and weights and introduced the non-starter tag.
+- **Spend rate**: `RESEARCH_SPEND_RATE = 5` points / game-second, multiplied by `(1 + sum(researchSpeedPercent artifacts) / 100)`. Caps spending so research takes real time even with overflowing income.
+- **State**: `activeResearch = { cost, progress }` (no category — single pool). `pendingResearch = { choices: [card, card, card] } | null` holds the 3 candidates between completion and the player's pick.
+- **3-choice roll** ([starmap.html `rollResearchChoices`](starmap.html)): per slot, **66% chance tech**, 34% non-tech (split across `building/ship/admiral/leader/artifact` with weights `[3,3,3,3,2]`). Each candidate uses `rollResearchResult(category)` (existing weight machinery: `common:200, uncommon:60, rare:15, epic:3, legendary:0.3` × per-card `weight`). Artifact slots filter by `categoryData.source === "research" && !ownedArtifacts.has(id)`. Dedupe across slots; up to 5 retries per slot, then a guaranteed-fallback sweep.
+- **Modal** (`#research-choice-backdrop` / `#research-choice-modal`, top-level so it works outside the colony screen): backdrop click dismisses but **preserves `pendingResearch`** so the choices reappear when the panel reopens. A green banner at the top of the Research panel (with an "Open" button) indicates a pending pick.
+- **Pick handling** (`acceptResearchChoice`):
+  - tech → `techInventory[id]++`, also added to `researchedCards`, `researchCounts.tech++`.
+  - artifact → `grantArtifact(id)` (effect lives immediately), `researchCounts.artifact++`.
+  - building/ship/admiral/leader → `researchedCards.add(id)`, `researchCounts[cat]++`.
+- **Save/load**: `pendingResearch.choices` are serialized via `serializeCardRef` and rehydrated on load; v1 saves migrate silently (`pendingResearch` defaults to `null`).
+- **`rollCardFromCategory("tech" | "artifact")`** is a coding error — it `console.warn`s and returns null. Tech only enters via research, artifact only via research/loot.
+
+### 10b. Artifact effect registry
+
+`ARTIFACT_EFFECTS` ([starmap.html:6584](starmap.html)) — flat permanent effects keyed by `categoryData.effect.kind`. Aggregated lazily via `getArtifactBonuses()` with a version cache invalidated by `bumpArtifactVersion()` (called from `grantArtifact`, `clearGameState`, `deserializeGame`).
+
+| Kind | Args | Wired in | Effect |
+|---|---|---|---|
+| `flatResourcePerColony` | `{ id, amount }` | `getColonyOutput` after planet bonuses | `+amount` to that resource per colony per tick |
+| `flatResourcePerTick` | `{ id, amount }` | `tickEconomy` after the colony loop | `+amount` empire-wide per tick |
+| `bonusFleetSize` | `{ amount }` | `getMaxFleetShips` wrap | `+amount` to base fleet cap (with or without admiral) |
+| `sensorRangePercent` | `{ amount }` (percent) | `recalcFleetStats` post-admiral; `getEffectiveBaseSensorRange()` wraps the 4 `BASE_SENSOR_RANGE` callsites | Multiplies all sensors by `(1 + amount/100)` |
+| `researchSpeedPercent` | `{ amount }` (percent) | research-spend block in `tickEconomy` | Multiplies `RESEARCH_SPEND_RATE` |
+| `colonyShipDiscount` | `{ percent }` | `getColonizationCost` | Multiplies cost by `max(0.1, 1 - percent/100)` |
+
+`grantArtifact(id)` is the entry point. It dedupes, bumps the cache version, and re-runs `recalcFleetStats` / sensor reset on existing player fleets/ships so a sensor-bonus artifact visibly grows the disc immediately.
+
+### 10c. Tech effect registry
+
+`TECH_EFFECTS` ([starmap.html:6660](starmap.html)) — consumable activatable effects. Each entry: `{ instant: bool, resolve(args, wx?, wy?) → bool }`. Played from the Collection Tech tab via the Play button on owned cells.
+
+| Kind | Args | Mode | Effect |
+|---|---|---|---|
+| `gainResources` | `{ deltas: { credits: 5000, ... } }` | instant | `resources[id] += v` for each delta |
+| `instantHealAllPlayerShips` | `{ percent }` | instant | Restores `percent`% of max shields/armor on every non-in-combat player ship |
+| `areaDamage` | `{ radius, damage }` | targeted | Iterates `mapEntities` where `owner === "npc" && !inCombat` within radius; spreads damage across fleet ships via `applyTechShipDamage` (drains `_combatShields` → `_combatArmor`); removes dead ships and entities |
+| `areaHeal` | `{ radius, amount }` | targeted | Iterates `mapEntities` where `owner === "player" && !inCombat`; restores armor then shields |
+| `instantRevealRadius` | `{ radius }` | targeted | `detectStarsInRange(wx, wy, radius)` + `markSeenInRange` |
+
+**Targeting mode** ([starmap.html `playTechCard`](starmap.html)):
+- Activating a targeted tech sets `techTargetingMode = { cardId, kind, args }` and closes the Collection.
+- `pointermove` updates `techTargetingCursor` in **world coords** so the reticle sticks to the same point under camera pan/zoom.
+- `render()` calls `drawTechTargetingReticle(ctx)` after the territory contour — translucent disc + crosshair, color from `TECH_RETICLE_COLOR` (red/green/blue per kind).
+- The next canvas click resolves at `screenToWorld(sx, sy)` and consumes the charge regardless of whether anything was hit (click = commitment).
+- ESC key or right-click cancels without consuming.
+- A floating banner (`#tech-targeting-banner`, `pointer-events:none`) tells the player which card is mid-cast and how to cancel.
+
+**v1 limitation**: in-combat ships are intentionally skipped to avoid syncing into the active combat's `combat.sideX.ships` snapshot. A "deployable mid-combat" version is a future phase.
+
+- **Rebalance history**: v0.0.9.15 tightened building upkeep on research-producers; v0.0.9.16 reworked costs and weights and introduced the non-starter tag. The artifact + tech rework (this edit) replaced per-category research with the single-pool 3-choice modal and added the two new categories end-to-end.
 
 ---
 
@@ -595,16 +645,17 @@ Loser removed from map. Winner's surviving ships persist damage on `card._combat
 
 ## 16. Save / Load
 
-- `SAVE_VERSION = 1` ([starmap.html:8300](starmap.html)). Loader rejects mismatches.
+- `SAVE_VERSION = 2`. `SAVE_LOAD_MIN_VERSION = 1` — the loader accepts any save in `[1, 2]` and silently defaults missing fields. v1 saves load without losing progress; new fields (`ownedArtifacts`, `techInventory`, `pendingResearch`, `researchCounts.tech`/`.artifact`) initialize to empty/0. `AUTOSAVE_KEY` stays `idlespace_autosave_v1` so existing autosaves keep loading.
 - `AUTOSAVE_KEY = "idlespace_autosave_v1"`, `AUTOSAVE_INTERVAL_MS = 60000` — autosaves every 60 real seconds and on page close (`setInterval(doAutosave, …)` at [starmap.html:8922](starmap.html)).
 - Manual export/import via the save menu in the top bar (export downloads JSON; import opens file picker).
-- `serializeGame()` ([starmap.html:8416](starmap.html)) and `deserializeGame(data)` ([starmap.html:8526](starmap.html)) cover:
+- `serializeGame()` and `deserializeGame(data)` cover:
   - All 5 resources.
   - All colonies (population, buildings, leaders, deck, queue, activeAction, genTimer, pendingDraw).
   - All map entities (ships, fleets, positions, destinations, stance, owner, inCombat, damage).
-  - `researchCounts`, `researchedCards`, `seenCards`, `pirateLoot`, `activeResearch`.
+  - `researchCounts`, `researchedCards`, `seenCards`, `pirateLoot`, `activeResearch`, **`pendingResearch`** (Phase 3), **`ownedArtifacts`** + **`techInventory`** (Phase 1).
   - `gameSpeed` (auto-paused on load — user resumes explicitly).
   - Star map state (explored / detected flags, generated planets).
+- Tech-targeting state (`techTargetingMode`, `techTargetingCursor`) is intentionally session-only — saving mid-cast doesn't restore the reticle.
 - Card references are stored by `id`; full template is re-resolved from `game-cards.json` (or the override) at load. Missing IDs drop with a console warning (CARDS_PIPELINE_PLAN Phase 4).
 
 A separate IndexedDB store (`idlespace_cards / kv`) holds the card-builder override (`gameCardsOverride` key). Distinct from the localStorage autosave.
@@ -632,9 +683,10 @@ All overlays follow the same pattern — backdrop div + centered overlay div + `
 | Colony screen | dbl-click colonized planet, or Colonies → pick | 88% area; building grid + leader + deck + queue. |
 | Colonies list | top-bar Colonies | scrollable list. |
 | Fleets list | top-bar Fleets | inventory + status. |
-| Collection | top-bar Collection (v0.1.0 Phase 4 #11) | grid with click-to-zoom; tracks Seen / Owned. |
-| Research panel | top-bar Research | category buttons + progress bar + known-card list. |
-| Research reveal | research completes | full-screen flip-reveal modal. |
+| Collection | top-bar Collection (v0.1.0 Phase 4 #11) | Tabs (in order): Tech, Artifacts, Ships, Buildings, Leaders, Admirals, Planets, Stars, Pirates. Tech tab cells get a Play button on owned cards. |
+| Research panel | top-bar Research | Single Start Research button + per-tick progress bar + per-category unlock summary (excludes Tech). |
+| Research choice modal | research completes | Top-level `#research-choice-backdrop` (z-index 60) with 3 cards. Backdrop click dismisses but `pendingResearch` survives so the choices reappear. |
+| Tech targeting banner | targeted tech card played | Floating banner near top of screen, pointer-events: none. Reticle drawn in canvas. |
 | Combat | click ⚔ icon | colony-screen-sized, semi-transparent. |
 | Card-select modal | click deck pile | 1-of-3 + Discard All. |
 | Magnified card | click any card | `position:fixed` centered, appended to `document.body`. |
@@ -668,6 +720,8 @@ Zero emojis in HTML (full sweep completed in commit `f82cff7`). Every glyph is a
 - **Center**: live preview, zoom toggle (1× / 3×), per-card watermark + chrome.
 - **Right**: editor — name, category, rarity, image upload, stats / cost / upkeep / bonuses key-value lists, special / flavor, tags, weight, attributes, `categoryData` (per-category fields).
 
+For artifact / tech cards, the editor swaps the stats section for an **Effect (JSON)** textarea (paste `{"kind":"...","amount":5}` etc.). Artifact also gets a **Source** dropdown (`pirate` / `research` / `exploration`). `CATEGORY_DATA_KEYS` in the builder includes `artifact:["source","effect"]` and `tech:["effect"]` so removed values are correctly cleared on save.
+
 **Live sync**: IndexedDB `idlespace_cards / kv / gameCardsOverride`. "Apply to live game" button writes the full bundle; starmap reads it on next load (and badges that an override is active). Explicit push — never auto-applies on keystroke.
 
 **Import / Export**: JSON in/out via header buttons. Sidecar-PNG zip export is planned in CARDS_PIPELINE_PLAN Phase 3 (images currently embedded as `data:` URLs).
@@ -682,7 +736,8 @@ Tagged releases plus notable untagged commits, newest first.
 
 | Version | Headline |
 |---|---|
-| **v0.1.0** (HEAD) | Milestone release: consolidates the entire v0.0.9.x balance + QoL line into the 0.1.0 minor bump. Introduces this canonical IDLESPACE.md reference doc as the single source of truth for the project. |
+| **v0.1.1** (HEAD) | **Artifact & Tech card systems** — two new card categories. Artifacts are permanent passive unlocks with 6 effect kinds (resource/colony, resource/tick, fleet cap, sensor%, research speed%, colonization discount). Tech cards are consumable activatables with 5 effect kinds (gain resources, area damage / heal, instant reveal, heal all ships). **Research reworked** into a single-pool, 1-of-3 choice modal (~⅔ tech / ⅓ non-tech per slot); cost climbs only on non-tech unlocks. Pirate combat has a per-combat artifact-drop roll, surfaced in the salvage screen. `SAVE_VERSION = 2` with silent v1 → v2 migration. |
+| **v0.1.0** | Milestone release: consolidates the entire v0.0.9.x balance + QoL line into the 0.1.0 minor bump. Introduces this canonical IDLESPACE.md reference doc as the single source of truth for the project. |
 | v0.0.9.25 | Terraform actually visible; saves starving colonies (terraform folds into raw food before starvation); flicker fix; right-click drag no longer deselects. |
 | v0.0.9.24 | Tamer pop/colonize curves; Terraform action introduced. |
 | v0.0.9.23 | Leader bonuses actually wired into output; exploration no longer reveals neighbouring stars. |
@@ -712,6 +767,9 @@ Tagged releases plus notable untagged commits, newest first.
 - **Fleet management Phase 6** (CORE_PLAN) — fleet panel with list / status / stats / stance, repair / resupply at friendly colonies.
 - **Admiral special abilities** — shelved (CORE_PLAN D6). Admirals differentiate through commandBonus + per-stat bonuses + fleet-size only.
 - **Deployable pirate-ship loot** — pirate cards drop as trophies for the Collection but can't be placed in colonies or fleets (noted in code as future phase).
+- **Targeted tech in active combat** — `areaDamage` / `areaHeal` / `instantRevealRadius` skip entities with `inCombat` set. A combat-aware version would need to sync into the combat's `sideX.ships` snapshot too.
+- **Larger artifact / tech catalog** — Phase 6 shipped one sample per effect kind (6 artifacts + 6 tech) for verification. Designing a full catalog is a separate balance pass.
+- **Per-type CSS motifs** — `ui/artifact-card.css` and `ui/tech-card.css` currently style only the effect chip and glyph color. A rune / circuit motif on the middle content is a future polish.
 - **Sidecar PNG image pipeline** — CARDS_PIPELINE_PLAN Phase 3; images still embed as `data:` URLs in some override paths.
 - **Tap-to-place / hi-DPI canvas / CSS-variable scaling** — UI_RESPONSIVE_PLAN Phases 2–5.
 - **Font-size token unification** — UI_READABILITY_PLAN.
@@ -814,18 +872,29 @@ Single table of every named constant in the game, with current value and approxi
 |---|---|---|
 | `RESEARCH_BASE_COST` | `500` | 6462 |
 | `RESEARCH_COST_MULTIPLIER` | `2.0` | 6463 |
-| `RESEARCH_SPEND_RATE` | `5` points / game-second | 6464 |
-| `RESEARCH_GATED_CATEGORIES` | `["building", "ship", "admiral", "leader"]` | 6510 |
-| Research-pool weights | `{ common:200, uncommon:60, rare:15, epic:3, legendary:0.3 }` | 6533 |
+| `RESEARCH_SPEND_RATE` | `5` points / game-second (× artifact `researchSpeedPercent`) | 6817 |
+| `RESEARCH_GATED_CATEGORIES` | `["building", "ship", "admiral", "leader", "tech"]` | 6716 |
+| Research-pool weights | `{ common:200, uncommon:60, rare:15, epic:3, legendary:0.3 }` | (in `rollResearchResult`) |
+| Research-slot tech chance | `0.66` per slot; non-tech weights `[3,3,3,3,2]` for building/ship/admiral/leader/artifact | (in `pickResearchSlotCategory`) |
 | `ACTION_TO_CATEGORY` | `{ buildings:"building", admirals:"admiral", leaders:"leader", ships:"ship" }` | 2221 |
+
+### Artifact / Tech
+
+| Name | Value | Line |
+|---|---|---|
+| `ARTIFACT_EFFECTS` | 6 kinds: flatResourcePerColony, flatResourcePerTick, bonusFleetSize, sensorRangePercent, researchSpeedPercent, colonyShipDiscount | ~6584 |
+| `TECH_EFFECTS` | 5 kinds: gainResources, instantHealAllPlayerShips (instant); areaDamage, areaHeal, instantRevealRadius (targeted) | ~6660 |
+| `TECH_RETICLE_COLOR` | `{ areaDamage:"#ff6464", areaHeal:"#5be080", instantRevealRadius:"#60a8ff" }` | ~6760 |
+| `LOOT_ARTIFACT_DROP_CHANCE` | `0.05` per combat (one roll, not per-ship) | 3579 |
 
 ### Save / load
 
 | Name | Value | Line |
 |---|---|---|
-| `SAVE_VERSION` | `1` | 8300 |
-| `AUTOSAVE_KEY` | `"idlespace_autosave_v1"` | 8301 |
-| `AUTOSAVE_INTERVAL_MS` | `60000` (60 s) | 8302 |
+| `SAVE_VERSION` | `2` | ~8530 |
+| `SAVE_LOAD_MIN_VERSION` | `1` — silent forward-migration of v1 saves | ~8531 |
+| `AUTOSAVE_KEY` | `"idlespace_autosave_v1"` | ~8532 |
+| `AUTOSAVE_INTERVAL_MS` | `60000` (60 s) | ~8533 |
 | `CARDS_IDB_NAME / STORE / OVERRIDE_KEY` | `"idlespace_cards" / "kv" / "gameCardsOverride"` | 1877–1879 |
 
 ### Key functions (by line)
@@ -849,11 +918,19 @@ Single table of every named constant in the game, with current value and approxi
 | `rollResearchResult(category)` | 6524 | Research card-pack draw. |
 | `getDrawScaling(col, category)` | 6603 | Two-axis draw cost + interval. |
 | `getColonyGenInterval(col, category)` | 6622 | Stack-penalised gen timer. |
-| `getColonyOutput(colony, planet)` | 6666 | Canonical resource math (the most important function in the game). |
-| `tickEconomy(dt)` | 6725 | Card gen timers + resource ticks + research spend. |
-| `getColonizationCost(n)` | 6937 | Colonize cost ramp. |
-| `colonizePlanet(star, planetIdx)` | 6950 | Colony Ship gate + cost + colony attach. |
-| `showResearchReveal(template, category)` | 8249 | Flip-reveal modal. |
+| `getColonyOutput(colony, planet)` | 6772 | Canonical resource math. Now also folds in `flatResourcePerColony` artifact bonuses. |
+| `tickEconomy(dt)` | 6831 | Card gen timers + resource ticks + `flatResourcePerTick` artifacts + research spend (with speed%). |
+| `getColonizationCost(n)` | 7043 | Colonize cost ramp, with `colonyShipDiscount` artifact applied (capped 90%). |
+| `colonizePlanet(star, planetIdx)` | ~7057 | Colony Ship gate + cost + colony attach. |
+| `getArtifactBonuses()` | ~6608 | Aggregates the 6 artifact effect kinds. Memoized by `_artifactVersion`. |
+| `grantArtifact(id)` | ~6645 | Dedup-adds to `ownedArtifacts`, bumps cache, refreshes fleet sensors. |
+| `getEffectiveBaseSensorRange()` | ~6662 | `BASE_SENSOR_RANGE × (1 + sensorMul/100)`. Used by 4 callsites. |
+| `playTechCard(id)` | ~6810 | Branches on instant vs targeted; enters targeting mode or fires immediately. |
+| `rollResearchChoices()` | ~6975 | Rolls 3 dedup'd candidates with the per-slot 66% tech distribution. |
+| `acceptResearchChoice(card)` | ~7020 | Routes the pick into `techInventory` / `grantArtifact` / `researchedCards`. |
+| `openResearchChoiceModal(choices)` | ~7050 | Populates and shows `#research-choice-backdrop`. |
+| `rollPirateArtifactDrop()` | 3582 | Filters artifact pool by source==="pirate" and not-owned, weighted by rarity. |
+| `showResearchReveal(template, category)` | ~9100 | Legacy flip-reveal modal — no longer called by the rework, retained for possible future polish on single-card unlocks. |
 | `serializeGame()` / `deserializeGame(data)` | 8416 / 8526 | Save / load. |
 
 ---

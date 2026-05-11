@@ -13,6 +13,8 @@
 <link rel="stylesheet" href="ui/building-card.css">
 <link rel="stylesheet" href="ui/leader-card.css">
 <link rel="stylesheet" href="ui/admiral-card.css">
+<link rel="stylesheet" href="ui/artifact-card.css">
+<link rel="stylesheet" href="ui/tech-card.css">
 <style>
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -590,6 +592,8 @@ select.editor-input { cursor: pointer; }
           <option value="star">Star</option>
           <option value="planet">Planet</option>
           <option value="pirate">Pirate</option>
+          <option value="artifact">Artifact</option>
+          <option value="tech">Tech</option>
         </select>
       </div>
       <div>
@@ -638,6 +642,8 @@ select.editor-input { cursor: pointer; }
         <option value="star">Star</option>
         <option value="planet">Planet</option>
         <option value="pirate">Pirate (NPC)</option>
+        <option value="artifact">Artifact</option>
+        <option value="tech">Tech</option>
       </select>
     </div>
 
@@ -686,6 +692,25 @@ select.editor-input { cursor: pointer; }
       <label class="editor-label" style="margin-top:6px;">Guaranteed rarities</label>
       <input type="text" class="editor-input" id="edit-pg-guaranteed" placeholder="e.g. uncommon, rare, epic" style="font-size:12px;">
       <div style="font-size:10px; color:#384868; margin-top:3px;">Comma-separated rarity names. Shift remaining slots via "bonus".</div>
+    </div>
+
+    <!-- Artifact source — artifact-only -->
+    <div class="editor-section" id="artifact-source-section" style="display:none;">
+      <label class="editor-label">Artifact Source</label>
+      <select class="editor-input" id="edit-artifact-source">
+        <option value="">(any)</option>
+        <option value="pirate">Pirate kill</option>
+        <option value="research">Research</option>
+        <option value="exploration">Exploration</option>
+      </select>
+      <div style="font-size:10px; color:#384868; margin-top:3px;">Restricts which gameplay path can drop this artifact.</div>
+    </div>
+
+    <!-- Effect JSON — artifact + tech -->
+    <div class="editor-section" id="effect-section" style="display:none;">
+      <label class="editor-label">Effect (JSON)</label>
+      <textarea class="editor-input" id="edit-effect-json" placeholder='{"kind":"flatResourcePerColony","id":"minerals","amount":5}' rows="3" style="font-family:monospace; font-size:11px;"></textarea>
+      <div style="font-size:10px; color:#384868; margin-top:3px;">Effect kind + args. See ARTIFACT_EFFECTS / TECH_EFFECTS in starmap.html.</div>
     </div>
 
     <div class="editor-section">
@@ -762,6 +787,8 @@ const CATEGORY_DEFAULT_STATS = {
   star:     [],
   planet:   [],
   pirate:   ["shields","armor","speed","sensorRange","energyDmg","energyRange","kineticDmg","kineticRange","missileDmg","missileRange","stealth","pointDefense"],
+  artifact: [],
+  tech:     [],
 };
 
 // Stats that use a dropdown instead of a number input
@@ -946,10 +973,25 @@ function getEditorData() {
     if (pg) categoryData.planetGen = pg;
   } else if (category === "planet" || category === "leader") {
     if (Object.keys(statsOrBonuses).length > 0) categoryData.bonuses = statsOrBonuses;
+  } else if (category === "artifact" || category === "tech") {
+    if (category === "artifact") {
+      const src = document.getElementById("edit-artifact-source").value;
+      if (src) categoryData.source = src;
+    }
+    const effRaw = document.getElementById("edit-effect-json").value.trim();
+    if (effRaw) {
+      try {
+        const eff = JSON.parse(effRaw);
+        if (eff && typeof eff === "object") categoryData.effect = eff;
+      } catch (e) {
+        console.warn("[editor] effect JSON invalid, ignored:", e.message);
+      }
+    }
   }
 
   // Planets and leaders store their values in categoryData.bonuses, not stats.
-  const stats = (category === "planet" || category === "leader") ? {} : statsOrBonuses;
+  // Artifacts and tech have no rolled stats.
+  const stats = (category === "planet" || category === "leader" || category === "artifact" || category === "tech") ? {} : statsOrBonuses;
 
   const weight = parseFloat(document.getElementById("edit-weight").value);
 
@@ -1014,6 +1056,11 @@ function loadCardIntoEditor(card) {
   document.getElementById("edit-pg-bonus").value = pg.bonus ?? 0;
   document.getElementById("edit-pg-guaranteed").value = Array.isArray(pg.guaranteed) ? pg.guaranteed.join(", ") : "";
 
+  // Artifact source + effect JSON (artifact/tech only)
+  document.getElementById("edit-artifact-source").value = (card.categoryData && card.categoryData.source) || "";
+  const eff = card.categoryData && card.categoryData.effect;
+  document.getElementById("edit-effect-json").value = eff ? JSON.stringify(eff, null, 2) : "";
+
   document.getElementById("delete-btn").disabled = false;
   updatePreview();
   highlightCatalogItem(card.id);
@@ -1024,6 +1071,8 @@ function applyCategoryLayout(category) {
   const statsSec = document.getElementById("stats-section");
   const statsLabel = document.getElementById("stats-label");
   const pgSec = document.getElementById("planetgen-section");
+  const artSrcSec = document.getElementById("artifact-source-section");
+  const effSec = document.getElementById("effect-section");
   if (category === "star") {
     statsSec.style.display = "none";
     pgSec.style.display = "";
@@ -1031,11 +1080,17 @@ function applyCategoryLayout(category) {
     statsSec.style.display = "";
     statsLabel.textContent = "Resource Bonuses (%)";
     pgSec.style.display = "none";
+  } else if (category === "artifact" || category === "tech") {
+    // Artifacts and tech don't roll stats — their effect lives in categoryData.
+    statsSec.style.display = "none";
+    pgSec.style.display = "none";
   } else {
     statsSec.style.display = "";
     statsLabel.textContent = "Stats";
     pgSec.style.display = "none";
   }
+  artSrcSec.style.display = (category === "artifact") ? "" : "none";
+  effSec.style.display    = (category === "artifact" || category === "tech") ? "" : "none";
 }
 
 function resetEditor() {
@@ -1066,6 +1121,9 @@ function resetEditor() {
   document.getElementById("edit-pg-count-max").value = 3;
   document.getElementById("edit-pg-bonus").value = 0;
   document.getElementById("edit-pg-guaranteed").value = "";
+
+  document.getElementById("edit-artifact-source").value = "";
+  document.getElementById("edit-effect-json").value = "";
 
   document.getElementById("delete-btn").disabled = true;
   updatePreview();
@@ -1766,6 +1824,122 @@ function buildAdmiralCardHtml(data) {
 }
 
 // ═══════════════════════════════════════════
+//  ARTIFACT / TECH RENDERERS (mirror starmap.html)
+// ═══════════════════════════════════════════
+function buildArtifactCardHtml(data) {
+  const subLabel = `${data.rarity || "common"} · Artifact`;
+  const imageHtml = data.image
+    ? buildArtImageHtml(data.image, subLabel, data.name)
+    : buildGlyphImageHtml("i-artifact", subLabel);
+  const effectHtml = describeEffectChip(data, "Permanent passive effect");
+  return `
+      <div class="bg"></div>
+      <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
+      <div class="c">
+        <div class="hdr"><span class="hdr-name">${data.name || ""}</span></div>
+        ${imageHtml}
+        ${effectHtml}
+        ${buildSpecialHtml(data.special)}
+        ${buildFlavorHtml(data.flavor)}
+        ${buildWatermarkHtml("i-artifact")}
+      </div>`;
+}
+
+function buildTechCardHtml(data) {
+  const subLabel = `${data.rarity || "common"} · Tech`;
+  const imageHtml = data.image
+    ? buildArtImageHtml(data.image, subLabel, data.name)
+    : buildGlyphImageHtml("i-tech", subLabel);
+  const effectHtml = describeEffectChip(data, "One-shot activated effect");
+  const eff = data.categoryData && data.categoryData.effect;
+  const targeted = eff && (eff.kind === "areaDamage" || eff.kind === "areaHeal" || eff.kind === "instantRevealRadius");
+  const hint = targeted ? `<div class="target-hint">Targeted — click world to activate</div>` : "";
+  return `
+      <div class="bg"></div>
+      <div class="frame-corners"><span class="fc-tr"></span><span class="fc-bl"></span></div>
+      <div class="c">
+        ${buildCostPillHtml(data.cost)}
+        <div class="hdr"><span class="hdr-name">${data.name || ""}</span></div>
+        ${imageHtml}
+        ${effectHtml}
+        ${hint}
+        ${buildSpecialHtml(data.special)}
+        ${buildFlavorHtml(data.flavor)}
+        ${buildWatermarkHtml("i-tech")}
+      </div>`;
+}
+
+function _resIconHtml(id) {
+  const iconId = (typeof RES_ICON_BY_KEY !== "undefined") ? RES_ICON_BY_KEY[id] : null;
+  return iconId ? `<svg class="ico ${id}"><use href="#${iconId}"/></svg>` : "";
+}
+function _resLabel(id) {
+  return (typeof RESOURCE_LABELS !== "undefined" && RESOURCE_LABELS[id]) || id;
+}
+
+function formatArtifactEffectInner(eff) {
+  switch (eff.kind) {
+    case "flatResourcePerColony":
+      if (!eff.id || typeof eff.amount !== "number") return null;
+      return `${_resIconHtml(eff.id)}+${formatResourceValue(eff.amount)} ${_resLabel(eff.id)} / colony`;
+    case "flatResourcePerTick":
+      if (!eff.id || typeof eff.amount !== "number") return null;
+      return `${_resIconHtml(eff.id)}+${formatResourceValue(eff.amount)} ${_resLabel(eff.id)} / tick`;
+    case "bonusFleetSize":
+      if (typeof eff.amount !== "number") return null;
+      return `<svg class="ico"><use href="#i-fleet-cap"/></svg>+${eff.amount} fleet size`;
+    case "sensorRangePercent":
+      if (typeof eff.amount !== "number") return null;
+      return `<svg class="ico"><use href="#i-sensor"/></svg>+${eff.amount}% sensor range`;
+    case "researchSpeedPercent":
+      if (typeof eff.amount !== "number") return null;
+      return `<svg class="ico research"><use href="#i-research"/></svg>+${eff.amount}% research speed`;
+    case "colonyShipDiscount":
+      if (typeof eff.percent !== "number") return null;
+      return `<svg class="ico"><use href="#i-colony"/></svg>−${eff.percent}% colonization cost`;
+  }
+  return null;
+}
+
+function formatTechEffectInner(eff) {
+  switch (eff.kind) {
+    case "gainResources": {
+      const deltas = eff.deltas || {};
+      const parts = [];
+      for (const [id, amt] of Object.entries(deltas)) {
+        if (typeof amt !== "number") continue;
+        parts.push(`${_resIconHtml(id)}+${formatResourceValue(amt)}`);
+      }
+      if (parts.length === 0) return null;
+      return `Gain ${parts.join(" ")}`;
+    }
+    case "areaDamage":
+      if (typeof eff.damage !== "number" || typeof eff.radius !== "number") return null;
+      return `<svg class="ico"><use href="#i-swords"/></svg>${formatResourceValue(eff.damage)} dmg · r${eff.radius}`;
+    case "areaHeal":
+      if (typeof eff.amount !== "number" || typeof eff.radius !== "number") return null;
+      return `<svg class="ico"><use href="#i-shield"/></svg>+${formatResourceValue(eff.amount)} HP · r${eff.radius}`;
+    case "instantRevealRadius":
+      if (typeof eff.radius !== "number") return null;
+      return `<svg class="ico"><use href="#i-sensor"/></svg>Reveal r${eff.radius}`;
+    case "instantHealAllPlayerShips":
+      if (typeof eff.percent !== "number") return null;
+      return `<svg class="ico"><use href="#i-shield"/></svg>Heal all ships ${eff.percent}%`;
+  }
+  return null;
+}
+
+function describeEffectChip(data, title) {
+  const eff = data.categoryData && data.categoryData.effect;
+  if (!eff || !eff.kind) return "";
+  // Pick the right formatter from the rendered card type. Mirrors starmap.html.
+  const isArtifact = data.category === "artifact";
+  const inner = isArtifact ? formatArtifactEffectInner(eff) : formatTechEffectInner(eff);
+  if (!inner) return "";
+  return `<div class="effect-chip" title="${title}">${inner}</div>`;
+}
+
+// ═══════════════════════════════════════════
 //  PREVIEW DISPATCH — every category uses the metallic template
 //  (ship renderer still has its own signature; others share the helpers above).
 // ═══════════════════════════════════════════
@@ -1777,12 +1951,15 @@ const CATEGORY_RENDERERS = {
   building: buildBuildingCardHtml,
   leader:   buildLeaderCardHtml,
   admiral:  buildAdmiralCardHtml,
+  artifact: buildArtifactCardHtml,
+  tech:     buildTechCardHtml,
 };
 // Pirate cards share ship CSS (.is-ship), so both map to the same marker class.
 const CATEGORY_CSS_TYPE = {
   ship: "ship", pirate: "ship",
   star: "star", planet: "planet",
   building: "building", leader: "leader", admiral: "admiral",
+  artifact: "artifact", tech: "tech",
 };
 
 function updatePreview() {
@@ -1852,7 +2029,13 @@ function highlightCatalogItem(id) {
 // for these keys take precedence over the previously-stored value (including
 // clearing them), while still preserving any *unknown* sub-keys for
 // forward-compatibility.
-const CATEGORY_DATA_KEYS = { star: ["planetGen"], planet: ["bonuses"], leader: ["bonuses"] };
+const CATEGORY_DATA_KEYS = {
+  star:     ["planetGen"],
+  planet:   ["bonuses"],
+  leader:   ["bonuses"],
+  artifact: ["source", "effect"],
+  tech:     ["effect"],
+};
 
 function mergeCategoryData(existing, fresh, category) {
   const result = { ...(existing || {}) };
@@ -1925,6 +2108,9 @@ document.getElementById("edit-flavor").addEventListener("input", updatePreview);
 for (const id of ["edit-pg-count-min", "edit-pg-count-max", "edit-pg-bonus", "edit-pg-guaranteed"]) {
   document.getElementById(id).addEventListener("input", updatePreview);
 }
+// Artifact source + effect JSON affect the artifact/tech preview.
+document.getElementById("edit-artifact-source").addEventListener("change", updatePreview);
+document.getElementById("edit-effect-json").addEventListener("input", updatePreview);
 
 // Category change → swap layout, rebuild default stats, preserve custom entries
 document.getElementById("edit-category").addEventListener("change", () => {

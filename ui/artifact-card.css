@@ -1,0 +1,30 @@
+/* Artifact card — permanent-effect collectible.
+   Shared chrome lives in ui/card-chrome.css; this file owns the middle
+   content (effect chip + flavor) styling specific to .is-artifact. */
+
+.card-preview.tpl-metal.is-artifact .img .glyph {
+  /* Soft amber tint so artifact glyphs read as ancient / valuable. */
+  color: #d4a84a;
+}
+
+.card-preview.tpl-metal.is-artifact .effect-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin: 6px auto;
+  background: linear-gradient(180deg, rgba(212,168,74,0.18), rgba(212,168,74,0.06));
+  border: 1px solid rgba(212,168,74,0.45);
+  border-radius: 12px;
+  color: #f0d28a;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.card-preview.tpl-metal.is-artifact .effect-chip .ico {
+  width: 12px;
+  height: 12px;
+  color: #f0d28a;
+}

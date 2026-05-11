@@ -1,19 +1,13 @@
 # IdleSpace — Game Design & Implementation Reference
 
-**Version pinned:** `v0.0.9.25` (5 commits past tag `v0.0.9.21`; HEAD `27b59f8`)
+**Version pinned:** `v0.1.0`
 **Last verified against code:** 2026-05-10
 **Primary source:** [`starmap.html`](starmap.html) (8,956 lines)
 **Card data:** [`data/game-cards.json`](data/game-cards.json) (108 cards, schema v1)
 
-This is the living reference for "how does IdleSpace work today, and where does each system live in the code." Specialized companion docs cover topics in more depth — link to them rather than duplicating:
+This is the single living reference for "how does IdleSpace work today, and where does each system live in the code." It is the only design / implementation doc in the repo.
 
-- [`CORE_PLAN.md`](CORE_PLAN.md) — Combat / fleet / stance / admiral design decisions D1–D8 and phase tracker.
-- [`CARDS_STYLING_GUIDE.md`](CARDS_STYLING_GUIDE.md) — The metallic "Rustfang" card template, CSS file map, anatomy.
-- [`CARDS_PIPELINE_PLAN.md`](CARDS_PIPELINE_PLAN.md) — Card data pipeline (JSON source of truth, IndexedDB override, sidecar PNG plan).
-- [`UI_RESPONSIVE_PLAN.md`](UI_RESPONSIVE_PLAN.md) — Tablet / touch / pinch-zoom roadmap.
-- [`UI_READABILITY_PLAN.md`](UI_READABILITY_PLAN.md) — Font-size token plan (uncommitted).
-
-**How to keep this doc current:** When you tag a release, bump the version pin at top, append a one-line entry to §20 Version History, and re-verify the §22 constants appendix against `starmap.html`. When a system materially changes, update its section and update the §22 appendix line for any constant that moved.
+**How to keep this doc current:** When you tag a release, bump the version pin at top, append a one-line entry to §19 Version History, and re-verify the §21 constants appendix against `starmap.html`. When a system materially changes, update its section and update the §21 appendix line for any constant that moved.
 
 ---
 
@@ -23,7 +17,7 @@ IdleSpace is an **idle space 4X collectible card game**. Every meaningful in-gam
 
 ### Design pillars
 
-1. **Cards are everything.** Stars, planets, buildings, leaders, ships, admirals all render through the same metallic template (see [`CARDS_STYLING_GUIDE.md`](CARDS_STYLING_GUIDE.md)). The card abstraction unifies the visual + mechanical language.
+1. **Cards are everything.** Stars, planets, buildings, leaders, ships, admirals all render through the same metallic "Rustfang" template. The card abstraction unifies the visual + mechanical language.
 2. **Idle-first.** Stat scaling, costs, and timers are designed so the game plays itself while you're away. Higher-rarity cards are exponentially better, and costs / draw intervals escalate to make scale matter.
 3. **Discovery as reward.** Exploration, planet generation, research, pirate loot — each is a roll with rarity-coloured outcomes.
 4. **Persistent real-time pacing (long-term goal).** Combat is internally slowed by `COMBAT_TIME_SCALE = 1/100`; current `BASE_GAME_SPEED = 2` is dev tuning. Vision: combat takes days, travel takes hours, cards drop ~1–2/colony/day. All systems must be time-scalable.
@@ -72,7 +66,7 @@ IdleSpace is an **idle space 4X collectible card game**. Every meaningful in-gam
 4. **Build.** Set the colony's action (Trade / Buildings / Admirals / Leaders / Ships / Terraform). For card-generating actions, face-down cards appear in the deck pile on an escalating timer. Click pile → pick 1 of 3 rarity-weighted choices → land in queue → drag into a slot.
 5. **Research.** Choose a gated category (building / ship / admiral / leader), pay the escalating cost (capped 5 research/s), wait, get a card-pack reveal.
 6. **Expand.** Population grows by purchase (food + credits); each pop level unlocks one more building slot up to 10. More colonies → more income → more researches → more / bigger fleets → push back the pirate frontier.
-7. **Combat sub-loop.** Fleets engage when two opposing entities enter detection range with compatible stances (D4 in [`CORE_PLAN.md`](CORE_PLAN.md)). Combat is volley-based, internally slowed 100× to preserve pre-real-time-rebase tempo. Loser destroyed; winner retains damage on surviving ships and can return for repair (Phase 6, not yet built).
+7. **Combat sub-loop.** Fleets engage when two opposing entities enter detection range with compatible stances (see §13). Combat is volley-based, internally slowed 100× to preserve pre-real-time-rebase tempo. Loser destroyed; winner retains damage on surviving ships and can return for repair (not yet built).
 
 ---
 
@@ -128,7 +122,7 @@ IdleSpace is an **idle space 4X collectible card game**. Every meaningful in-gam
 - `planet → bonuses: { energy: 55, credits: 25 }` (percent multipliers applied in `getColonyOutput`)
 - Other categories currently empty; field is reserved.
 
-Schema rules (per [`CARDS_PIPELINE_PLAN.md`](CARDS_PIPELINE_PLAN.md)): missing optional fields default to empty; missing `id` / `category` / `rarity` is a hard error; unknown fields are preserved round-trip by both loader and card-builder.
+Schema rules: missing optional fields default to empty; missing `id` / `category` / `rarity` is a hard error; unknown fields are preserved round-trip by both loader and card-builder.
 
 ### Rarity & stat rolling
 
@@ -161,7 +155,7 @@ Optional number on each template (default `1`). Used by `pickWeighted(arr, rng)`
 
 A corner badge `#card-source-badge` lights up when the override is active, with a "revert to shipped" action. Card-builder lives in IndexedDB and pushes overrides explicitly (no auto-apply on keystroke).
 
-Visual rendering: `buildCardHtml(card)` ([starmap.html](starmap.html)) dispatches per `card.category` to `buildShipCardHtml / buildBuildingCardHtml / buildPlanetCardHtml / buildStarCardHtml / buildLeaderCardHtml / buildAdmiralCardHtml`. Each emits `class="card-preview tpl-metal is-<type> <rarity>"`; the metallic chrome activates automatically from `ui/card-chrome.css`. See [`CARDS_STYLING_GUIDE.md`](CARDS_STYLING_GUIDE.md) for the full anatomy.
+Visual rendering: `buildCardHtml(card)` ([starmap.html](starmap.html)) dispatches per `card.category` to `buildShipCardHtml / buildBuildingCardHtml / buildPlanetCardHtml / buildStarCardHtml / buildLeaderCardHtml / buildAdmiralCardHtml`. Each emits `class="card-preview tpl-metal is-<type> <rarity>"`; the metallic chrome activates automatically from `ui/card-chrome.css`. Per-type middle-content CSS lives in `ui/<type>-card.css`; the shared chrome is `ui/card-chrome.css`; rarity / resource / weapon / range palettes live in `ui/colors_and_type.css`.
 
 ---
 
@@ -493,7 +487,7 @@ Two entity types, both `owner ∈ {"player","npc"}`, `stance ∈ {"aggressive","
 admiral ? (admiral.stats.maxFleetSize || 4) : 3;
 ```
 
-Without an admiral, fleets cap at 3 ships. With one, cap is the admiral's rolled `maxFleetSize` (typical ranges in `CORE_PLAN.md` D7: common 4–7, uncommon 6–12, rare 11–24, epic 20–36, legendary 30–50).
+Without an admiral, fleets cap at 3 ships. With one, cap is the admiral's rolled `maxFleetSize` (typical ranges by rarity: common 4–7, uncommon 6–12, rare 11–24, epic 20–36, legendary 30–50).
 
 ### Deployment & travel
 
@@ -509,8 +503,6 @@ ent.y += dir.y × ent.speed × dt × WORLD_SPEED_MULT
 with `WORLD_SPEED_MULT = 0.8`. ETAs come from `formatETA(gameSec)` at [starmap.html:2911](starmap.html), displayed in the entity info panel and as a label under traveling entities on the starmap.
 
 Selected-entity info panel: ship/fleet stats, stance toggle, disband button (only at a colony — returns cards to queue), movement orders via click destination. Right-click drag pan (v0.0.9.25) does not deselect.
-
-For the design rationale behind stance, evasion, and fleet aggregation: see [`CORE_PLAN.md`](CORE_PLAN.md) D3–D7.
 
 ---
 
@@ -563,8 +555,6 @@ Switch to evasive stance mid-combat → speed-based breakaway roll each tick. Bo
 ### Resolution
 
 Loser removed from map. Winner's surviving ships persist damage on `card._combatShields` / `_combatArmor`; entity unlocked and resumes movement; dead ships filtered from the fleet, stats recalculated.
-
-For the locked design decisions behind combat: see [`CORE_PLAN.md`](CORE_PLAN.md) D1 (triangle), D2 (range as distance), D3 (stealth), D8 (entities & resolution).
 
 ---
 
@@ -651,7 +641,7 @@ All overlays follow the same pattern — backdrop div + centered overlay div + `
 
 ### Card chrome
 
-All six player categories + pirate use the metallic `.tpl-metal` template. See [`CARDS_STYLING_GUIDE.md`](CARDS_STYLING_GUIDE.md) for the file map, anatomy, gotchas (no `backdrop-filter`, `mix-blend-mode` isolation, etc.), and the numeric formatting helper `formatResourceValue()`.
+All six player categories + pirate use the metallic `.tpl-metal` template — shared chrome from `ui/card-chrome.css`, per-type middle content from `ui/<type>-card.css`. Known gotchas: never use `backdrop-filter` inside a card (interacts badly with the outer `drop-shadow` filter and the `mix-blend-mode: overlay` on `.bg::before` — silently hides every sibling below the image). The numeric formatting helper is `formatResourceValue()` (mirrored in both `starmap.html` and `card-builder.html`).
 
 ### Icons
 
@@ -662,11 +652,11 @@ Zero emojis in HTML (full sweep completed in commit `f82cff7`). Every glyph is a
 - Touch pan / pinch-zoom on starmap (Pointer Events, commit `b3388c6`).
 - Body-scaling rebased to native viewport-meta scaling (commit `40e35dd`).
 - Design width 1920 px (commit `62d1207`).
-- Phases not yet shipped (CSS variable + clamp() scaling for card / slot dimensions, tap-to-place in colony, hi-DPI canvas): see [`UI_RESPONSIVE_PLAN.md`](UI_RESPONSIVE_PLAN.md).
+- Phases not yet shipped: CSS variable + clamp() scaling for card / slot dimensions, tap-to-place in colony, hi-DPI canvas.
 
 ### Font sizes
 
-~143 hard-coded `font-size: Npx` values across HTML files; consolidation into rem-based design tokens is planned in [`UI_READABILITY_PLAN.md`](UI_READABILITY_PLAN.md) (uncommitted).
+~143 hard-coded `font-size: Npx` values across HTML files; consolidation into rem-based design tokens is planned but not started.
 
 ---
 
@@ -692,7 +682,8 @@ Tagged releases plus notable untagged commits, newest first.
 
 | Version | Headline |
 |---|---|
-| **v0.0.9.25** (HEAD) | Terraform actually visible; saves starving colonies (terraform folds into raw food before starvation); flicker fix; right-click drag no longer deselects. |
+| **v0.1.0** (HEAD) | Milestone release: consolidates the entire v0.0.9.x balance + QoL line into the 0.1.0 minor bump. Introduces this canonical IDLESPACE.md reference doc as the single source of truth for the project. |
+| v0.0.9.25 | Terraform actually visible; saves starving colonies (terraform folds into raw food before starvation); flicker fix; right-click drag no longer deselects. |
 | v0.0.9.24 | Tamer pop/colonize curves; Terraform action introduced. |
 | v0.0.9.23 | Leader bonuses actually wired into output; exploration no longer reveals neighbouring stars. |
 | v0.0.9.22 | Balance sweep + leader bonuses rework (rolled but not yet applied). |

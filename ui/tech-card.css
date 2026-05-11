@@ -10,9 +10,13 @@
 .card-preview.tpl-metal.is-tech .effect-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   padding: 4px 10px;
   margin: 6px auto;
+  max-width: 100%;
+  box-sizing: border-box;
   background: linear-gradient(180deg, rgba(95,180,214,0.18), rgba(95,180,214,0.06));
   border: 1px solid rgba(95,180,214,0.45);
   border-radius: 12px;
@@ -21,6 +25,14 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  text-align: center;
+}
+
+.card-preview.tpl-metal.is-tech .effect-chip .effect-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
 }
 
 .card-preview.tpl-metal.is-tech .effect-chip .ico {

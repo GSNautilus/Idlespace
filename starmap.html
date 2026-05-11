@@ -6354,10 +6354,10 @@ function formatTechEffectInner(eff) {
       const parts = [];
       for (const [id, amt] of Object.entries(deltas)) {
         if (typeof amt !== "number") continue;
-        parts.push(`${_resIconHtml(id)}+${formatResourceValue(amt)}`);
+        parts.push(`<span class="effect-part">${_resIconHtml(id)}+${formatResourceValue(amt)}</span>`);
       }
       if (parts.length === 0) return null;
-      return `Gain ${parts.join(" ")}`;
+      return `<span class="effect-part">Gain</span> ${parts.join(" ")}`;
     }
     case "areaDamage":
       if (typeof eff.damage !== "number" || typeof eff.radius !== "number") return null;
@@ -7736,8 +7736,10 @@ function playTechCard(id) {
   if (!eff || !eff.kind) { console.warn("[tech] card has no effect:", id); return; }
   const handler = TECH_EFFECTS[eff.kind];
   if (!handler) { console.warn("[tech] unknown effect kind:", eff.kind); return; }
+  if (!canAfford(card.cost)) return;
   if (handler.instant) {
     if (handler.resolve(eff)) {
+      deductCost(card.cost);
       consumeTechCharge(id);
       if (document.getElementById("collection-overlay").classList.contains("visible")) {
         renderCollection();
@@ -7764,8 +7766,11 @@ function resolveTechTarget(wx, wy) {
   if (!techTargetingMode) return;
   const handler = TECH_EFFECTS[techTargetingMode.kind];
   const id = techTargetingMode.cardId;
+  const card = getCardById(id);
   if (handler) handler.resolve(techTargetingMode.args, wx, wy);
-  // Click is commitment — consume the charge whether or not anything was hit.
+  // Click is commitment — consume the charge and pay any play cost whether
+  // or not the effect hit anything.
+  if (card) deductCost(card.cost);
   consumeTechCharge(id);
   techTargetingMode = null;
   hideTechTargetingBanner();
@@ -8765,7 +8770,14 @@ document.getElementById("collection-grid").addEventListener("click", (e) => {
   if (playBtn) {
     e.stopPropagation();
     const id = playBtn.getAttribute("data-play-id");
-    if (id) playTechCard(id);
+    if (id) {
+      const card = getCardById(id);
+      if (card && card.cost && !canAfford(card.cost)) {
+        showCostTooltip(playBtn, card.cost);
+        return;
+      }
+      playTechCard(id);
+    }
     return;
   }
   const cell = e.target.closest(".col-card-cell");

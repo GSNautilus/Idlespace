@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>IdleSpace Economy Simulator</title>
+<style>
+  :root {
+    --bg:        #0e1218;
+    --panel:     #161c25;
+    --panel-2:   #1d2531;
+    --border:    #2b3645;
+    --text:      #cfd6e2;
+    --text-dim:  #8a96a7;
+    --accent:    #6b9bd1;
+    --credits:   #d4b063;
+    --energy:    #5acbe0;
+    --minerals:  #b8b6ad;
+    --research:  #d36ab8;
+    --food:      #87b87a;
+    --rarity-common:    #7a8597;
+    --rarity-uncommon:  #6cab6e;
+    --rarity-rare:      #4a8bd0;
+    --rarity-epic:      #a868c8;
+    --rarity-legendary: #d8a247;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 13px/1.4 'Segoe UI', system-ui, sans-serif; }
+  body { display: grid; grid-template-rows: auto auto 1fr; height: 100vh; }
+  header { padding: 8px 14px; border-bottom: 1px solid var(--border); display: flex;
+    align-items: center; gap: 16px; background: var(--panel); }
+  header h1 { font-size: 14px; margin: 0; font-weight: 600; letter-spacing: 0.5px; }
+  header .meta { color: var(--text-dim); font-size: 11px; }
+  .controls { padding: 8px 14px; border-bottom: 1px solid var(--border); display: flex;
+    align-items: center; gap: 12px; flex-wrap: wrap; background: var(--panel-2); }
+  .controls label { display: flex; align-items: center; gap: 6px; color: var(--text-dim);
+    font-size: 12px; }
+  .controls input[type=number] { width: 64px; }
+  select, input[type=text], input[type=number] { background: #0c1117; color: var(--text);
+    border: 1px solid var(--border); padding: 3px 6px; border-radius: 3px; font: inherit; }
+  button { background: #243042; color: var(--text); border: 1px solid var(--border);
+    padding: 5px 12px; border-radius: 3px; cursor: pointer; font: inherit; }
+  button:hover { background: #2e3c52; }
+  button.primary { background: #2d5a96; border-color: #4a7ac0; }
+  button.primary:hover { background: #3a6dad; }
+
+  main { display: grid; grid-template-columns: 340px 1fr 290px; min-height: 0; }
+  .col { border-right: 1px solid var(--border); overflow: hidden; display: flex;
+    flex-direction: column; }
+  .col:last-child { border-right: none; }
+  .col h2 { margin: 0; padding: 7px 12px; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--text-dim); background: var(--panel);
+    border-bottom: 1px solid var(--border); font-weight: 600; }
+  .col h2 .tab { display: inline-block; padding: 2px 10px; margin-right: 4px;
+    border-radius: 2px; cursor: pointer; color: var(--text-dim); }
+  .col h2 .tab.tab-active { background: var(--panel-2); color: var(--text); }
+  .col h2 .tab:hover { color: var(--text); }
+  .col .body { flex: 1; min-height: 0; overflow: auto; }
+  .col .section { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .col .section h3 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase;
+    color: var(--text-dim); letter-spacing: 0.6px; font-weight: 600; }
+  .field { display: grid; grid-template-columns: 90px 1fr; gap: 8px; align-items: center;
+    margin-bottom: 4px; font-size: 12px; color: var(--text-dim); }
+  .field select, .field input { width: 100%; }
+
+  /* Slots */
+  .slots { display: flex; flex-direction: column; gap: 3px; }
+  .slot { display: flex; align-items: center; gap: 6px; padding: 4px 8px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 3px;
+    font-size: 12px; }
+  .slot.locked { opacity: 0.4; }
+  .slot.auto { font-style: italic; color: var(--text-dim); }
+  .slot .slot-idx { color: var(--text-dim); width: 18px; font-variant-numeric: tabular-nums; }
+  .slot .slot-card { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+  .slot .slot-card.empty { color: var(--text-dim); font-style: italic; }
+  .slot button { padding: 1px 6px; font-size: 11px; }
+
+  /* Pick priority sliders */
+  .slider-row { display: grid; grid-template-columns: 60px 1fr 36px; gap: 8px;
+    align-items: center; font-size: 12px; margin-bottom: 3px; color: var(--text-dim); }
+  .slider-row input[type=range] { width: 100%; }
+  .slider-row .val { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Card picker overlay */
+  .picker-back { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    z-index: 100; }
+  .picker-back.visible { display: block; }
+  .picker { position: fixed; top: 8%; left: 50%; transform: translateX(-50%);
+    width: 720px; max-height: 84vh; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 4px; display: flex; flex-direction: column; z-index: 101; }
+  .picker header { padding: 10px 14px; border-bottom: 1px solid var(--border);
+    display: flex; gap: 10px; }
+  .picker .list { flex: 1; overflow: auto; padding: 4px; }
+  .picker .row { display: grid; grid-template-columns: 78px 1fr auto;
+    gap: 8px; padding: 6px 10px; border-radius: 3px; cursor: pointer;
+    align-items: center; }
+  .picker .row:hover { background: var(--panel-2); }
+  .picker .rarity-tag { font-size: 10px; padding: 1px 5px; border-radius: 2px;
+    text-transform: uppercase; letter-spacing: 0.5px; text-align: center;
+    background: rgba(0,0,0,0.3); color: #0a0d12; font-weight: 600; }
+  .picker .row .meta { font-size: 11px; color: var(--text-dim);
+    font-variant-numeric: tabular-nums; }
+
+  /* Chart */
+  .chart-wrap { padding: 8px 12px 12px; display: flex; flex-direction: column;
+    min-height: 0; flex: 1; }
+  #chart { width: 100%; flex: 1; min-height: 0; background: #0a0d12; border: 1px solid var(--border);
+    border-radius: 3px; }
+  .legend { display: flex; gap: 16px; padding: 6px 0; flex-wrap: wrap; font-size: 12px;
+    color: var(--text-dim); }
+  .legend label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .legend .swatch { display: inline-block; width: 12px; height: 3px; border-radius: 2px; }
+  .legend input { margin: 0; }
+
+  /* Stats */
+  .stats { padding: 10px 12px; }
+  .stats .group { margin-bottom: 12px; }
+  .stats .group h3 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase;
+    color: var(--text-dim); letter-spacing: 0.8px; font-weight: 600; }
+  .stats .kv { display: flex; justify-content: space-between; font-size: 12px;
+    padding: 2px 0; border-bottom: 1px dotted #222b38; font-variant-numeric: tabular-nums; }
+  .stats .kv .k { color: var(--text-dim); }
+
+  .events { padding: 4px 12px 12px; font-size: 11px; max-height: 320px; overflow: auto;
+    font-family: ui-monospace, Consolas, monospace; color: var(--text-dim); }
+  .events .ev { padding: 1px 0; }
+  .events .ev .t { color: #6a7588; margin-right: 6px; }
+  .events .ev.warn { color: #d9a45a; }
+  .events .ev.research { color: #d36ab8; }
+  .events .ev.draw { color: #7ec8ed; }
+  .events .ev.pop { color: #87b87a; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>IdleSpace Economy Simulator</h1>
+  <span class="meta" id="sim-version">v2 · lookahead picker · build <span id="sim-build">…</span></span>
+</header>
+
+<div class="controls">
+  <label>Duration <input id="ctl-duration" type="number" value="24" min="0.1" step="0.5" /> h</label>
+  <label>Sample every <input id="ctl-sample" type="number" value="60" min="1" step="1" /> s</label>
+  <label>Lookahead <input id="ctl-lookahead" type="number" value="30" min="1" step="5" /> min</label>
+  <label><input id="ctl-logy" type="checkbox" /> Log Y</label>
+  <label>seed <input id="ctl-seed" type="number" value="1" min="0" step="1" style="width:80px" /></label>
+  <label><input id="ctl-randseed" type="checkbox" /> randomize seed</label>
+  <button class="primary" onclick="runSim()">Run</button>
+</div>
+
+<main>
+  <section class="col">
+    <h2>Setup</h2>
+    <div class="body">
+
+      <div class="section">
+        <h3>Colony</h3>
+        <div class="field"><label>Planet</label>
+          <select id="ctl-planet"><option value="">(no planet)</option></select></div>
+        <div class="field"><label>Leader</label>
+          <select id="ctl-leader"><option value="">(no leader)</option></select></div>
+        <div class="field"><label>Starting pop</label>
+          <input id="ctl-pop" type="number" value="1" min="1" max="10" /></div>
+        <div class="field"><label>Action policy</label>
+          <select id="ctl-action-policy">
+            <option value="smart" selected>Smart toggle</option>
+            <option value="trade">Trade only</option>
+            <option value="buildings">Buildings only</option>
+            <option value="terraform">Terraform only</option>
+          </select></div>
+        <div class="field"><label>Auto-buy pop</label>
+          <input id="ctl-autopop" type="checkbox" checked style="width: auto;" /></div>
+      </div>
+
+      <div class="section">
+        <h3>Building Slots</h3>
+        <div id="slots" class="slots"></div>
+        <div style="font-size: 11px; color: var(--text-dim); margin-top: 6px;">
+          Slots beyond population are locked. Slots marked <em>(auto)</em> are filled
+          by the sim from drawn cards; manually-placed cards are sticky.
+        </div>
+        <button onclick="clearAllSlots()" style="margin-top: 6px; font-size: 11px;">Clear all</button>
+      </div>
+
+      <div class="section">
+        <h3>Research</h3>
+        <div class="field"><label>Auto-research</label>
+          <input id="ctl-autores" type="checkbox" checked style="width: auto;" /></div>
+        <div style="font-size: 11px; color: var(--text-dim); line-height: 1.5;">
+          Auto-research starts a new cycle each time none is active. On completion,
+          rolls 3 candidates per the real-game distribution (66% tech per slot).
+          Sim always picks the highest-scoring non-tech; skips cycle if 0 non-tech.
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Pick Priorities</h3>
+        <div id="weights"></div>
+        <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
+          Weights drive the sim's research and draw-pick decisions, and slot
+          replacement. All 1.0 = balanced. Crank credits = expansion focus, etc.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="col">
+    <h2 id="chart-title">
+      <span id="tab-bank"   class="tab tab-active" onclick="setChartTab('bank')">Bank Over Time</span>
+      <span id="tab-rate"   class="tab"            onclick="setChartTab('rate')">Production Over Time</span>
+    </h2>
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <section class="col">
+    <h2>Summary</h2>
+    <div class="body">
+      <div id="stats" class="stats"></div>
+      <h2>Event Log</h2>
+      <div id="events" class="events"></div>
+    </div>
+  </section>
+</main>
+
+<div id="picker-back" class="picker-back" onclick="closePicker(event)">
+  <div class="picker" onclick="event.stopPropagation()">
+    <header>
+      <strong id="picker-title" style="flex: 1;">Pick a building</strong>
+      <input id="picker-search" type="text" placeholder="search…" style="width: 200px;" />
+      <button onclick="closePicker()">Close</button>
+    </header>
+    <div id="picker-list" class="list"></div>
+  </div>
+</div>
+
+<!-- Cache-bust external resources. Bump SIM_BUILD below whenever sim.html or
+     sim/economy.js changes so browsers can't serve a stale economy module. -->
+<script src="sim/economy.js?v=2026-05-25-D"></script>
+<script>
+const SIM_BUILD = '2026-05-25-D';
+const _busted = u => u + (u.includes('?') ? '&' : '?') + 'v=' + encodeURIComponent(SIM_BUILD);
+document.getElementById('sim-build').textContent = SIM_BUILD;
+console.log('[sim] build', SIM_BUILD, '— lookahead picker, pop-buffer auto-pop, replace-threshold 10K');
+
+// ─────────────────────────────────────────────────────────────────────
+//  Constants and lookups
+// ─────────────────────────────────────────────────────────────────────
+const E = SimEconomy;
+const RES = E.RESOURCE_IDS;
+const NUM_SLOTS = 10;
+const RES_COLORS = {};
+for (const id of RES) {
+  RES_COLORS[id] = getComputedStyle(document.documentElement).getPropertyValue('--' + id).trim();
+}
+const RARITY_ORDER = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+
+// ─────────────────────────────────────────────────────────────────────
+//  RNG (mulberry32) — seedable so runs are reproducible.
+// ─────────────────────────────────────────────────────────────────────
+let rng = mulberry32(1);
+function mulberry32(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Card data
+// ─────────────────────────────────────────────────────────────────────
+let allCards = [];
+let byCategory = { building: [], leader: [], planet: [], ship: [], admiral: [], tech: [], artifact: [] };
+let cardById = {};
+
+// User-placed slot contents (sticky across runs; null = auto-fill from draws)
+let placedBuildings = new Array(NUM_SLOTS).fill(null);
+let manualSlots = new Array(NUM_SLOTS).fill(false); // true if user explicitly placed
+
+let pickerTarget = null;
+let lastRun = null;
+
+// ─────────────────────────────────────────────────────────────────────
+//  Load
+// ─────────────────────────────────────────────────────────────────────
+fetch(_busted('data/game-cards.json')).then(r => r.json()).then(d => {
+  allCards = d.cards;
+  for (const c of allCards) {
+    cardById[c.id] = c;
+    if (byCategory[c.category]) byCategory[c.category].push(c);
+  }
+  populateDropdowns();
+  renderWeights();
+  renderLegend();
+  renderSlots();
+  runSim();
+}).catch(err => {
+  document.getElementById('stats').innerHTML =
+    '<div style="padding:14px;color:#e05050">Failed to load <code>data/game-cards.json</code>: '
+    + err.message + '<br/><br/>Run via the local dev server '
+    + '(<code>python -m http.server 8765</code>) then open '
+    + '<code>http://localhost:8765/sim.html</code>.</div>';
+});
+
+function populateDropdowns() {
+  const planetSel = document.getElementById('ctl-planet');
+  for (const p of byCategory.planet.sort(sortByRarityName)) {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    const bonuses = (p.categoryData && p.categoryData.bonuses) || {};
+    const bstr = Object.entries(bonuses).map(([k, v]) => `+${v}% ${k[0]}`).join(' ') || '—';
+    opt.textContent = `${p.name} [${p.rarity}] — ${bstr}`;
+    planetSel.appendChild(opt);
+  }
+  const leaderSel = document.getElementById('ctl-leader');
+  for (const l of byCategory.leader.sort(sortByRarityName)) {
+    const opt = document.createElement('option');
+    opt.value = l.id;
+    const bonuses = (l.categoryData && l.categoryData.bonuses) || {};
+    const bstr = Object.entries(bonuses).map(([k, v]) => `+${v}% ${k[0]}`).join(' ') || '—';
+    opt.textContent = `${l.name} [${l.rarity}] — ${bstr}`;
+    leaderSel.appendChild(opt);
+  }
+}
+function sortByRarityName(a, b) {
+  return (RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity]) || a.name.localeCompare(b.name);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Weights UI
+// ─────────────────────────────────────────────────────────────────────
+const weights = { credits: 1.0, energy: 1.0, minerals: 1.0, research: 1.0, food: 1.0 };
+
+function renderWeights() {
+  const wrap = document.getElementById('weights');
+  wrap.innerHTML = '';
+  for (const id of RES) {
+    const row = document.createElement('div');
+    row.className = 'slider-row';
+    row.innerHTML = `
+      <span style="color:${RES_COLORS[id]}">${id}</span>
+      <input type="range" min="0" max="3" step="0.1" value="${weights[id]}" data-id="${id}" />
+      <span class="val" data-val="${id}">${weights[id].toFixed(1)}</span>`;
+    wrap.appendChild(row);
+  }
+  wrap.querySelectorAll('input[type=range]').forEach(i => {
+    i.oninput = e => {
+      const id = e.target.dataset.id;
+      weights[id] = parseFloat(e.target.value);
+      wrap.querySelector(`[data-val="${id}"]`).textContent = weights[id].toFixed(1);
+    };
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Slot rendering / picker
+// ─────────────────────────────────────────────────────────────────────
+function renderSlots() {
+  const pop = parseInt(document.getElementById('ctl-pop').value, 10) || 1;
+  const wrap = document.getElementById('slots');
+  wrap.innerHTML = '';
+  for (let i = 0; i < NUM_SLOTS; i++) {
+    const locked = i >= pop;
+    const card = placedBuildings[i];
+    const auto = !card && !manualSlots[i];
+    const row = document.createElement('div');
+    row.className = 'slot' + (locked ? ' locked' : '');
+    const rarityColor = card ? `var(--rarity-${card.rarity})` : '';
+    row.innerHTML = `
+      <span class="slot-idx">${i + 1}.</span>
+      <span class="slot-card ${card ? '' : 'empty'}" style="color: ${card ? rarityColor : ''}">
+        ${card
+          ? card.name + (manualSlots[i] ? '' : ' <em style="color:var(--text-dim);font-size:10px">(sim)</em>')
+          : (auto ? '— (auto-fill) —' : '— empty —')}
+      </span>
+      ${card
+        ? `<button data-rm="${i}">×</button>`
+        : `<button data-add="${i}">+</button>`}
+    `;
+    wrap.appendChild(row);
+  }
+  wrap.querySelectorAll('[data-add]').forEach(b => b.onclick = () => openPicker('building', +b.dataset.add));
+  wrap.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => {
+    placedBuildings[+b.dataset.rm] = null;
+    manualSlots[+b.dataset.rm] = false;
+    renderSlots();
+  });
+}
+function clearAllSlots() {
+  for (let i = 0; i < NUM_SLOTS; i++) { placedBuildings[i] = null; manualSlots[i] = false; }
+  renderSlots();
+}
+
+function openPicker(category, slotIdx) {
+  pickerTarget = { category, slotIdx };
+  document.getElementById('picker-title').textContent = 'Pick a ' + category;
+  document.getElementById('picker-search').value = '';
+  renderPickerList('');
+  document.getElementById('picker-back').classList.add('visible');
+  document.getElementById('picker-search').focus();
+}
+function closePicker(e) {
+  if (e && e.target.id !== 'picker-back' && e.target.tagName !== 'BUTTON') return;
+  document.getElementById('picker-back').classList.remove('visible');
+  pickerTarget = null;
+}
+document.getElementById('picker-search').oninput = e => renderPickerList(e.target.value);
+
+function renderPickerList(filter) {
+  const list = document.getElementById('picker-list');
+  const f = filter.trim().toLowerCase();
+  const pool = byCategory[pickerTarget.category] || [];
+  const items = pool
+    .filter(c => !f || c.name.toLowerCase().includes(f) || c.id.includes(f) || c.rarity.includes(f))
+    .sort(sortByRarityName);
+  list.innerHTML = '';
+  for (const c of items) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `
+      <span class="rarity-tag" style="background: var(--rarity-${c.rarity})">${c.rarity}</span>
+      <div>
+        <div>${c.name}</div>
+        <div class="meta">${fmtCardEffect(c)}</div>
+      </div>
+      <button>Pick</button>
+    `;
+    row.onclick = () => {
+      placedBuildings[pickerTarget.slotIdx] = c;
+      manualSlots[pickerTarget.slotIdx] = true;
+      closePicker();
+      renderSlots();
+    };
+    list.appendChild(row);
+  }
+}
+function fmtCardEffect(card) {
+  const parts = [];
+  for (const id of RES) {
+    const s = (card.stats && card.stats[id]) || 0;
+    const u = (card.upkeep && card.upkeep[id]) || 0;
+    if (s - u !== 0) parts.push(`${s - u > 0 ? '+' : ''}${s - u} ${id[0]}`);
+  }
+  const bonuses = (card.categoryData && card.categoryData.bonuses) || card.bonuses;
+  if (bonuses) for (const id of RES) {
+    if (bonuses[id]) parts.push(`+${bonuses[id]}% ${id[0]}`);
+  }
+  return parts.join('  ') || '—';
+}
+
+document.getElementById('ctl-pop').addEventListener('input', renderSlots);
+
+// ─────────────────────────────────────────────────────────────────────
+//  Sim
+// ─────────────────────────────────────────────────────────────────────
+function runSim() {
+  // Re-seed RNG. If "randomize" is checked, generate a new seed each run and
+  // write it back to the input so the result is still reproducible after the fact.
+  const seedInput = document.getElementById('ctl-seed');
+  if (document.getElementById('ctl-randseed').checked) {
+    seedInput.value = Math.floor(Math.random() * 1e9);
+  }
+  rng = mulberry32(parseInt(seedInput.value, 10) || 1);
+
+  const hours       = parseFloat(document.getElementById('ctl-duration').value) || 24;
+  const sampleEv    = Math.max(1, parseInt(document.getElementById('ctl-sample').value, 10) || 60);
+  const policy      = document.getElementById('ctl-action-policy').value;
+  const startPop    = parseInt(document.getElementById('ctl-pop').value, 10) || 1;
+  const autoPop     = document.getElementById('ctl-autopop').checked;
+  const autoResearch = document.getElementById('ctl-autores').checked;
+  const planetCard  = cardById[document.getElementById('ctl-planet').value] || null;
+  const leaderCard  = cardById[document.getElementById('ctl-leader').value] || null;
+
+  // Colony
+  const col = E.makeEmptyColony({
+    population: startPop,
+    activeAction: policy === 'smart' ? 'trade' : policy,
+  });
+  for (let i = 0; i < NUM_SLOTS; i++) col.buildings[i] = placedBuildings[i] || null;
+  if (leaderCard) col.leaders = [leaderCard];
+
+  const planet = { card: planetCard };
+
+  // Starting resources, minus leader cost
+  const startRes = E.makeStartingResources();
+  if (leaderCard && leaderCard.cost) {
+    for (const id of RES) startRes[id] = Math.max(0, startRes[id] - (leaderCard.cost[id] || 0));
+  }
+
+  // Researched-cards baseline: all commons except non-starter tagged.
+  // Matches starmap.html boot behaviour (artifact and tech excluded).
+  const researched = new Set();
+  for (const c of allCards) {
+    if (c.rarity !== 'common') continue;
+    if (c.category === 'tech' || c.category === 'artifact' || c.category === 'star' || c.category === 'planet') continue;
+    if ((c.tags || []).includes('non-starter')) continue;
+    researched.add(c.id);
+  }
+  // Sanity: ensure any user-placed building is researched (placement implies access).
+  for (const card of placedBuildings) if (card) researched.add(card.id);
+  if (leaderCard) researched.add(leaderCard.id);
+
+  // researchCounts: only non-tech entries influence cost (per real game rule).
+  const researchCounts = { building: 0, ship: 0, admiral: 0, leader: 0, tech: 0, artifact: 0 };
+
+  const state = {
+    resources: startRes,
+    colonies: [{ colony: col, planet }],
+    activeResearch: null,
+  };
+
+  // Logging
+  const events = [];
+  const log = (t, kind, msg) => { events.push({ t, kind, msg }); };
+  const popTimes = {}; popTimes[col.population] = 0;
+
+  // Draw cooldown — once a draw fails to improve the colony, remember the
+  // (slot-config, pool-size) key. While the key is unchanged, drawing again
+  // would just sink more credits on the same losing roll, so stay on trade.
+  // Cleared whenever pop grows, a card is placed, or research adds to the pool.
+  let lastDiscardKey = null;
+  function stateKey() {
+    return col.population + '|' + col.buildings.map(b => b ? b.id : '_').join(',')
+      + '|' + researched.size;
+  }
+
+  // (slot-cooldown approach removed — it blocked legitimate early-game upgrades
+  //  like Colony Hub→Hydroponics. Anti-thrash is handled by REPLACE_THRESHOLD
+  //  alone, set high enough that swaps need a clear win.)
+
+  // Samples — bank[id] tracks running total in resources; rate[id] tracks the
+  // instantaneous per-tick output (including trade income) at the sample point.
+  const samples = { t: [], rate: {} };
+  for (const id of RES) { samples[id] = []; samples.rate[id] = []; }
+
+  // Helper: roll one weighted card from a pool (rarity × per-card weight).
+  function rollOne(pool) {
+    let total = 0;
+    const ws = pool.map(c => {
+      const w = (E.RARITY_WEIGHTS[c.rarity] || 0) * (c.weight != null ? c.weight : 1);
+      total += w;
+      return w;
+    });
+    if (total === 0) return null;
+    let r = rng() * total;
+    for (let i = 0; i < pool.length; i++) {
+      r -= ws[i];
+      if (r <= 0) return pool[i];
+    }
+    return pool[pool.length - 1];
+  }
+
+  // Roll 3 dedup'd from a pool.
+  function roll3(pool) {
+    const picks = [];
+    const seen = new Set();
+    let tries = 0;
+    while (picks.length < 3 && tries < 30) {
+      tries++;
+      const c = rollOne(pool);
+      if (c && !seen.has(c.id)) { seen.add(c.id); picks.push(c); }
+    }
+    return picks;
+  }
+
+  // Roll a research candidate slot. Returns a card from the real-game weighted
+  // category mix: 66% tech, 34% non-tech (split [3,3,3,3,2] across
+  // building/ship/admiral/leader/artifact). Pulls from researched OR not —
+  // research rolls always sample full template pool, not researched set.
+  // For sim purposes we EXCLUDE artifact since they're loot-based in practice
+  // and skip the "owned" dedup — they're irrelevant to economy curves.
+  const NONTECH_WEIGHTS = { building: 3, ship: 3, admiral: 3, leader: 3 };
+  function rollResearchSlot() {
+    if (rng() < 0.66) {
+      // tech roll — but we don't actually pick tech, just return a sentinel
+      return { isTech: true };
+    }
+    // Non-tech: weighted category, then weighted card within category
+    let total = 0;
+    for (const k in NONTECH_WEIGHTS) total += NONTECH_WEIGHTS[k];
+    let r = rng() * total;
+    let chosenCat = 'building';
+    for (const k in NONTECH_WEIGHTS) {
+      r -= NONTECH_WEIGHTS[k];
+      if (r <= 0) { chosenCat = k; break; }
+    }
+    // Filter pool: not yet researched (to make new unlocks)
+    const pool = (byCategory[chosenCat] || []).filter(c => !researched.has(c.id));
+    const pick = rollOne(pool.length ? pool : byCategory[chosenCat]);
+    return pick ? { isTech: false, card: pick } : { isTech: true };
+  }
+
+  // tickEconomy resets progress to 0 the instant a cycle completes — it signals
+  // completion by bumping `completed`. We watch that counter (NOT progress) to
+  // detect completion, otherwise resolveResearchCompletion never fires and the
+  // researched pool never grows past the 6 starter commons.
+  let researchPrevCompleted = 0;
+  function startResearch() {
+    const nonTech =
+      researchCounts.building + researchCounts.ship + researchCounts.admiral +
+      researchCounts.leader + researchCounts.artifact;
+    state.activeResearch = { cost: E.getResearchCost(nonTech), progress: 0, completed: 0 };
+    researchPrevCompleted = 0;
+  }
+  if (autoResearch) startResearch();
+
+  // Choose best research card from the 3 candidates (always non-tech per user rule).
+  // If 0 non-tech, skip this cycle (logged as warn).
+  function resolveResearchCompletion(t) {
+    const slots = [rollResearchSlot(), rollResearchSlot(), rollResearchSlot()];
+    const nonTech = slots.filter(s => !s.isTech && s.card);
+    if (nonTech.length === 0) {
+      log(t, 'warn', 'Research wasted: all 3 candidates were tech');
+      state.activeResearch = null;
+      if (autoResearch) startResearch();
+      return;
+    }
+    // Pick highest-scoring — buildings/leaders get real scores, ships/admirals 0.
+    const ctxOutput = E.getColonyOutput(col, planet);
+    let best = nonTech[0], bestScore = E.cardScore(best.card, weights, ctxOutput);
+    for (let i = 1; i < nonTech.length; i++) {
+      const s = E.cardScore(nonTech[i].card, weights, ctxOutput);
+      if (s > bestScore) { best = nonTech[i]; bestScore = s; }
+    }
+    const c = best.card;
+    researched.add(c.id);
+    researchCounts[c.category]++;
+    log(t, 'research', `Researched ${c.name} [${c.rarity}/${c.category}] (score ${bestScore.toFixed(1)})`);
+    state.activeResearch = null;
+    if (autoResearch) startResearch();
+  }
+
+  // Lookahead horizon for placement decisions. The picker plays each candidate
+  // forward this many game-seconds with full economy + auto-pop sustainability
+  // + research progression, then measures the resulting colony. Read from the
+  // UI per-run so you can compare "30 min thinking" vs "2 hour thinking" vs etc.
+  // Longer = catches slow drains and late pop transitions; costs more compute.
+  const LOOKAHEAD_TICKS = Math.max(60,
+    (parseInt(document.getElementById('ctl-lookahead').value, 10) || 30) * 60);
+
+  // Run a forward simulation with the given colony state and return a scalar
+  // outcome score. Higher = better future. Considers:
+  //   • pop level reached (heavily weighted — growth is the player's goal)
+  //   • resource bank deltas (negative banks tank score)
+  //   • sustained ability to keep operating
+  // A candidate that produces lots of food but starves credits will lose to
+  // one that produces less food but keeps everything liquid.
+  function lookaheadEval(candidateCard, slotIdx) {
+    // Snapshot — clone the bits the trial will mutate. Research state too,
+    // so the lookahead can model "this card produces research, which unlocks
+    // more cards over time" — without this the picker can't see why a player
+    // would ever take a Research Lab (it produces less food than Hydroponics).
+    const trialCol = {
+      population: col.population,
+      maxPopulation: col.maxPopulation,
+      buildings: col.buildings.slice(),
+      leaders: col.leaders.slice(),
+      activeAction: 'trade',
+      deck: [],
+      queue: [],
+      genTimer: 0,
+    };
+    if (candidateCard && slotIdx >= 0) trialCol.buildings[slotIdx] = candidateCard;
+    const trialRes = { ...state.resources };
+    const startUnlocks = researchCounts.building + researchCounts.ship
+                       + researchCounts.admiral + researchCounts.leader
+                       + researchCounts.artifact;
+    let trialUnlocks = startUnlocks;
+    // tickEconomy resets progress to 0 on completion but keeps the same cost
+    // alive — it bumps `completed` to signal each cycle. We watch that counter
+    // and ramp cost ourselves to mimic the real game's exponential cost curve.
+    const ar = { cost: E.getResearchCost(trialUnlocks), progress: 0, completed: 0 };
+    let prevCompleted = 0;
+    const trialState = {
+      resources: trialRes,
+      colonies: [{ colony: trialCol, planet }],
+      activeResearch: ar,
+    };
+
+    for (let t = 0; t < LOOKAHEAD_TICKS; t++) {
+      E.tickEconomy(trialState);
+
+      if (ar.completed > prevCompleted) {
+        trialUnlocks += (ar.completed - prevCompleted);
+        prevCompleted = ar.completed;
+        ar.cost = E.getResearchCost(trialUnlocks);
+      }
+
+      // Auto-pop with same sustainability gate the real sim uses
+      if (trialCol.population < trialCol.maxPopulation) {
+        const cost = E.getPopGrowthCost(trialCol.population + 1);
+        if (trialRes.credits >= cost.credits && trialRes.food >= cost.food) {
+          trialCol.population += 1;
+          const proj = E.getColonyOutput(trialCol, planet);
+          const postBuyFood = trialRes.food - cost.food;
+          const deficit = proj.food < 0 ? -proj.food : 0;
+          const okay = proj.food >= 0 || postBuyFood >= 3600 * deficit;
+          if (okay) {
+            trialRes.credits -= cost.credits;
+            trialRes.food -= cost.food;
+          } else {
+            trialCol.population -= 1;
+          }
+        }
+      }
+    }
+
+    // Score components, all comparable in magnitude:
+    //   pop tier  ×20k — each tier unlocks another slot worth ~one common's lifetime
+    //   unlocks   ×10k — each unlock grows the future draw pool; half a pop's value
+    //   res bank delta — linear, per user weights
+    //   bankrupt penalty — ×10 multiplier on any resource ending below zero, so
+    //     the picker reacts to slow drains (e.g. Ore Refinery's -1e) before the
+    //     bank fully bleeds out, by valuing Solar Array etc. when needed.
+    let s = trialCol.population * 20000;
+    s += (trialUnlocks - startUnlocks) * 10000;
+    for (const id of RES) {
+      const delta = trialRes[id] - state.resources[id];
+      s += (weights[id] || 0) * delta;
+      if (trialRes[id] < 0) s += (weights[id] || 0) * trialRes[id] * 10;
+    }
+    return s;
+  }
+
+  // Minimum projected-score gain required to swap an existing slot. Empty-slot
+  // placements have no threshold (any improvement beats an empty slot). High
+  // enough to prevent thrashing — when several candidates score within a few
+  // thousand of each other, the picker would otherwise swap on every draw.
+  const REPLACE_THRESHOLD = 10000;
+
+  function pickBestCandidate(candidates) {
+    const baseScore = lookaheadEval(null, -1);
+    let best = null, bestSlot = -1, bestScore = baseScore;
+    let bestIsReplace = false;
+    for (const c of candidates) {
+      for (let i = 0; i < col.population; i++) {
+        const isEmpty = col.buildings[i] === null;
+        if (!isEmpty && manualSlots[i]) continue;
+        const s = lookaheadEval(c, i);
+        const minScore = isEmpty ? bestScore : bestScore + REPLACE_THRESHOLD;
+        if (s > minScore || (s > bestScore && isEmpty && !bestIsReplace)) {
+          best = c; bestSlot = i; bestScore = s; bestIsReplace = !isEmpty;
+        }
+      }
+    }
+    return { card: best, slot: bestSlot, gain: bestScore - baseScore };
+  }
+
+  // Draw-pile resolution: pay the cost, roll 3 buildings from researched pool,
+  // pick the (card, slot) combo that maximizes projected colony score.
+  function tryPopDeck(t) {
+    if (col.deck.length === 0) return false;
+    const scaling = E.getDrawScaling(col, 'building', E.countColonyCards(col, 'building'));
+    if (state.resources.credits < scaling.cost) return false;
+    const pool = byCategory.building.filter(c => researched.has(c.id));
+    if (pool.length === 0) { col.deck.shift(); return false; }
+    state.resources.credits -= scaling.cost;
+    col.deck.shift();
+    const candidates = roll3(pool);
+    if (candidates.length === 0) return false;
+    const pick = pickBestCandidate(candidates);
+    if (pick.card) {
+      const replaced = col.buildings[pick.slot];
+      col.buildings[pick.slot] = pick.card;
+      lastDiscardKey = null; // state changed, drawing might help again
+      log(t, 'draw', `Drew ${pick.card.name} [${pick.card.rarity}] → slot ${pick.slot + 1}`
+        + (replaced ? ` (replaced ${replaced.name})` : '')
+        + ` — cost ${scaling.cost.toFixed(0)}c, +${pick.gain.toFixed(2)} score`);
+    } else {
+      // None of the 3 candidates improves the colony — discard, cost sunk.
+      // Remember this state so smart-toggle stops trying until something
+      // changes (pop grows, new research, etc.).
+      lastDiscardKey = stateKey();
+      const offered = candidates.map(c => c.name).join(', ');
+      log(t, 'draw', `Discarded draw (no improvement from: ${offered}); ${scaling.cost.toFixed(0)}c sunk`);
+    }
+    return true;
+  }
+
+  // Smart-toggle. Picks "buildings" only when a draw is both fundable AND
+  // likely to improve the colony. Conditions to stay on trade:
+  //   • can't afford the next draw cost, OR
+  //   • we already tried at this exact (slots + pool) state and it discarded
+  //     (lastDiscardKey gate — cleared whenever the state changes).
+  function pickAction() {
+    if (policy !== 'smart') return policy;
+    const scaling = E.getDrawScaling(col, 'building', E.countColonyCards(col, 'building'));
+    if (state.resources.credits < scaling.cost) return 'trade';
+    if (lastDiscardKey === stateKey()) return 'trade';
+    return 'buildings';
+  }
+
+  // ─── Main loop ───────────────────────────────────────────────────
+  const totalTicks = Math.floor(hours * 3600);
+  let lastDrawLogged = 0;
+
+  for (let t = 0; t < totalTicks; t++) {
+    // Set action policy each tick (cheap)
+    col.activeAction = pickAction();
+
+    // Economy tick (resources + trade + research spend)
+    E.tickEconomy(state);
+
+    // Research completion check — watch `completed` (tickEconomy bumps it on
+    // each cycle and zeroes progress). Watching `progress >= cost` never fires.
+    if (state.activeResearch && state.activeResearch.completed > researchPrevCompleted) {
+      researchPrevCompleted = state.activeResearch.completed;
+      resolveResearchCompletion(t);
+    }
+
+    // Card-gen timer. Mirrors starmap.html: timer accumulates ONLY while on a
+    // card-generative action, but is NOT reset on action change — switching
+    // to trade just pauses progress, doesn't discard it. Without this, a
+    // jittery smart-toggle (flipping each tick near the credit threshold)
+    // would reset the timer constantly and no draws ever fire.
+    if (col.activeAction === 'buildings') {
+      const empire = E.countColonyCards(col, 'building');
+      const interval = E.getColonyGenInterval(col, 'building', empire);
+      col.genTimer += 1;
+      if (col.genTimer >= interval) {
+        col.genTimer -= interval;
+        col.deck.push({ category: 'building', faceDown: true });
+      }
+    }
+
+    // Try to pop the deck (one per tick)
+    tryPopDeck(t);
+
+    // Auto-buy pop — gated by sustainability OR a substantial food buffer.
+    // A real player will buy pop into a starving state as long as the food
+    // bank covers the deficit long enough to draw a food building into the
+    // new slot. Without this, growth completely stalls when food production
+    // is just barely positive at the current pop tier.
+    if (autoPop && col.population < col.maxPopulation) {
+      const cost = E.getPopGrowthCost(col.population + 1);
+      if (state.resources.credits >= cost.credits - cost.credits * 0 && // affordability check below
+          state.resources.credits >= cost.credits && state.resources.food >= cost.food) {
+        col.population += 1;
+        const projected = E.getColonyOutput(col, planet);
+        col.population -= 1;
+        const postBuyFood = state.resources.food - cost.food;
+        // Sustainable: rate ≥ 0, OR food bank covers deficit for ≥ 1 game-hour
+        const deficit = projected.food < 0 ? -projected.food : 0;
+        const okay = projected.food >= 0 || postBuyFood >= 3600 * deficit;
+        if (okay) {
+          state.resources.credits -= cost.credits;
+          state.resources.food -= cost.food;
+          col.population += 1;
+          popTimes[col.population] = t;
+          log(t, 'pop', `Pop → ${col.population} (${E.POP_LEVELS[col.population - 1].label}` +
+            (projected.food < 0 ? `; deficit ${projected.food.toFixed(1)}/s, buffer ${(postBuyFood/3600).toFixed(0)}h` : '') + ')');
+        }
+      }
+    }
+
+    // Sample
+    if (t % sampleEv === 0) {
+      samples.t.push(t);
+      for (const id of RES) samples[id].push(state.resources[id]);
+      const sOut = E.getColonyOutput(col, planet);
+      const tradeAdd = E.getTradeIncome(col, sOut);
+      for (const id of RES) {
+        samples.rate[id].push((sOut[id] || 0) + (id === 'credits' ? tradeAdd : 0));
+      }
+    }
+  }
+  // Final sample
+  samples.t.push(totalTicks);
+  for (const id of RES) samples[id].push(state.resources[id]);
+  const finalSampleOut = E.getColonyOutput(col, planet);
+  const finalTradeAdd = E.getTradeIncome(col, finalSampleOut);
+  for (const id of RES) {
+    samples.rate[id].push((finalSampleOut[id] || 0) + (id === 'credits' ? finalTradeAdd : 0));
+  }
+
+  // Final rates (using current action)
+  const finalOut = E.getColonyOutput(col, planet);
+  finalOut.credits += E.getTradeIncome(col, finalOut);
+
+  lastRun = {
+    samples, finalOut, finalRes: { ...state.resources },
+    pop: col.population, popTimes, events, totalTicks, hours,
+    researched: researched.size,
+    researchCounts: { ...researchCounts },
+    finalBuildings: col.buildings.map(b => b ? b.name : null),
+    finalAction: col.activeAction,
+  };
+  drawChart();
+  renderStats();
+  renderEvents();
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Chart
+// ─────────────────────────────────────────────────────────────────────
+const enabledSeries = new Set(RES);
+let chartTab = 'bank'; // 'bank' or 'rate'
+function setChartTab(tab) {
+  chartTab = tab;
+  document.getElementById('tab-bank').classList.toggle('tab-active', tab === 'bank');
+  document.getElementById('tab-rate').classList.toggle('tab-active', tab === 'rate');
+  drawChart();
+}
+function getSeries(id) {
+  if (!lastRun) return [];
+  return chartTab === 'rate' ? lastRun.samples.rate[id] : lastRun.samples[id];
+}
+
+function renderLegend() {
+  const leg = document.getElementById('legend');
+  leg.innerHTML = '';
+  for (const id of RES) {
+    const lbl = document.createElement('label');
+    lbl.innerHTML = `<input type="checkbox" ${enabledSeries.has(id) ? 'checked' : ''} data-id="${id}" />
+      <span class="swatch" style="background: ${RES_COLORS[id]}"></span> ${id}`;
+    lbl.querySelector('input').onchange = e => {
+      if (e.target.checked) enabledSeries.add(id); else enabledSeries.delete(id);
+      drawChart();
+    };
+    leg.appendChild(lbl);
+  }
+}
+
+function drawChart() {
+  if (!lastRun) return;
+  const canvas = document.getElementById('chart');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  const PAD_L = 64, PAD_R = 16, PAD_T = 12, PAD_B = 32;
+  const plotW = w - PAD_L - PAD_R;
+  const plotH = h - PAD_T - PAD_B;
+
+  const logY = document.getElementById('ctl-logy').checked;
+  const ts = lastRun.samples.t;
+  const tMax = ts[ts.length - 1] || 1;
+
+  let yMin = 0, yMax = 1;
+  for (const id of RES) {
+    if (!enabledSeries.has(id)) continue;
+    for (const v of getSeries(id)) {
+      if (v < yMin) yMin = v;
+      if (v > yMax) yMax = v;
+    }
+  }
+  if (logY) yMin = Math.max(1, yMin);
+  if (yMax <= yMin) yMax = yMin + 1;
+
+  const scaleX = t => PAD_L + (t / tMax) * plotW;
+  const scaleY = v => {
+    if (logY) {
+      const lv = Math.log10(Math.max(v, 1));
+      const lMin = Math.log10(Math.max(yMin, 1));
+      const lMax = Math.log10(Math.max(yMax, 10));
+      return PAD_T + plotH - ((lv - lMin) / (lMax - lMin)) * plotH;
+    }
+    return PAD_T + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
+  };
+
+  ctx.strokeStyle = '#1c2430';
+  ctx.fillStyle = '#6a7588';
+  ctx.font = '10px ui-monospace, Consolas, monospace';
+  ctx.lineWidth = 1;
+  const yTicks = 5;
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let i = 0; i <= yTicks; i++) {
+    const frac = i / yTicks;
+    let v;
+    if (logY) {
+      const lMin = Math.log10(Math.max(yMin, 1));
+      const lMax = Math.log10(Math.max(yMax, 10));
+      v = Math.pow(10, lMin + frac * (lMax - lMin));
+    } else {
+      v = yMin + frac * (yMax - yMin);
+    }
+    const y = scaleY(v);
+    ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(PAD_L + plotW, y); ctx.stroke();
+    ctx.fillText(fmtNum(v), PAD_L - 6, y);
+  }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  const xTicks = Math.min(12, Math.max(2, Math.round(lastRun.hours)));
+  for (let i = 0; i <= xTicks; i++) {
+    const frac = i / xTicks;
+    const t = frac * tMax;
+    const x = scaleX(t);
+    ctx.beginPath(); ctx.moveTo(x, PAD_T); ctx.lineTo(x, PAD_T + plotH); ctx.stroke();
+    const hrs = (t / 3600).toFixed(lastRun.hours < 2 ? 2 : (lastRun.hours < 10 ? 1 : 0));
+    ctx.fillText(hrs + 'h', x, PAD_T + plotH + 4);
+  }
+
+  // Event marker lines
+  for (const ev of lastRun.events) {
+    if (ev.kind !== 'pop' && ev.kind !== 'research') continue;
+    const x = scaleX(ev.t);
+    ctx.strokeStyle = ev.kind === 'pop' ? 'rgba(135,184,122,0.2)' : 'rgba(211,106,184,0.15)';
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(x, PAD_T); ctx.lineTo(x, PAD_T + plotH); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  ctx.lineWidth = 1.6;
+  for (const id of RES) {
+    if (!enabledSeries.has(id)) continue;
+    ctx.strokeStyle = RES_COLORS[id];
+    ctx.beginPath();
+    const ys = getSeries(id);
+    for (let i = 0; i < ts.length; i++) {
+      const x = scaleX(ts[i]);
+      const y = scaleY(ys[i]);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  // Zero-line marker on rate view — useful for seeing when a resource went
+  // negative (energy drain etc).
+  if (chartTab === 'rate' && yMin < 0) {
+    const y0 = scaleY(0);
+    ctx.strokeStyle = '#3a4757';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(PAD_L, y0); ctx.lineTo(PAD_L + plotW, y0); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+window.addEventListener('resize', drawChart);
+document.getElementById('ctl-logy').addEventListener('change', drawChart);
+
+// ─────────────────────────────────────────────────────────────────────
+//  Stats / events
+// ─────────────────────────────────────────────────────────────────────
+function renderStats() {
+  if (!lastRun) return;
+  const s = lastRun;
+  const el = document.getElementById('stats');
+  const popLine = (lvl, t) => {
+    if (t == null) return `<div class="kv"><span class="k">→ ${E.POP_LEVELS[lvl - 1].label}</span><span style="color:var(--text-dim)">not reached</span></div>`;
+    return `<div class="kv"><span class="k">→ ${E.POP_LEVELS[lvl - 1].label}</span><span>${fmtTime(t)}</span></div>`;
+  };
+  const popRows = [];
+  for (let lvl = 2; lvl <= 10; lvl++) popRows.push(popLine(lvl, s.popTimes[lvl]));
+
+  el.innerHTML = `
+    <div class="group">
+      <h3>Final State (t=${fmtTime(s.totalTicks)})</h3>
+      <div class="kv"><span class="k">Population</span><span>${E.POP_LEVELS[s.pop - 1].label} (lvl ${s.pop})</span></div>
+      <div class="kv"><span class="k">Action @ end</span><span>${s.finalAction || '—'}</span></div>
+      ${RES.map(id => `<div class="kv"><span class="k">${id}</span><span style="color:${RES_COLORS[id]}">${fmtNum(s.finalRes[id])}</span></div>`).join('')}
+    </div>
+    <div class="group">
+      <h3>Final Rates /s</h3>
+      ${RES.map(id => {
+        const r = s.finalOut[id] || 0;
+        return `<div class="kv"><span class="k">${id}</span><span style="color:${r < 0 ? '#e05050' : RES_COLORS[id]}">${r >= 0 ? '+' : ''}${fmtNum(r)}/s</span></div>`;
+      }).join('')}
+    </div>
+    <div class="group">
+      <h3>Research</h3>
+      <div class="kv"><span class="k">Unlocks</span><span>${s.researched}</span></div>
+      <div class="kv"><span class="k">Buildings</span><span>${s.researchCounts.building}</span></div>
+      <div class="kv"><span class="k">Leaders</span><span>${s.researchCounts.leader}</span></div>
+      <div class="kv"><span class="k">Ships/Adm</span><span>${s.researchCounts.ship + s.researchCounts.admiral}</span></div>
+    </div>
+    <div class="group">
+      <h3>Population Timeline</h3>
+      ${popRows.join('')}
+    </div>
+    <div class="group">
+      <h3>Final Slots</h3>
+      ${s.finalBuildings.map((n, i) => `<div class="kv"><span class="k">${i + 1}</span><span>${n || '—'}</span></div>`).join('')}
+    </div>
+  `;
+}
+
+function renderEvents() {
+  const wrap = document.getElementById('events');
+  if (!lastRun) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = lastRun.events.slice(-300).map(e =>
+    `<div class="ev ${e.kind || ''}"><span class="t">${fmtTime(e.t).padStart(7)}</span>${e.msg}</div>`
+  ).join('') || '<div class="ev">No events.</div>';
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  Format helpers
+// ─────────────────────────────────────────────────────────────────────
+function fmtNum(v) {
+  const a = Math.abs(v);
+  if (a < 1) return v.toFixed(2);
+  if (a < 1e3) return v.toFixed(1);
+  if (a < 1e6) return (v / 1e3).toFixed(2) + 'K';
+  if (a < 1e9) return (v / 1e6).toFixed(2) + 'M';
+  if (a < 1e12) return (v / 1e9).toFixed(2) + 'B';
+  return (v / 1e12).toFixed(2) + 'T';
+}
+function fmtTime(secs) {
+  if (secs < 60) return secs + 's';
+  if (secs < 3600) return Math.floor(secs / 60) + 'm' + (secs % 60 ? (secs % 60) + 's' : '');
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  return h + 'h' + (m ? m + 'm' : '');
+}
+</script>
+</body>
+</html>

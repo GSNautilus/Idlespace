@@ -35,6 +35,9 @@ IdleSpace is an **idle space 4X collectible card game**. Every meaningful in-gam
 | [`data/game-cards.json`](data/game-cards.json) | — | **Canonical card source.** 108 cards, schema `{ version:1, cards:[] }`. |
 | `data/cards.json` | — | Legacy 100-card flat-array export. Not loaded by the game. Keep for historical reference. |
 | `data/game-cards.json.bak` | — | Backup. |
+| [`sim.html`](sim.html) | — | Headless economy simulator for tuning. Single-colony, picker drives draws via lookahead projection (each candidate × slot is played forward N game-min and scored on pop reached + bank deltas + research unlocks − bankruptcy penalty). Reads `data/game-cards.json` directly. Cache-busted via `?v=BUILD` query string; visible build stamp in header. |
+| `sim/economy.js` | — | Pure-function port of the resource math (`getColonyOutput`, `getPopGrowthCost`, `getDrawScaling`, `getColonizationCost`, `cardScore`, `colonyScore`, etc.) used by `sim.html`. Self-contained (`SimEconomy` global / Node `require`). Duplicates math currently in `starmap.html` — change both, or move the game over to load this file. |
+| `sim/smoke*.js`, `sim/syntax-check.js` | — | Node smoke tests for the simulator: `smoke.js` covers economy primitives, `smoke-full.js` mirrors `sim.html`'s `runSim` end-to-end, `smoke-diag.js` dumps per-candidate lookahead scores, `syntax-check.js` parses the inline `sim.html` script. |
 
 ### `ui/` — split CSS
 

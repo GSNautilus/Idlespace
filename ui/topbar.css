@@ -115,16 +115,106 @@
   min-height: 36px;
   flex-shrink: 1;
   min-width: 0;
-  overflow: hidden;
+  position: relative; /* anchor for the dropdown panel */
 }
 .tb-res {
   display: inline-flex;
   align-items: baseline;
   gap: 5px;
-  padding: 0 9px;
+  padding: 0 9px 4px;
   min-width: 0;
   white-space: nowrap;
+  position: relative; /* anchor for the progress bar */
 }
+/* Sub-tick progress bar — fills 0→100% across each game-second, then resets.
+   Acts as a shared idle "tick clock" so the player sees the rhythm of the
+   economy even when individual resource increments are sub-1/sec. */
+.tb-res-bar {
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  bottom: 1px;
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, var(--metal-edge), var(--fg-strong));
+  width: 0;
+  transition: width 0.05s linear;
+  opacity: 0.6;
+  pointer-events: none;
+}
+/* "More resources" chevron button at the right edge of the rack. */
+.tb-res-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 26px;
+  margin-left: 4px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--fg-dim);
+  cursor: pointer;
+}
+.tb-res-more:hover {
+  background: rgba(255,255,255,.05);
+  border-color: var(--metal-edge);
+  color: var(--fg-strong);
+}
+/* Dropdown panel — appears below the rack on chevron click. Lists every
+   RESOURCE_DEFS entry with value + rate + pin/unpin button. */
+#tb-res-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 280px;
+  padding: 6px;
+  background: linear-gradient(145deg, #0a0b10 0%, #07080c 100%);
+  border: 1px solid var(--metal-darker);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.55);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tb-res-dd-row {
+  display: grid;
+  grid-template-columns: 20px 1fr auto auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.tb-res-dd-row:hover { background: rgba(255,255,255,.04); }
+.tb-res-dd-row .ico { width: 16px; height: 16px; }
+.tb-res-dd-name { color: var(--fg-strong); }
+.tb-res-dd-val {
+  color: var(--fg-strong);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 50px;
+  text-align: right;
+}
+.tb-res-dd-rate {
+  color: var(--fg-dim);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  min-width: 50px;
+  text-align: right;
+}
+.tb-res-dd-pin {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--metal-edge);
+  background: rgba(255,255,255,.04);
+  color: var(--fg-strong);
+  cursor: pointer;
+}
+.tb-res-dd-pin:hover { background: rgba(255,255,255,.08); }
 .tb-res .ico {
   align-self: center;
   filter: drop-shadow(0 0 3px currentColor);

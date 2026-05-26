@@ -1791,36 +1791,8 @@ body.scaled {
   </div>
 
   <div id="resources" class="tb-res-rack"></div>
-  <script>
-  // Generate resource display — preserves #res-${id} and #rate-${id} IDs
-  // so the existing update loop in this file keeps working unchanged.
-  (function() {
-    const container = document.getElementById("resources");
-    const defs = [
-      { id: "credits",  icon: "i-credits",  name: "Credits" },
-      { id: "energy",   icon: "i-energy",   name: "Energy" },
-      { id: "minerals", icon: "i-minerals", name: "Minerals" },
-      { id: "research", icon: "i-research", name: "Research" },
-      { id: "food",     icon: "i-food",     name: "Food" },
-    ];
-    for (let i = 0; i < defs.length; i++) {
-      const d = defs[i];
-      if (i > 0) {
-        const sep = document.createElement("span");
-        sep.className = "tb-res-sep";
-        sep.setAttribute("aria-hidden", "true");
-        container.appendChild(sep);
-      }
-      const div = document.createElement("div");
-      div.className = "tb-res";
-      div.title = d.name;
-      div.innerHTML = `<svg class="ico ${d.id}"><use href="#${d.icon}"/></svg>`
-        + `<span class="tb-res-val" id="res-${d.id}">0</span>`
-        + `<span class="tb-res-rate" id="rate-${d.id}">+0/s</span>`;
-      container.appendChild(div);
-    }
-  })();
-  </script>
+  <!-- Rack populated by buildResourceRack() from the main script once
+       RESOURCE_DEFS exists (see "RESOURCES" section). -->
 
   <div id="right-controls" class="tb-right">
     <div id="speed-controls" class="tb-speed">
@@ -2360,6 +2332,8 @@ const NPC_FACTIONS = {
     cardFilter: null,                 // optional fn(card, tier) => boolean
     artifactDrop: true,               // hooks rollPirateArtifactDrop()
     cardLootBucket: "pirate",         // pirateLoot[id] for trophies
+    lootSalvageMul: 1.0,              // multiplier on per-ship salvage drop
+    lootDragonshard: false,           // drops dragonshard per dead ship
   },
   dragon: {
     id: "dragon",
@@ -2379,6 +2353,8 @@ const NPC_FACTIONS = {
     },
     artifactDrop: false,
     cardLootBucket: "pirate",         // shared trophy pool with pirates for v0.1.2
+    lootSalvageMul: 10.0,             // dragon kills are catastrophic — drop heaps of salvage
+    lootDragonshard: true,            // only dragons drop dragonshard; Singularity multiplied below
   },
 };
 
@@ -2694,10 +2670,16 @@ const PLANET_VISUALS = {
 const RANGE_LABELS = { short:"S", medium:"M", long:"L" };
 const RANGE_COLORS = { short:"#e0a040", medium:"#a0c0e0", long:"#60d060" };
 
-// SVG sprite ids for resource keys — used by the ship card renderer.
+// SVG sprite ids for resource keys — used by the ship card renderer and the
+// salvage screen / colony resource display. Mirrors RESOURCE_DEFS.sprite for
+// every entry (kept hardcoded here because this table is consumed earlier in
+// the script than RESOURCE_DEFS is defined).
 const RES_ICON_BY_KEY = {
   credits: "i-credits", energy: "i-energy", minerals: "i-minerals",
   research: "i-research", food: "i-food",
+  salvage: "i-salvage",
+  antimatter: "i-antimatter", darkmatter: "i-darkmatter",
+  bioplasm: "i-bioplasm", dragonshard: "i-dragonshard",
 };
 
 // Stat-key → SVG sprite id. Used by the new metallic card renderers
@@ -2707,6 +2689,9 @@ const STAT_ICON_IDS = {
   // Resources
   credits: "i-credits", energy: "i-energy", minerals: "i-minerals",
   research: "i-research", food: "i-food",
+  salvage: "i-salvage",
+  antimatter: "i-antimatter", darkmatter: "i-darkmatter",
+  bioplasm: "i-bioplasm", dragonshard: "i-dragonshard",
   // Ship combat
   shields: "i-shield", armor: "i-armor", speed: "i-speed",
   sensorRange: "i-sensor", stealth: "i-stealth", pointDefense: "i-pd",
@@ -2819,7 +2804,12 @@ function rollPlanetCardOfRarity(rarity) {
     bonuses[key] = v;
     bonusRanges[key] = [min, max];
   }
-  return { ...template, bonuses, bonusRanges };
+  // Planet size — decoupled from rarity. Uniform 3-10 placeholder; Phase 4
+  // (Idle Tuning) decides the distribution and wires the steep pop-cost ramp
+  // for growing past `size`. Stored on the card so renderers can display it
+  // and so saves carry it along the same path as bonuses.
+  const size = 3 + Math.floor(Math.random() * 8); // 3..10 inclusive
+  return { ...template, bonuses, bonusRanges, size };
 }
 
 const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X"];
@@ -2837,6 +2827,7 @@ function generatePlanets(star) {
       orbitRadius: 80 + i * 50,
       orbitSpeed: 0.04 / (1 + i * 0.3),
       orbitPhase: Math.random() * Math.PI * 2,
+      size: card.size, // mirrored from the card for convenient planet.size access
     });
   }
 }
@@ -3286,6 +3277,7 @@ const SCOUT_ANOMALIES = [
   { id: "techRandom",          weight: 22, kind: "randomTech",        label: "Strange Technology",  flavor: "Ancient automation activated on contact." },
   { id: "pirateAmbush",        weight: 18, kind: "spawnPirates",      label: "Pirate Ambush",       flavor: "Raiders were lying in wait at the heliopause." },
   { id: "resourceCache",       weight: 14, kind: "resourceCache",     label: "Resource Cache",      flavor: "Derelict crates drifted in a stable orbit." },
+  { id: "salvageCache",        weight: 12, kind: "salvageCache",      label: "Salvage Yard",        flavor: "An entire battle's worth of wreckage, undisturbed." },
   { id: "techGift",            weight: 10, kind: "techGift",          label: "Salvaged Schematic",  flavor: "A working datacore in the wreckage." },
   { id: "artifactRelic",       weight: 10, kind: "artifactRelic",     label: "Ancient Relic",       flavor: "Something older than the system itself." },
   { id: "researchBreakthrough", weight: 4, kind: "researchBreakthrough", label: "Eureka",           flavor: "Field data closes a long-standing gap." },
@@ -3410,6 +3402,15 @@ function applyScoutAnomaly(anomaly, star, scoutFleetEnt) {
       const amount = Math.round((baseByRes[id] || 3000) * distScale * (0.7 + Math.random() * 0.6));
       resources[id] = (resources[id] || 0) + amount;
       anomaly.result = `Recovered +${formatResourceValue(amount)} ${id}.`;
+      break;
+    }
+    case "salvageCache": {
+      // Distance-scaled Salvage burst — mirrors resourceCache shape but pays
+      // in the v0.2.0 generic currency. Placeholder numbers; Phase 4 tunes.
+      const distScale = 1 + Math.min(2, Math.hypot(star.x, star.y) / SCOUT_DISTANCE_RANGE) * 2;
+      const amount = Math.round(800 * distScale * (0.7 + Math.random() * 0.6));
+      resources.salvage = (resources.salvage || 0) + amount;
+      anomaly.result = `Recovered +${formatResourceValue(amount)} salvage.`;
       break;
     }
     case "techGift": {
@@ -4115,6 +4116,29 @@ function syncSurvivorState(side) {
   }
 }
 
+// Per-rarity salvage payout. Used by BOTH scrapping a card (queue → trash, or
+// "Discard All" in the deck-pile choice modal) AND by per-ship combat loot
+// (multiplied by faction.lootSalvageMul). Placeholder numbers — Phase 4
+// (Idle Tuning) rebalances after the simulator is reliable.
+const SALVAGE_BY_RARITY = {
+  common:     5,
+  uncommon:   15,
+  rare:       60,
+  epic:       300,
+  legendary:  2000,
+};
+function getCardScrapSalvage(card) {
+  if (!card || !card.rarity) return 0;
+  return SALVAGE_BY_RARITY[card.rarity] || 0;
+}
+// Convenience: grant salvage for a card being scrapped. Centralises the
+// "+= salvage" math + flash so all 3 scrap sites stay in sync.
+function grantSalvageForScrap(card) {
+  const amount = getCardScrapSalvage(card);
+  if (amount > 0) resources.salvage = (resources.salvage || 0) + amount;
+  return amount;
+}
+
 // Per-rarity credits-equivalent ranges for combat salvage.
 // Tuned to roughly 30-100% of a same-rarity ship's placement cost so wiping
 // pirates is meaningful but not the most efficient resource source.
@@ -4165,6 +4189,8 @@ function rollCombatLoot(winner, loser) {
   if (!winner.ships.some(s => s.alive)) return null; // mutual destruction → no loot
   const resources = {};
   const cards = [];
+  const loserFactionCfg = NPC_FACTIONS[loser.entity.faction] || NPC_FACTIONS.pirate;
+  const salvageMul = loserFactionCfg.lootSalvageMul || 1.0;
   for (const shipState of loser.ships) {
     const card = shipState.card;
     if (!card) continue;
@@ -4175,6 +4201,18 @@ function rollCombatLoot(winner, loser) {
     const weight = LOOT_RESOURCE_WEIGHTS[resType] || 1;
     const amount = Math.max(1, Math.round(credEquiv / weight));
     resources[resType] = (resources[resType] || 0) + amount;
+    // Salvage per dead ship — uses the same rarity table as scrapping, then
+    // multiplied by faction salvage multiplier (dragons drop heavily).
+    const salvageAmount = Math.round((SALVAGE_BY_RARITY[rarity] || 0) * salvageMul);
+    if (salvageAmount > 0) resources.salvage = (resources.salvage || 0) + salvageAmount;
+    // Dragonshard — only dragons drop it. Singularity Dragon drops dramatically
+    // more (per the design "100× tier" — applied as 10× the per-rarity salvage).
+    if (loserFactionCfg.lootDragonshard) {
+      const dragonshardBase = (SALVAGE_BY_RARITY[rarity] || 0) * 0.1;
+      const singularityBonus = (card.id === "drg_singularity") ? 10 : 1;
+      const ds = Math.round(dragonshardBase * singularityBonus);
+      if (ds > 0) resources.dragonshard = (resources.dragonshard || 0) + ds;
+    }
     if (Math.random() < LOOT_CARD_DROP_CHANCE) cards.push(card);
   }
   // Single artifact roll per combat — duplicates filtered pre-roll so the
@@ -4182,8 +4220,7 @@ function rollCombatLoot(winner, loser) {
   // owned this slot stops dropping. Only factions with artifactDrop=true
   // contribute to this roll (e.g. dragons currently don't drop artifacts).
   let artifact = null;
-  const loserFaction = NPC_FACTIONS[loser.entity.faction] || NPC_FACTIONS.pirate;
-  if (loserFaction.artifactDrop && Math.random() < LOOT_ARTIFACT_DROP_CHANCE) {
+  if (loserFactionCfg.artifactDrop && Math.random() < LOOT_ARTIFACT_DROP_CHANCE) {
     artifact = rollPirateArtifactDrop();
   }
   return { resources, cards, artifact };
@@ -6061,6 +6098,14 @@ function buildPlanetCardHtml(card) {
   const subLabel = `${rarity} · Planet`;
   const bonuses = (card.categoryData && card.categoryData.bonuses) || card.bonuses || {};
   const entries = Object.entries(bonuses);
+  // Planet size — decoupled from rarity. Shown as a pop icon + number so it
+  // reads as "this planet supports growing to pop N before overcrowding."
+  // Phase 4 (Idle Tuning) wires the steep cost ramp for growing past size.
+  const sizeRow = (typeof card.size === "number")
+    ? `<div class="row"><div class="stat" title="Planet size — pop cap before overcrowding cost ramp">`
+      + `<svg class="ico"><use href="#i-pop"/></svg>`
+      + `<span class="sv">Size ${card.size}</span></div></div>`
+    : "";
   const bonusRow = entries.length === 0 ? "" :
     `<div class="row">${entries.map(([key, val]) => {
       const iconId = STAT_ICON_IDS[key] || "i-spark";
@@ -6083,6 +6128,7 @@ function buildPlanetCardHtml(card) {
       <div class="c">
         <div class="hdr"><span class="hdr-name">${card.name || ""}</span></div>
         ${imageHtml}
+        ${sizeRow}
         ${bonusRow}
         ${buildSpecialHtml(getSpecialDisplay(card))}
         ${buildFlavorHtml(card.flavor)}
@@ -7338,18 +7384,145 @@ window.addEventListener("resize", () => {
 // ═══════════════════════════════════════════
 //  GLOBAL RESOURCES & ECONOMY
 // ═══════════════════════════════════════════
+// Resource catalog. `category` distinguishes the 5 base resources from the
+// new v0.2.0 generic resource (salvage) and the exotic tier. Consumers iterate
+// RESOURCE_DEFS / RESOURCE_IDS so adding new resources never requires editing
+// renderers — but the top-bar rack honors `defaultPinned` so the original 5
+// stay visible by default and exotics live in the dropdown panel.
 const RESOURCE_DEFS = [
-  { id: "credits",  name: "Credits",  sprite: "i-credits",  color: "var(--res-credits)",  category: "base" },
-  { id: "energy",   name: "Energy",   sprite: "i-energy",   color: "var(--res-energy)",   category: "base" },
-  { id: "minerals", name: "Minerals", sprite: "i-minerals", color: "var(--res-minerals)", category: "base" },
-  { id: "research", name: "Research", sprite: "i-research", color: "var(--res-research)", category: "base" },
-  { id: "food",     name: "Food",     sprite: "i-food",     color: "var(--res-food)",     category: "base" },
+  { id: "credits",     name: "Credits",     sprite: "i-credits",  color: "var(--res-credits)",     category: "base",    defaultPinned: true  },
+  { id: "energy",      name: "Energy",      sprite: "i-energy",   color: "var(--res-energy)",      category: "base",    defaultPinned: true  },
+  { id: "minerals",    name: "Minerals",    sprite: "i-minerals", color: "var(--res-minerals)",    category: "base",    defaultPinned: true  },
+  { id: "research",    name: "Research",    sprite: "i-research", color: "var(--res-research)",    category: "base",    defaultPinned: true  },
+  { id: "food",        name: "Food",        sprite: "i-food",     color: "var(--res-food)",        category: "base",    defaultPinned: true  },
+  // Salvage — generic currency. Drops from scrapping cards, killing NPC fleets,
+  // and salvage-cache scout anomalies. Spent on deck edits, card rerolls, and
+  // similar customization features. Default-unpinned so it lives in the
+  // dropdown until the player promotes it.
+  { id: "salvage",     name: "Salvage",     sprite: "i-salvage",  color: "var(--res-salvage)",     category: "generic", defaultPinned: false },
+  // Exotic resources — tier-2 gating for rare/legendary content.
+  // Antimatter:  REFINED from energy + minerals via a special building.
+  // Dark Matter: EXTRACTED from rare planets / high-rarity stars.
+  // Bioplasm:    EXTRACTED from organic planets AND dropped by mid-tier NPCs.
+  // Dragonshard: DROPPED by dragons (Singularity Dragon drops dramatically more).
+  { id: "antimatter",  name: "Antimatter",  sprite: "i-antimatter",  color: "var(--res-antimatter)",  category: "exotic",  defaultPinned: false },
+  { id: "darkmatter",  name: "Dark Matter", sprite: "i-darkmatter",  color: "var(--res-darkmatter)",  category: "exotic",  defaultPinned: false },
+  { id: "bioplasm",    name: "Bioplasm",    sprite: "i-bioplasm",    color: "var(--res-bioplasm)",    category: "exotic",  defaultPinned: false },
+  { id: "dragonshard", name: "Dragonshard", sprite: "i-dragonshard", color: "var(--res-dragonshard)", category: "exotic",  defaultPinned: false },
 ];
 const RESOURCE_IDS = RESOURCE_DEFS.map(r => r.id);
 const resources = {};
-// Starting resources: credits/research per Phase-1 tuning, others kept at legacy 5000 baseline.
+// Top-bar rack settings:
+// - pinnedResources: which resource ids appear directly in the rack.
+//   Defaults to every RESOURCE_DEFS entry marked `defaultPinned: true`.
+//   Player toggles via the per-cell pin button + dropdown menu.
+// - resourceProgressMode: "off" | "bar" | "cell". "bar" draws a thin fill at
+//   the bottom of each cell tracking the tick clock; "cell" fills the cell
+//   itself as background (cosmetic alternative); "off" hides it.
+//   The toggle UI for swapping modes lands later in the polish pass; for now
+//   the field is persisted and read but only "bar" / "off" affect rendering.
+let pinnedResources = new Set();
+let resourceProgressMode = "bar";
+for (const r of RESOURCE_DEFS) if (r.defaultPinned) pinnedResources.add(r.id);
+// Starting resources: credits/research per Phase-1 tuning, others kept at
+// legacy 5000 baseline. New resources (salvage + exotics) start at 0.
 const STARTING_RESOURCES = { credits: 5000, energy: 5000, minerals: 5000, research: 0, food: 5000 };
 for (const r of RESOURCE_DEFS) resources[r.id] = STARTING_RESOURCES[r.id] != null ? STARTING_RESOURCES[r.id] : 0;
+
+// Build the top-bar resource rack from RESOURCE_DEFS. Renders one cell per
+// resource in `pinnedResources` and trails a chevron that opens the dropdown
+// panel listing every unpinned resource (so the player can promote one with a
+// click). Preserves the #res-${id} and #rate-${id} IDs that
+// updateResourceDisplay reads — and adds #rack-bar-${id} for the per-cell
+// progress bar.
+function buildResourceRack() {
+  const container = document.getElementById("resources");
+  if (!container) return;
+  container.innerHTML = "";
+  const visible = RESOURCE_DEFS.filter(d => pinnedResources.has(d.id));
+  for (let i = 0; i < visible.length; i++) {
+    const d = visible[i];
+    if (i > 0) {
+      const sep = document.createElement("span");
+      sep.className = "tb-res-sep";
+      sep.setAttribute("aria-hidden", "true");
+      container.appendChild(sep);
+    }
+    const div = document.createElement("div");
+    div.className = "tb-res";
+    div.title = d.name + " — right-click to unpin";
+    div.innerHTML = `<svg class="ico ${d.id}"><use href="#${d.sprite}"/></svg>`
+      + `<span class="tb-res-val" id="res-${d.id}">0</span>`
+      + `<span class="tb-res-rate" id="rate-${d.id}">+0/s</span>`
+      + (resourceProgressMode !== "off" ? `<span class="tb-res-bar" id="rack-bar-${d.id}"></span>` : "");
+    // Right-click cell to unpin (skip if it would empty the rack — at least
+    // one resource always stays pinned so the bar isn't useless).
+    div.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      if (pinnedResources.size <= 1) return;
+      pinnedResources.delete(d.id);
+      buildResourceRack();
+      updateResourceDisplay();
+    });
+    container.appendChild(div);
+  }
+  // Dropdown chevron — always present so the player can browse + pin any
+  // resource even if all RESOURCE_DEFS are currently pinned (the panel still
+  // shows the manage list).
+  const chevronBtn = document.createElement("button");
+  chevronBtn.id = "tb-res-more";
+  chevronBtn.className = "tb-res-more";
+  chevronBtn.title = "Show all resources";
+  chevronBtn.innerHTML = `<svg class="ico sm"><use href="#i-chevron-down"/></svg>`;
+  chevronBtn.addEventListener("click", toggleResourceDropdown);
+  container.appendChild(chevronBtn);
+}
+buildResourceRack();
+
+// Dropdown panel — toggled by the chevron. Shows every RESOURCE_DEFS entry
+// with its current value, rate, and a Pin/Unpin button.
+function toggleResourceDropdown() {
+  let panel = document.getElementById("tb-res-dropdown");
+  if (panel) { panel.remove(); return; }
+  panel = document.createElement("div");
+  panel.id = "tb-res-dropdown";
+  for (const d of RESOURCE_DEFS) {
+    const row = document.createElement("div");
+    row.className = "tb-res-dd-row";
+    const pinned = pinnedResources.has(d.id);
+    row.innerHTML = `<svg class="ico ${d.id}"><use href="#${d.sprite}"/></svg>`
+      + `<span class="tb-res-dd-name">${d.name}</span>`
+      + `<span class="tb-res-dd-val" id="dd-res-${d.id}">${formatResourceValue(resources[d.id] || 0)}</span>`
+      + `<span class="tb-res-dd-rate" id="dd-rate-${d.id}">+0/s</span>`
+      + `<button class="tb-res-dd-pin">${pinned ? "Unpin" : "Pin"}</button>`;
+    row.querySelector(".tb-res-dd-pin").addEventListener("click", () => {
+      if (pinned) {
+        if (pinnedResources.size <= 1) return; // keep at least one pinned
+        pinnedResources.delete(d.id);
+      } else {
+        pinnedResources.add(d.id);
+      }
+      buildResourceRack();
+      updateResourceDisplay();
+      // Re-render the panel so pin/unpin labels stay accurate.
+      const p = document.getElementById("tb-res-dropdown");
+      if (p) { p.remove(); toggleResourceDropdown(); }
+    });
+    panel.appendChild(row);
+  }
+  // Click-outside to close.
+  setTimeout(() => {
+    document.addEventListener("click", function closeOnOutside(e) {
+      const p = document.getElementById("tb-res-dropdown");
+      if (!p) { document.removeEventListener("click", closeOnOutside); return; }
+      if (!p.contains(e.target) && e.target.id !== "tb-res-more" && !e.target.closest("#tb-res-more")) {
+        p.remove();
+        document.removeEventListener("click", closeOnOutside);
+      }
+    });
+  }, 0);
+  document.getElementById("resources").appendChild(panel);
+}
 // 1x game-time = 1x real-time. Constants below are written in real-seconds.
 // Movement and combat have their own secondary multipliers (WORLD_SPEED_MULT,
 // COMBAT_TIME_SCALE) so they can be tuned independently of the global base.
@@ -7835,6 +8008,11 @@ let activeResearch = null;         // { cost, progress } — single-pool researc
 // player picks one. Survives modal dismissal so the choice carries across
 // closing/reopening the panel and across save/load.
 let pendingResearch = null;        // { choices: [card, card, card] } | null
+// When true (default), accepting a research pick auto-queues the next research
+// at the new escalated cost so idle players don't lose 100% of their research
+// production while a pending modal is dismissed. Toggle lives in the Research
+// panel idle state. Persisted across saves.
+let autoContinueResearch = true;
 
 // Categories whose draws are gated by `researchedCards`. `tech` is in this
 // list so colony-deck filters consistently, but `rollCardFromCategory` will
@@ -7982,6 +8160,10 @@ function acceptResearchChoice(card) {
     researchCounts[cat] = (researchCounts[cat] || 0) + 1;
   }
   pendingResearch = null;
+  // Auto-queue the next research at the new escalated cost so idle players
+  // don't lose 100% of their research production after a pick. Gate behind
+  // the autoContinueResearch toggle (Research panel idle UI).
+  if (autoContinueResearch) startResearch();
 }
 
 function openResearchChoiceModal(choices) {
@@ -8123,6 +8305,11 @@ function getTradeIncome(colony, output) {
 }
 
 const TERRAFORM_BASE_FOOD = 5;
+// Fresh colonies get a fixed baseline of food production so a brand-new pop-1
+// colony isn't born starving before the player has placed any cards.
+// Fixed amount (does NOT scale with population) — once the colony grows, real
+// food producers have to carry the maintenance load.
+const BASELINE_COLONY_FOOD = 2;
 function getTerraformIncome(colony, output) {
   if (!colony.activeAction || colony.activeAction !== "terraform") return 0;
   let total = 0;
@@ -8174,6 +8361,10 @@ function getColonyOutput(colony, planet) {
   // artifacts of the same kind.
   const perColony = getArtifactBonuses().perColony;
   for (const id of RESOURCE_IDS) raw[id] += (perColony[id] || 0);
+  // Baseline colony food: a fixed floor every colony gets regardless of
+  // buildings or pop. Folded into raw food BEFORE the starvation check so
+  // fresh pop-1 colonies don't be born starving.
+  raw.food += BASELINE_COLONY_FOOD;
   // Terraform bonus folds into raw food BEFORE the starvation check so a
   // Terraforming colony can rescue itself from a deficit. Computed from raw
   // (pre-starvation) non-food production so terraform doesn't get gimped at
@@ -8284,6 +8475,10 @@ function updateResourceDisplay() {
     for (const id of RESOURCE_IDS) totalOut[id] += (out[id] || 0);
     totalOut.credits += getTradeIncome(col, out);
   }
+  // Progress bar fill — shared tick clock 0→1 across all resources. When
+  // Phase 4 lands sub-1/sec rates, this bar fills 0→1 each game-second and a
+  // resource increment lands on each refill.
+  const tickPct = Math.max(0, Math.min(1, (tickAccumulator || 0) / TICK_PERIOD));
   for (const id of RESOURCE_IDS) {
     const valEl = document.getElementById(`res-${id}`);
     const rateEl = document.getElementById(`rate-${id}`);
@@ -8293,6 +8488,19 @@ function updateResourceDisplay() {
       const rateStr = rate < 0 ? "-" + formatResourceValue(Math.abs(rate)) : "+" + formatResourceValue(rate);
       rateEl.textContent = `${rateStr}/s`;
       rateEl.style.color = rate < 0 ? "#e05050" : "";
+    }
+    // Update per-cell progress bar (only present for pinned resources)
+    const barEl = document.getElementById(`rack-bar-${id}`);
+    if (barEl) barEl.style.width = (tickPct * 100) + "%";
+    // Update dropdown row values if the dropdown is open
+    const ddValEl = document.getElementById(`dd-res-${id}`);
+    if (ddValEl) ddValEl.textContent = formatResourceValue(resources[id] || 0);
+    const ddRateEl = document.getElementById(`dd-rate-${id}`);
+    if (ddRateEl) {
+      const rate = totalOut[id];
+      const rateStr = rate < 0 ? "-" + formatResourceValue(Math.abs(rate)) : "+" + formatResourceValue(rate);
+      ddRateEl.textContent = `${rateStr}/s`;
+      ddRateEl.style.color = rate < 0 ? "#e05050" : "";
     }
   }
   // Research button: highlight when no research is active (idle or just-completed).
@@ -8454,6 +8662,7 @@ function colonizePlanet(star, planetIdx) {
     activeAction: null,                   // "trade"|"buildings"|"admirals"|"leaders"|"ships"
     genTimer: 0,                          // seconds toward next card
     pendingDraw: null,                    // in-flight 3-choice draw: { category, choices }
+    planetSize: planet.size || (planet.card && planet.card.size) || 10, // soft cap on pop growth (Phase 4 wires the ramp)
   };
   colonies.push({ starId: star.id, planetIdx, planet });
   // Refresh the planet card to show "Manage Colony" instead of "Colonize"
@@ -8959,9 +9168,12 @@ function refreshColonyScreen() {
   const planet = colonyViewStar.planets[colonyViewPlanetIdx];
 
   document.getElementById("colony-name").textContent = planet.card.name;
-  // Population display + buy-to-grow button (no passive growth)
+  // Population display + buy-to-grow button (no passive growth). Planet size
+  // is shown as a soft cap reference — growing past it triggers the
+  // overcrowding cost ramp once Phase 4 (Idle Tuning) wires it.
   const popLabel = getPopLabel(col.population);
-  let popHtml = `${ico("i-pop", "sm")} <span>${popLabel} (${col.population}/${col.maxPopulation})</span>`;
+  const sizeStr = (typeof col.planetSize === "number") ? ` <span style="color:#6a7a9b">· size ${col.planetSize}</span>` : "";
+  let popHtml = `${ico("i-pop", "sm")} <span>${popLabel} (${col.population}/${col.maxPopulation})${sizeStr}</span>`;
   if (col.population < col.maxPopulation) {
     const growCost = getPopGrowthCost(col.population + 1);
     const affordable = canAfford(growCost);
@@ -9359,6 +9571,10 @@ function openCardSelectModal(col) {
     wrap.addEventListener("click", () => {
       col.deck.shift();
       col.queue.push(card);
+      // The two unchosen choices are scrapped — grant salvage for each.
+      for (const other of choices) {
+        if (other !== card) grantSalvageForScrap(other);
+      }
       col.pendingDraw = null;
       hideCardSelect();
       refreshColonyScreen();
@@ -9404,6 +9620,10 @@ document.getElementById("card-select-discard-all").addEventListener("click", () 
   const col = getActiveColony();
   if (col) {
     if (col.deck.length > 0) col.deck.shift(); // remove the face-down card being drawn
+    // All three rolled choices get scrapped — grant salvage for each.
+    if (col.pendingDraw && col.pendingDraw.choices) {
+      for (const c of col.pendingDraw.choices) grantSalvageForScrap(c);
+    }
     col.pendingDraw = null;
   }
   hideCardSelect();
@@ -9438,7 +9658,8 @@ function showMagnifiedCard(card, queueIndex, anchorEl) {
     </div>`;
 
   mag.querySelector(".magnify-discard-btn").addEventListener("click", () => {
-    col.queue.splice(queueIndex, 1);
+    const removed = col.queue.splice(queueIndex, 1)[0];
+    if (removed) grantSalvageForScrap(removed);
     dismissMagnifiedCard();
     refreshColonyScreen();
   });
@@ -9676,6 +9897,10 @@ function refreshResearchPanel() {
       <button onclick="startResearch()" style="background:#2a5a3a;border:1px solid #4a9b5a;color:#d8f0d8;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:8px">
         ${ico("i-research", "sm research")} Start Research — ${formatResourceValue(cost)}
       </button>
+      <label style="display:flex;align-items:center;gap:6px;margin-top:10px;color:#8090b0;font-size:12px;cursor:pointer;user-select:none">
+        <input type="checkbox" id="auto-continue-research-toggle" ${autoContinueResearch ? "checked" : ""} onchange="autoContinueResearch=this.checked" style="cursor:pointer">
+        <span>Auto-continue research after each pick</span>
+      </label>
     `;
   }
 
@@ -9872,7 +10097,7 @@ function showResearchReveal(template, category) {
 // ═══════════════════════════════════════════
 // v2 added ownedArtifacts + techInventory and the artifact/tech researchCounts
 // fields. v1 saves load silently; missing fields default to empty/0.
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 const SAVE_LOAD_MIN_VERSION = 1;
 const AUTOSAVE_KEY = "idlespace_autosave_v1";
 const AUTOSAVE_INTERVAL_MS = 60000; // every 60 real seconds
@@ -9930,6 +10155,7 @@ function serializePlanet(p) {
     orbitRadius: p.orbitRadius,
     orbitSpeed: p.orbitSpeed,
     orbitPhase: p.orbitPhase,
+    size: p.size != null ? p.size : (p.card && p.card.size) || null,
     colony: p.colony ? serializeColony(p.colony) : null,
   };
 }
@@ -9946,6 +10172,7 @@ function serializeColony(col) {
     genTimer: col.genTimer,
     growthProgress: col.growthProgress,
     starvationTimer: col.starvationTimer,
+    planetSize: col.planetSize,
     pendingDraw: col.pendingDraw ? {
       category: col.pendingDraw.category,
       choices: col.pendingDraw.choices.map(serializeCardRef),
@@ -9956,13 +10183,25 @@ function serializeColony(col) {
 function hydratePlanet(p) {
   const card = hydrateCardRef(p.card);
   if (!card) return null; // unknown planet template, drop the planet
+  // Planet size — preserve saved value; older saves (pre-v0.2.0) didn't roll
+  // size, so default to a mid-range value rather than re-rolling (re-rolling
+  // would change effective difficulty on load).
+  const size = (typeof p.size === "number") ? p.size
+            : (typeof card.size === "number") ? card.size
+            : 7;
+  if (card && card.size == null) card.size = size;
   const planet = {
     card,
     orbitRadius: p.orbitRadius,
     orbitSpeed: p.orbitSpeed,
     orbitPhase: p.orbitPhase,
+    size,
     colony: p.colony ? hydrateColony(p.colony) : null,
   };
+  // If the colony hydrated without a planetSize (older save), backfill from the planet.
+  if (planet.colony && typeof planet.colony.planetSize !== "number") {
+    planet.colony.planetSize = size;
+  }
   return planet;
 }
 
@@ -9984,6 +10223,7 @@ function hydrateColony(col) {
     activeAction: col.activeAction ?? null,
     genTimer: col.genTimer || 0,
     growthProgress: col.growthProgress || 0,
+    planetSize: (typeof col.planetSize === "number") ? col.planetSize : null, // backfilled in hydratePlanet
     starvationTimer: col.starvationTimer || 0,
     pendingDraw,
   };
@@ -10040,6 +10280,9 @@ function serializeGame() {
     pendingResearch: pendingResearch ? {
       choices: pendingResearch.choices.map(serializeCardRef).filter(Boolean),
     } : null,
+    autoContinueResearch,
+    pinnedResources: [...pinnedResources],
+    resourceProgressMode,
 
     camera: { x: camera.x, y: camera.y, zoom: camera.zoom },
   };
@@ -10110,6 +10353,11 @@ function clearGameState() {
   for (const k of Object.keys(techInventory)) delete techInventory[k];
   activeResearch = null;
   pendingResearch = null;
+  autoContinueResearch = true;
+  pinnedResources = new Set();
+  for (const r of RESOURCE_DEFS) if (r.defaultPinned) pinnedResources.add(r.id);
+  resourceProgressMode = "bar";
+  buildResourceRack();
 }
 
 function deserializeGame(data) {
@@ -10192,6 +10440,21 @@ function deserializeGame(data) {
   } else {
     pendingResearch = null;
   }
+  autoContinueResearch = (typeof data.autoContinueResearch === "boolean") ? data.autoContinueResearch : true;
+  // Top-bar rack settings — silently fall back to defaultPinned for older saves.
+  if (Array.isArray(data.pinnedResources)) {
+    pinnedResources = new Set(data.pinnedResources.filter(id => RESOURCE_DEFS.some(r => r.id === id)));
+    if (pinnedResources.size === 0) {
+      // Save somehow stored an empty set — keep the rack from being empty.
+      for (const r of RESOURCE_DEFS) if (r.defaultPinned) pinnedResources.add(r.id);
+    }
+  } else {
+    pinnedResources = new Set();
+    for (const r of RESOURCE_DEFS) if (r.defaultPinned) pinnedResources.add(r.id);
+  }
+  resourceProgressMode = (data.resourceProgressMode === "off" || data.resourceProgressMode === "cell")
+    ? data.resourceProgressMode : "bar";
+  buildResourceRack();
 
   if (data.camera) {
     camera.x = data.camera.x;

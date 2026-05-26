@@ -1,8 +1,8 @@
 # IdleSpace — Game Design & Implementation Reference
 
-**Version pinned:** `v0.1.2`
-**Last verified against code:** 2026-05-11
-**Primary source:** [`starmap.html`](starmap.html) (~10,200 lines)
+**Version pinned:** `v0.1.2` (v0.2.0 Phase 1 in progress — foundation only)
+**Last verified against code:** 2026-05-26
+**Primary source:** [`starmap.html`](starmap.html) (~10,800 lines)
 **Card data:** [`data/game-cards.json`](data/game-cards.json) (120 cards, schema v1)
 
 This is the single living reference for "how does IdleSpace work today, and where does each system live in the code." It is the only design / implementation doc in the repo.
@@ -226,6 +226,7 @@ seconds = SCOUT_MIN_SEC + (SCOUT_MAX_SEC - SCOUT_MIN_SEC) × t^SCOUT_DISTANCE_EX
 | `techRandom` | 22 | `randomTech` | Picks a random `tech` template and fires its `TECH_EFFECTS` resolve at the star's world coords (instant or area). |
 | `pirateAmbush` | 18 | `spawnPirates` | Spawns a small pirate fleet (1–8 ships, tier-scaled) at a small jitter from the star. Aggressive stance. |
 | `resourceCache` | 14 | `resourceCache` | Random single resource (credits/minerals/energy/food, weighted), 2,000–18,000 scaled by distance. |
+| `salvageCache` | 12 | `salvageCache` | Distance-scaled Salvage burst (~800 × distScale × 0.7–1.3). Added in v0.2.0 Phase 1. |
 | `techGift` | 10 | `techGift` | Adds a random tech card to `techInventory`, also marked `researchedCards` + seen. |
 | `artifactRelic` | 10 | `artifactRelic` | Prefers `categoryData.source === "exploration"` artifacts; falls back to any un-owned artifact; final fallback grants +8000 credits. Uses `grantArtifact(id)`. |
 | `researchBreakthrough` | 4 | `researchBreakthrough` | Sets `activeResearch.progress = activeResearch.cost` and opens the 3-choice modal. If no active research, grants +500 research instead. |
@@ -257,8 +258,8 @@ Light-blue smoothed (Catmull-Rom) curve around the convex hull of colonized-syst
 Planets are pre-rolled once at star creation:
 
 - `rollStarPlanetSlots(template, rand)` at [starmap.html:2499](starmap.html) reads the star's `categoryData.planetGen = { count:[min,max], guaranteed:[rarities], bonus:N }`. Count rolls within `[min,max]`; the listed rarities are guaranteed; remainder rolls via `rollRarityWithBonus(bonus)`.
-- `rollPlanetCardOfRarity(rarity)` at [starmap.html:2525](starmap.html) picks a template and rolls its bonuses ±25%.
-- `generatePlanets(star)` at [starmap.html:2556](starmap.html) names planets after the parent star with roman numerals.
+- `rollPlanetCardOfRarity(rarity)` at [starmap.html:2781](starmap.html) picks a template, rolls its bonuses ±25%, **and rolls a `size` value in [3,10] decoupled from rarity** (v0.2.0 Phase 1). Size sits on the card and the planet wrapper; pop growth past `colony.planetSize` will trigger an overcrowding cost ramp once Phase 4 (Idle Tuning) wires it. Today the field is shown on the planet card and colony header but doesn't yet penalise growth.
+- `generatePlanets(star)` at [starmap.html:2812](starmap.html) names planets after the parent star with roman numerals and mirrors `card.size` onto `planet.size`.
 
 ### Colonization
 
@@ -280,7 +281,7 @@ Planets are pre-rolled once at star creation:
 | 7th | 16 | 160,000 | 80,000 | 16,000 |
 | 8th | 32 | 320,000 | 160,000 | 32,000 |
 
-- On colonize: consume the Colony Ship card (`consumeColonyShip(colonyFleet)`), deduct cost, attach a fresh `colony` object to the planet (see §8), push into the global `colonies[]` array.
+- On colonize: consume the Colony Ship card (`consumeColonyShip(colonyFleet)`), deduct cost, attach a fresh `colony` object to the planet (see §8) **with `planetSize` mirrored from the planet** (v0.2.0), push into the global `colonies[]` array.
 
 ---
 
@@ -422,11 +423,37 @@ While food rate is negative, **non-food production drops to 0.2×**. Food itself
 
 ### Resources
 
-`RESOURCE_DEFS` at [starmap.html:6353](starmap.html), iterated everywhere (never hard-coded). `RESOURCE_IDS = ["credits", "energy", "minerals", "research", "food"]`.
+`RESOURCE_DEFS` at [starmap.html:7392](starmap.html), iterated everywhere (never hard-coded). v0.2.0 Phase 1 expanded the catalog from 5 to 10. Each entry carries `category` (`"base" | "generic" | "exotic"`) and a `defaultPinned` flag that drives the top-bar rack.
 
-`STARTING_RESOURCES = { credits: 5000, energy: 5000, minerals: 5000, research: 0, food: 5000 }` ([starmap.html:6363](starmap.html)). Note `research: 0` — you must produce research before you can spend it.
+| id | category | defaultPinned | Notes |
+|---|---|---|---|
+| `credits` | base | ✓ | gold currency |
+| `energy` | base | ✓ | |
+| `minerals` | base | ✓ | |
+| `research` | base | ✓ | |
+| `food` | base | ✓ | |
+| `salvage` | generic | — | v0.2.0 — scrap/kill/scout-anomaly drop; spent on deck edits + card rerolls |
+| `antimatter` | exotic | — | REFINED from energy + minerals via a special building |
+| `darkmatter` | exotic | — | EXTRACTED from rare planets / high-rarity stars |
+| `bioplasm` | exotic | — | EXTRACTED from organic planets + dropped by mid-tier NPCs |
+| `dragonshard` | exotic | — | DROPPED only by dragons; Singularity Dragon drops 10× |
 
-Resource palette (colors_and_type.css): credits = gold, energy = cyan, minerals = stone grey, research = magenta, food = sage green. Distinct hues so the icon tint alone identifies the resource.
+`STARTING_RESOURCES = { credits: 5000, energy: 5000, minerals: 5000, research: 0, food: 5000 }` ([starmap.html:7429](starmap.html)). Note `research: 0` — you must produce research before you can spend it. Salvage and exotics start at 0 and only enter circulation via their respective gameplay loops.
+
+Resource palette (colors_and_type.css): credits = gold, energy = cyan, minerals = stone grey, research = magenta, food = sage green, salvage = warm brass, antimatter = violet, darkmatter = indigo, bioplasm = bio-green, dragonshard = ember orange.
+
+### Top-bar resource rack (v0.2.0 Phase 1)
+
+The rack iterates `RESOURCE_DEFS.filter(d => pinnedResources.has(d.id))`. Per-cell features:
+
+- **Progress bar**: thin fill across the bottom of each cell, width = `tickAccumulator / TICK_PERIOD`. Acts as a shared "tick clock" so the player feels the economy rhythm even when individual gains are sub-1/sec. Visible when `resourceProgressMode !== "off"`.
+- **Right-click cell** to unpin (the rack keeps at least one resource pinned so the bar isn't empty).
+- **Chevron button** (`#tb-res-more`) at the rack's right edge → opens `#tb-res-dropdown`, a panel listing every resource with value + rate + Pin/Unpin button.
+
+Settings persisted in save:
+
+- `pinnedResources: string[]` — which resource ids show in the rack.
+- `resourceProgressMode: "off" | "bar" | "cell"` — default `"bar"`. The mode toggle UI lands later; for now the field is read but only `bar`/`off` affect rendering.
 
 ### Income
 
@@ -435,8 +462,24 @@ Resource palette (colors_and_type.css): credits = gold, energy = cyan, minerals 
 - **Leaders**: same as buildings, but also apply `bonuses[id]` as **% multipliers** to total raw output ([starmap.html:6687–6694](starmap.html)) — see §11.
 - **Planet bonuses** (planet card's `bonuses`): % multipliers applied **on top of** leader bonuses (multiplicative compound) at [starmap.html:6695–6701](starmap.html).
 - **Terraform action**: `TERRAFORM_BASE_FOOD (5) + Σ(non-food production)/4` per tick, folded into raw food **before** starvation check.
+- **Baseline colony food** (v0.2.0 Phase 1, `BASELINE_COLONY_FOOD = 2`): a fixed amount added to raw food every tick regardless of buildings or pop, folded **before** the starvation check. Stops fresh pop-1 colonies from being born starving. Does NOT scale with population — once the colony grows, real food producers carry the maintenance load.
 
-`getColonyOutput(colony, planet)` at [starmap.html:6666](starmap.html) is the canonical resource math — building/leader sums, leader bonus multiplier, planet bonus multiplier, terraform food, starvation penalty, food maintenance subtract.
+`getColonyOutput(colony, planet)` at [starmap.html:8136](starmap.html) is the canonical resource math — building/leader sums, leader bonus multiplier, planet bonus multiplier, baseline food, terraform food, starvation penalty, food maintenance subtract.
+
+### Salvage drop sources (v0.2.0 Phase 1)
+
+`SALVAGE_BY_RARITY = { common: 5, uncommon: 15, rare: 60, epic: 300, legendary: 2000 }` ([starmap.html:~4090](starmap.html), placeholder; Phase 4 tunes). Three drop paths:
+
+1. **Scrap a card** — `getCardScrapSalvage(card)` is granted when the player:
+   - Discards a queue card via the magnified-card "Discard" button.
+   - Picks one card from the deck-pile choice modal (the 2 unchosen are scrapped).
+   - Hits "Discard All" in the deck-pile choice modal (all 3 rolled choices are scrapped).
+2. **Kill a hostile fleet** — per dead ship, salvage = `SALVAGE_BY_RARITY[rarity] × faction.lootSalvageMul`. Pirates: 1.0×; Dragons: 10×. Lands in `loot.resources.salvage` inside `rollCombatLoot`.
+3. **Scout anomaly `salvageCache`** — distance-scaled Salvage burst (~800–4800), mirrors `resourceCache` payload shape.
+
+### Dragonshard drop (v0.2.0 Phase 1)
+
+Only dragons drop dragonshard. Per dragon ship: `dragonshard = round(SALVAGE_BY_RARITY[rarity] × 0.1)`. Singularity Dragon (`card.id === "drg_singularity"`) gets a 10× multiplier on top.
 
 ### Expenses
 
@@ -498,6 +541,7 @@ Single-pool, 1-of-3 modal at completion. The per-category-button UI is gone.
   - building/ship/admiral/leader → `researchedCards.add(id)`, `researchCounts[cat]++`.
 - **Save/load**: `pendingResearch.choices` are serialized via `serializeCardRef` and rehydrated on load; v1 saves migrate silently (`pendingResearch` defaults to `null`).
 - **`rollCardFromCategory("tech" | "artifact")`** is a coding error — it `console.warn`s and returns null. Tech only enters via research, artifact only via research/loot.
+- **Auto-continue** (v0.2.0 Phase 1): `autoContinueResearch` (default `true`, persisted). When set, `acceptResearchChoice` calls `startResearch()` immediately after `pendingResearch = null`, so idle players don't lose all research production while a pending modal is dismissed. Toggle lives in the Research panel idle UI.
 
 ### 10b. Artifact effect registry
 
@@ -718,14 +762,16 @@ The shared spawner is `maybeSpawnNpcFleet(rng, cx, cy, density, centerX, centerY
 
 ## 16. Save / Load
 
-- `SAVE_VERSION = 2`. `SAVE_LOAD_MIN_VERSION = 1` — the loader accepts any save in `[1, 2]` and silently defaults missing fields. v1 saves load without losing progress; new fields (`ownedArtifacts`, `techInventory`, `pendingResearch`, `researchCounts.tech`/`.artifact`) initialize to empty/0. `AUTOSAVE_KEY` stays `idlespace_autosave_v1` so existing autosaves keep loading.
+- `SAVE_VERSION = 3` (bumped in v0.2.0 Phase 1). `SAVE_LOAD_MIN_VERSION = 1` — the loader accepts any save in `[1, 3]` and silently defaults missing fields. v1 and v2 saves load without losing progress; fields new to v3 (`pinnedResources`, `resourceProgressMode`, `autoContinueResearch`, `planet.size`, `colony.planetSize`, plus the salvage / exotic resources) initialize to sensible defaults. `AUTOSAVE_KEY` stays `idlespace_autosave_v1` so existing autosaves keep loading.
 - `AUTOSAVE_KEY = "idlespace_autosave_v1"`, `AUTOSAVE_INTERVAL_MS = 60000` — autosaves every 60 real seconds and on page close (`setInterval(doAutosave, …)` at [starmap.html:8922](starmap.html)).
 - Manual export/import via the save menu in the top bar (export downloads JSON; import opens file picker).
 - `serializeGame()` and `deserializeGame(data)` cover:
-  - All 5 resources.
-  - All colonies (population, buildings, leaders, deck, queue, activeAction, genTimer, pendingDraw).
+  - All resources (5 base + salvage + 4 exotics as of v0.2.0).
+  - All colonies (population, buildings, leaders, deck, queue, activeAction, genTimer, pendingDraw, **`planetSize`** — v0.2.0).
+  - All planets (orbit fields, colony, **`size`** — v0.2.0).
   - All map entities (ships, fleets, positions, destinations, stance, owner, inCombat, damage).
   - `researchCounts`, `researchedCards`, `seenCards`, `pirateLoot`, `activeResearch`, **`pendingResearch`** (Phase 3), **`ownedArtifacts`** + **`techInventory`** (Phase 1).
+  - **`autoContinueResearch`**, **`pinnedResources`**, **`resourceProgressMode`** (v0.2.0).
   - `gameSpeed` (auto-paused on load — user resumes explicitly).
   - Star map state (explored / detected flags, generated planets).
 - Tech-targeting state (`techTargetingMode`, `techTargetingCursor`) is intentionally session-only — saving mid-cast doesn't restore the reticle.
@@ -809,7 +855,8 @@ Tagged releases plus notable untagged commits, newest first.
 
 | Version | Headline |
 |---|---|
-| **v0.1.2** (HEAD) | **Scouting & anomalies** — `Explore` becomes a timed scout. Duration scales with distance from origin (60 s at home → 24 game-hours past `SCOUT_DISTANCE_RANGE = 40000`). The bound scout fleet must remain stationary and out of combat or the scout cancels. On completion, 15% chance of an anomaly: scout-fleet damage, random tech effect, pirate ambush, resource cache, tech gift, artifact relic, or (rare) research breakthrough. Adds in-flight scout state to per-star save/load; older saves load cleanly. |
+| **v0.2.0 Phase 1** (HEAD, in progress) | **Foundation** for v0.2.0. Adds Salvage + 4 exotic resources (antimatter, darkmatter, bioplasm, dragonshard) with the rack iterating `RESOURCE_DEFS`. Salvage drops from scrapping cards, killing NPC fleets (dragons 10×), and the new `salvageCache` scout anomaly; dragons additionally drop dragonshard with the Singularity Dragon at 10× more. New colonies get `BASELINE_COLONY_FOOD = 2` per tick so pop-1 colonies aren't born starving. `acceptResearchChoice` auto-queues the next research when `autoContinueResearch` is on (default). Planets get a `size` field decoupled from rarity (3–10) shown on the planet card + colony header — the steep overcrowding cost ramp is wired in Phase 4. Top-bar rack gets per-cell progress bars (shared tick clock) and a chevron-driven dropdown for pin/unpin. `SAVE_VERSION = 3` with silent v1/v2 migration. |
+| v0.1.2 | **Scouting & anomalies** — `Explore` becomes a timed scout. Duration scales with distance from origin (60 s at home → 24 game-hours past `SCOUT_DISTANCE_RANGE = 40000`). The bound scout fleet must remain stationary and out of combat or the scout cancels. On completion, 15% chance of an anomaly: scout-fleet damage, random tech effect, pirate ambush, resource cache, tech gift, artifact relic, or (rare) research breakthrough. Adds in-flight scout state to per-star save/load; older saves load cleanly. |
 | v0.1.1 | **Artifact & Tech card systems** — two new card categories. Artifacts are permanent passive unlocks with 6 effect kinds (resource/colony, resource/tick, fleet cap, sensor%, research speed%, colonization discount). Tech cards are consumable activatables with 5 effect kinds (gain resources, area damage / heal, instant reveal, heal all ships). **Research reworked** into a single-pool, 1-of-3 choice modal (~⅔ tech / ⅓ non-tech per slot); cost climbs only on non-tech unlocks. Pirate combat has a per-combat artifact-drop roll, surfaced in the salvage screen. `SAVE_VERSION = 2` with silent v1 → v2 migration. |
 | **v0.1.0** | Milestone release: consolidates the entire v0.0.9.x balance + QoL line into the 0.1.0 minor bump. Introduces this canonical IDLESPACE.md reference doc as the single source of truth for the project. |
 | v0.0.9.25 | Terraform actually visible; saves starving colonies (terraform folds into raw food before starvation); flicker fix; right-click drag no longer deselects. |
@@ -955,9 +1002,14 @@ Faction config lives in the `NPC_FACTIONS` registry; spawn / loot / render code 
 
 | Name | Value | Line |
 |---|---|---|
-| `STARTING_RESOURCES` | `{ credits:5000, energy:5000, minerals:5000, research:0, food:5000 }` | 6363 |
-| `TRADE_BASE_CREDITS` | `5` (+ Σ(non-credit)/4) | 6644 |
-| `TERRAFORM_BASE_FOOD` | `5` (+ Σ(non-food)/4, folded pre-starvation) | 6655 |
+| `RESOURCE_DEFS` | 10 entries: 5 base + salvage + 4 exotics (v0.2.0) | ~7392 |
+| `STARTING_RESOURCES` | `{ credits:5000, energy:5000, minerals:5000, research:0, food:5000 }`; salvage + exotics default to 0 | ~7429 |
+| `TRADE_BASE_CREDITS` | `5` (+ Σ(non-credit)/4) | ~8114 |
+| `TERRAFORM_BASE_FOOD` | `5` (+ Σ(non-food)/4, folded pre-starvation) | ~8134 |
+| `BASELINE_COLONY_FOOD` | `2` per tick; added pre-starvation. v0.2.0 — fixes "born starving" | ~8138 |
+| `SALVAGE_BY_RARITY` | `{ common:5, uncommon:15, rare:60, epic:300, legendary:2000 }` (placeholder) | ~4090 |
+| `pinnedResources` (player setting) | Set of resource ids visible in top-bar rack; defaults to all `defaultPinned: true` | ~7424 |
+| `resourceProgressMode` (player setting) | `"off" \| "bar" \| "cell"`; default `"bar"` | ~7425 |
 
 ### Population
 
@@ -977,13 +1029,14 @@ Faction config lives in the `NPC_FACTIONS` registry; spawn / loot / render code 
 
 | Name | Value | Line |
 |---|---|---|
-| `RESEARCH_BASE_COST` | `500` | 6462 |
-| `RESEARCH_COST_MULTIPLIER` | `2.0` | 6463 |
-| `RESEARCH_SPEND_RATE` | `5` points / game-second (× artifact `researchSpeedPercent`) | 6817 |
-| `RESEARCH_GATED_CATEGORIES` | `["building", "ship", "admiral", "leader", "tech"]` | 6716 |
+| `RESEARCH_BASE_COST` | `500` | ~7855 |
+| `RESEARCH_COST_MULTIPLIER` | `2.0` | ~7855 |
+| `RESEARCH_SPEND_RATE` | `5` points / game-second (× artifact `researchSpeedPercent`) | ~8249 |
+| `RESEARCH_GATED_CATEGORIES` | `["building", "ship", "admiral", "leader", "tech"]` | ~7844 |
 | Research-pool weights | `{ common:200, uncommon:60, rare:15, epic:3, legendary:0.3 }` | (in `rollResearchResult`) |
 | Research-slot tech chance | `0.66` per slot; non-tech weights `[3,3,3,3,2]` for building/ship/admiral/leader/artifact | (in `pickResearchSlotCategory`) |
 | `ACTION_TO_CATEGORY` | `{ buildings:"building", admirals:"admiral", leaders:"leader", ships:"ship" }` | 2221 |
+| `autoContinueResearch` (player setting) | `true` default; if true, accepting a pick auto-calls `startResearch()` | ~7842 |
 
 ### Artifact / Tech
 
@@ -998,7 +1051,7 @@ Faction config lives in the `NPC_FACTIONS` registry; spawn / loot / render code 
 
 | Name | Value | Line |
 |---|---|---|
-| `SAVE_VERSION` | `2` | ~8530 |
+| `SAVE_VERSION` | `3` (bumped v0.2.0 Phase 1) | ~9879 |
 | `SAVE_LOAD_MIN_VERSION` | `1` — silent forward-migration of v1 saves | ~8531 |
 | `AUTOSAVE_KEY` | `"idlespace_autosave_v1"` | ~8532 |
 | `AUTOSAVE_INTERVAL_MS` | `60000` (60 s) | ~8533 |

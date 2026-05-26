@@ -53,6 +53,12 @@
   --res-minerals:  #a0a4ac;  /* cool stone grey */
   --res-research:  #d050c0;  /* magenta */
   --res-food:      #6ac46a;  /* sage green */
+  /* v0.2.0 — generic + exotic tier */
+  --res-salvage:     #b08868;  /* warm beat-up brass */
+  --res-antimatter:  #c060ff;  /* harsh violet */
+  --res-darkmatter:  #6048b0;  /* deep indigo */
+  --res-bioplasm:    #80c060;  /* sickly bio-green */
+  --res-dragonshard: #ff7030;  /* blazing ember orange */
 
   /* ── Combat / weapon typing ────────────────────────── */
   --wpn-energy:       #4a7ac0;  /* shield icon, energy dmg */

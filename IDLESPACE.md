@@ -1,6 +1,6 @@
 # IdleSpace — Game Design & Implementation Reference
 
-**Version pinned:** `v0.1.2` (v0.2.0 Phase 1 in progress — foundation only)
+**Version pinned:** `v0.1.2` (v0.2.0 Phases 1+2 landed — foundation + Combat 2.0)
 **Last verified against code:** 2026-05-26
 **Primary source:** [`starmap.html`](starmap.html) (~10,800 lines)
 **Card data:** [`data/game-cards.json`](data/game-cards.json) (120 cards, schema v1)
@@ -618,7 +618,34 @@ Two entity types, both `owner ∈ {"player","npc"}`, `stance ∈ {"aggressive","
 | Type | Shape |
 |---|---|
 | Solo ship | `{ type:"ship", card, owner, stance, x, y, destX, destY, … }` — uses its own card stats. |
-| Fleet | `{ type:"fleet", ships:[card,…], admiral:card?, owner, stance, label, x, y, derived stats, inCombat }` — admiral optional. |
+| Fleet | `{ type:"fleet", ships:[card,…], admiral:card?, owner, stance, label, x, y, heading, formationType, formationSpacing, powerPositionPriority, derived stats, inCombat }` — admiral optional. |
+
+### Per-ship state (Combat 2.0, v0.2.0 Phase 2)
+
+Each card in `fleet.ships` carries runtime fields written by `initShipCombatState(card, opts)`:
+
+| Field | Meaning |
+|---|---|
+| `_combatPriority` | `"closest" \| "weakest" \| "strongest" \| "followAdmiral"`. Default `"closest"`. Drives `pickShipTarget` each volley. |
+| `_isFlagship` | Boolean. Exactly one ship per fleet is the flagship when an admiral is present (auto-promoted on death). |
+| `_forcedTarget` | Enemy ship index (manual focus-fire from the combat overlay). Cleared on target death. |
+| `_posOffsetX, _posOffsetY` | Fleet-local slot offset (cartesian). Cards are rotated by `ent.heading` into world coords. |
+| `_destOffsetX, _destOffsetY` | (Reserved for future fleet-local movement targets.) |
+| `_destWX, _destWY` | World-coord destination for the **individual ship order** flow (2.8). |
+| `_slotIdx` | Cached formation-slot index assigned by `recalcFormation`. |
+
+All seven fields round-trip through save/load via `CARD_INSTANCE_FIELDS` ([starmap.html:~10833](starmap.html)).
+
+### Formations
+
+`recalcFormation(ent)` ([starmap.html:~3812](starmap.html)) lays out ship slots as a filled triangle. Two shapes (`formationType`):
+
+- `pointForward` — single ship at the apex (front), triangle widens toward the rear.
+- `baseForward` — wide base in front, single apex at the rear.
+
+`formationSpacing ∈ {"tight","normal","loose"}` scales row/column distance via `FORMATION_SPACING_MUL = {0.7, 1.0, 1.5}`. `powerPositionPriority ∈ {"rareFront","rareBack"}` sorts ships by rarity descending (or ascending) before assigning to slots.
+
+Ships occupy slots in fleet-local frame. `getShipWorldPos(ent, shipIdx)` rotates by `ent.heading` (= movement-vector angle when traveling; in combat, = the combat-partner direction).
 
 ### Derived fleet stats (`recalcFleetStats`)
 
@@ -626,36 +653,73 @@ Two entity types, both `owner ∈ {"player","npc"}`, `stance ∈ {"aggressive","
 - `sensorRange = max(ships.sensorRange)` — best sensor wins.
 - `stealth = min(ships.stealth)` — one clunky ship blows cover.
 - Damage = sum across ships.
-- Admiral `commandBonus` multiplies all ship stats by `(1 + commandBonus/100)` ([starmap.html:2981–2982](starmap.html)); admiral-specific stat bonuses apply per-stat on top.
+- Admiral `commandBonus` multiplies all ship stats by `(1 + commandBonus/100)`; admiral-specific stat bonuses apply per-stat on top.
+- **Soft-cap penalty** (Combat 2.0) — sensor is multiplied by `getFleetOvercapPenalty(ent)` so over-cap fleets see less.
 
-### Fleet size cap ([starmap.html:3062](starmap.html))
+### Soft fleet cap
 
-```js
-admiral ? (admiral.stats.maxFleetSize || 4) : 3;
-```
+`getMaxFleetShips(admiral) = admiral?.stats.maxFleetSize || 4 (or 3 without admiral) + artifact fleetSize bonus` ([starmap.html:~3982](starmap.html)). Combat 2.0 (v0.2.0 Phase 2) makes this a **soft** cap: fleets can exceed it freely. `getFleetOvercapPenalty(ent)` returns `max(0.2, 1 - 0.10 × (ships - cap))` — each over-cap ship costs 10% combat damage and sensor, capped at 80% loss. Applied per-attacker in `fireShot` and once in `recalcFleetStats` sensor calc. The old "spill ships back to colony queue / leaderless splinter" paths are gone.
 
-Without an admiral, fleets cap at 3 ships. With one, cap is the admiral's rolled `maxFleetSize` (typical ranges by rarity: common 4–7, uncommon 6–12, rare 11–24, epic 20–36, legendary 30–50).
+### Flagship + admiral permadeath
+
+When a fleet has an admiral, exactly one ship is the **flagship** (`_isFlagship = true`). `pickFlagshipIndex(ships)` defaults to the highest-rarity ship (ties → lowest index). Flagship gets a gold outline in the fleet roster and a gold border + admiral pip in the combat overlay (`renderCombatSide`).
+
+If the flagship is destroyed mid-combat (`fireShot` detects `!target.alive && target.card._isFlagship && side.entity.admiral`):
+
+1. `ent.admiral` is set to `null` — admiral card is **permanently destroyed**, not returned to any queue.
+2. `recalcFleetStats(ent)` fires immediately — commandBonus gone, `maxFleetSize` collapses to 3 (no admiral), soft-cap penalty climbs.
+3. Combat log line: `Admiral <name> lost with flagship <ship>!`
+
+If the flagship dies but combat-end occurs simultaneously (no mid-volley detection), `syncSurvivorState` re-promotes a new flagship from survivors only when `ent.admiral` is still non-null. After permadeath, surviving ships fly admiral-less until the player transfers a new admiral in.
+
+### Fleet split / combine / admiral transfer (v0.2.0 Phase 2)
+
+Three operations exposed in `showEntityPanel` actions for player fleets out of combat:
+
+- **`splitFleet(srcIdx, shipIndices, takeAdmiral)`** — peels ships off into a new co-located fleet. Admiral stays with the parent by default; `takeAdmiral: true` moves it to the split. Source fleet recomputes flagship + formation; if emptied, the entity is removed.
+- **`combineFleets(targetIdx, mergeIdx, keepAdmiral)`** — merges two friendly fleets within mutual sensor range. `keepAdmiral ∈ {"target","merge","none"}` picks which admiral leads. The unused admiral returns to the colony queue **only if the merged fleet is at a colony**; otherwise it's consumed (warned about in the modal copy).
+- **`transferAdmiral(srcIdx, dstIdx)`** — moves the admiral between two friendly fleets whose flagships are mutually within sensor range. If the destination already has an admiral, the two swap. Both fleets re-pick flagships.
+
+Eligibility helper: `getNearbyFriendlyFleets(srcIdx)` returns indices of player-owned, non-combat fleets within mutual sensor range.
+
+### Individual ship orders + leash (v0.2.0 Phase 2)
+
+Each ship in a player fleet has a **Send…** button in its roster card. Clicking it enters `singleShipOrderMode = { entIdx, shipIdx }`; the next left-click on the starmap calls `applySingleShipOrder(wx, wy)`, which:
+
+1. Computes the flagship's current world position (anchor for the leash).
+2. Clamps the requested point to within `MAX_FLEET_LEASH = 500` world units of the anchor.
+3. Stores the clamped point on `card._destWX/_destWY`.
+
+`tickIndividualShipOrders(dt)` runs each non-combat frame, stepping the ship's world position toward `_destWX/_destWY` at the ship's own speed, then updating `_posOffsetX/_posOffsetY` to reflect the new fleet-local offset. On arrival, `_destWX/_destWY` clears.
+
+A **Recall** button on each ship's card clears `_destWX/_destWY` immediately. Right-click on the map or Escape cancels an in-flight order. Per-ship destination arrows render in warm amber to distinguish from the fleet-level dest line (blue dashes).
+
+In combat the individual-orders path is suppressed — Combat 2.0's per-ship movement (`tickShipMovement`, see §13) takes over until the engagement resolves.
 
 ### Deployment & travel
 
-Colony screen has a Fleet tab with a deploy area: drag ship cards into deploy slots (`deployShips[]`), optionally drag an admiral, then "Deploy Fleet" or "Deploy Solo" ([starmap.html:7285–7763](starmap.html)). Entities are placed at the colony star with a small offset (40 units) so they don't all stack on the home pixel.
+Colony screen has a Fleet tab with a deploy area: drag ship cards into deploy slots (`deployShips[]`), optionally drag an admiral, then "Deploy Fleet" or "Deploy Solo". Entities are placed at the colony star with a small offset (40 units) so they don't all stack on the home pixel.
 
-Travel math ([starmap.html:3094–3120](starmap.html)):
+With the v0.2.0 soft cap, the deploy panel renders at least `getMaxFleetShips(admiral)` slots plus 2 trailing "overcap" slots (marked with `⚠` and an amber border). Drops past the cap are accepted; the cost-info line shows `Over soft cap (n/cap) — combat damage and sensor reduced by N%`. Removing the admiral no longer ejects excess ships back to the queue — the player keeps them and just pays the penalty.
+
+Travel math:
 
 ```
 ent.x += dir.x × ent.speed × dt × WORLD_SPEED_MULT
 ent.y += dir.y × ent.speed × dt × WORLD_SPEED_MULT
 ```
 
-with `WORLD_SPEED_MULT = 0.8`. ETAs come from `formatETA(gameSec)` at [starmap.html:2911](starmap.html), displayed in the entity info panel and as a label under traveling entities on the starmap.
+with `WORLD_SPEED_MULT = 0.8`. ETAs come from `formatETA(gameSec)`, displayed in the entity info panel and as a label under traveling entities on the starmap. `ent.heading` is updated each tick from the movement vector so the formation rotates with travel direction.
 
-Selected-entity info panel: ship/fleet stats, stance toggle, disband button (only at a colony — returns cards to queue), movement orders via click destination. Right-click drag pan (v0.0.9.25) does not deselect.
+Selected-entity info panel: ship/fleet stats, stance toggle, disband button (only at a colony — returns cards to queue), movement orders via click destination, plus Combat 2.0 ops (Split / Combine / Transfer Admiral) and the per-ship priority + Send… controls on each roster card. Right-click drag pan does not deselect.
 
 ---
 
 ## 13. Combat
 
-Combat is volley-based and runs in-line with the rest of the game loop but is slowed by `COMBAT_TIME_SCALE = 1 / 100` ([starmap.html:6378](starmap.html)) — combat ticks 100× slower than wall-clock, preserving the pre-real-time tempo while everything else scales with `BASE_GAME_SPEED`.
+Combat is volley-based and runs in-line with the rest of the game loop but is slowed by `COMBAT_TIME_SCALE = 1 / 100` — combat ticks 100× slower than wall-clock, preserving the pre-real-time tempo while everything else scales with `BASE_GAME_SPEED`.
+
+**Combat 2.0 (v0.2.0 Phase 2)** turns each ship into an independent combatant: it picks its own target by `_combatPriority`, drifts to its own ideal engagement range from that target, and the volley resolves per attacker–target pair (not per-fleet-distance). Damage math and the `closing → engaged` phase machine are unchanged; what changes is **who fires at whom and from where**.
 
 ### Constants ([starmap.html:6377–6391](starmap.html))
 
@@ -681,6 +745,38 @@ Combat is volley-based and runs in-line with the rest of the game loop but is sl
 | Evasive | Evasive | Pass each other; no engagement. |
 
 Evasion: `clamp((mySpeed - theirSpeed) / mySpeed, 0, 1)`.
+
+### Per-ship targeting (`pickShipTarget`) — Combat 2.0
+
+`fireShot` calls `pickShipTarget(combat, attackerSide, enemySide, shipState)` once per volley (re-pick on kill mid-volley). Resolution order:
+
+1. **Forced target**: if `card._forcedTarget` is a live enemy index (manual focus-fire), use it. Cleared on target death.
+2. **Priority**:
+   - `weakest` — min `(currentShields + currentArmor)`.
+   - `strongest` — max `(currentShields + currentArmor)`.
+   - `followAdmiral` — mirror the flagship's `_currentTarget` (no recursion; flagship uses its own priority). Falls through to `closest` if no usable flagship.
+   - `closest` (default) — nearest alive enemy by world-distance, computed via `getShipWorldPos`.
+
+`shipState._currentTarget` is cached across volleys so movement and firing agree.
+
+### Per-ship movement (`tickShipMovement`) — Combat 2.0
+
+Each combat tick, for each alive ship on both sides:
+
+1. Resolve or re-pick `_currentTarget` (if dead).
+2. `idealDist = max(weapon ranges) - COMBAT_DIST_BUFFER (60)`.
+3. Step the ship's world position toward `idealDist` from target along the ship↔target line at the ship's own speed (`stats.speed * dt * WORLD_SPEED_MULT`). Deadband: `COMBAT_MOVE_DEADBAND = 8`.
+4. Inverse-rotate the new world delta by `ent.heading` and write back to `_posOffsetX/_posOffsetY`.
+
+Brawlers (short range, fast) naturally push forward; snipers (long range, slow) naturally hang back. No per-class logic.
+
+### Range check is per-pair (Combat 2.0)
+
+`fireShot` previously checked `combat.distance <= RANGE_THRESHOLDS[w.range]` (fleet-centroid). Now each volley computes `pairDist = |attacker - target|` and filters weapons by that. Short-range weapons can fire opportunistically when a long-range engagement drifts an enemy into close range.
+
+### Manual focus-fire (combat overlay) — Combat 2.0
+
+`renderCombatSide` adds a 🎯 button to each live player-ship tile. Clicking it enters `combatFocusPick = { sideKey, shipIdx }`; the next click on an enemy tile binds `card._forcedTarget` and exits. A ↺ "clear focus" button appears whenever `_forcedTarget` is set. Visual: focused enemy tile gets a red outline; the picker (selecting) tile gets a blue outline. Esc / overlay-close cancels the pick.
 
 ### Combat loop ([starmap.html:3244–3570](starmap.html))
 
@@ -855,7 +951,8 @@ Tagged releases plus notable untagged commits, newest first.
 
 | Version | Headline |
 |---|---|
-| **v0.2.0 Phase 1** (HEAD, in progress) | **Foundation** for v0.2.0. Adds Salvage + 4 exotic resources (antimatter, darkmatter, bioplasm, dragonshard) with the rack iterating `RESOURCE_DEFS`. Salvage drops from scrapping cards, killing NPC fleets (dragons 10×), and the new `salvageCache` scout anomaly; dragons additionally drop dragonshard with the Singularity Dragon at 10× more. New colonies get `BASELINE_COLONY_FOOD = 2` per tick so pop-1 colonies aren't born starving. `acceptResearchChoice` auto-queues the next research when `autoContinueResearch` is on (default). Planets get a `size` field decoupled from rarity (3–10) shown on the planet card + colony header — the steep overcrowding cost ramp is wired in Phase 4. Top-bar rack gets per-cell progress bars (shared tick clock) and a chevron-driven dropdown for pin/unpin. `SAVE_VERSION = 3` with silent v1/v2 migration. |
+| **v0.2.0 Phase 2** (HEAD, in progress) | **Combat 2.0.** Fleets stop being single points. Each ship carries its own `_combatPriority` (Closest / Weakest / Strongest / Follow Admiral), `_isFlagship`, and fleet-local slot offset. Formations replace the old concentric rings with two filled triangles (point-forward or base-forward), `formationSpacing ∈ {tight, normal, loose}`, and `powerPositionPriority` (rare front vs. back). Admirals sit on a flagship ship card; flagship destruction in combat **permanently destroys** the admiral card and `recalcFleetStats` fires mid-volley. The old hard fleet cap becomes a soft cap — fleets exceed it freely but each over-cap ship costs 10% combat damage + sensor (capped at -80%). Combat picks targets per-ship per-volley, moves each ship to its longest-weapon ideal range, and range-checks per attacker–target pair. The combat overlay gets a 🎯 manual focus-fire button per ship; the entity panel gets Split / Combine / Transfer Admiral controls (with mutual-sensor-range eligibility) and a per-ship Send… button with a `MAX_FLEET_LEASH = 500` clamp. Per-ship state survives save/load via `CARD_INSTANCE_FIELDS`. No SAVE_VERSION bump — additive fields only. |
+| v0.2.0 Phase 1 | **Foundation** for v0.2.0. Adds Salvage + 4 exotic resources (antimatter, darkmatter, bioplasm, dragonshard) with the rack iterating `RESOURCE_DEFS`. Salvage drops from scrapping cards, killing NPC fleets (dragons 10×), and the new `salvageCache` scout anomaly; dragons additionally drop dragonshard with the Singularity Dragon at 10× more. New colonies get `BASELINE_COLONY_FOOD = 2` per tick so pop-1 colonies aren't born starving. `acceptResearchChoice` auto-queues the next research when `autoContinueResearch` is on (default). Planets get a `size` field decoupled from rarity (3–10) shown on the planet card + colony header — the steep overcrowding cost ramp is wired in Phase 4. Top-bar rack gets per-cell progress bars (shared tick clock) and a chevron-driven dropdown for pin/unpin. `SAVE_VERSION = 3` with silent v1/v2 migration. |
 | v0.1.2 | **Scouting & anomalies** — `Explore` becomes a timed scout. Duration scales with distance from origin (60 s at home → 24 game-hours past `SCOUT_DISTANCE_RANGE = 40000`). The bound scout fleet must remain stationary and out of combat or the scout cancels. On completion, 15% chance of an anomaly: scout-fleet damage, random tech effect, pirate ambush, resource cache, tech gift, artifact relic, or (rare) research breakthrough. Adds in-flight scout state to per-star save/load; older saves load cleanly. |
 | v0.1.1 | **Artifact & Tech card systems** — two new card categories. Artifacts are permanent passive unlocks with 6 effect kinds (resource/colony, resource/tick, fleet cap, sensor%, research speed%, colonization discount). Tech cards are consumable activatables with 5 effect kinds (gain resources, area damage / heal, instant reveal, heal all ships). **Research reworked** into a single-pool, 1-of-3 choice modal (~⅔ tech / ⅓ non-tech per slot); cost climbs only on non-tech unlocks. Pirate combat has a per-combat artifact-drop roll, surfaced in the salvage screen. `SAVE_VERSION = 2` with silent v1 → v2 migration. |
 | **v0.1.0** | Milestone release: consolidates the entire v0.0.9.x balance + QoL line into the 0.1.0 minor bump. Introduces this canonical IDLESPACE.md reference doc as the single source of truth for the project. |
@@ -986,6 +1083,23 @@ Faction config lives in the `NPC_FACTIONS` registry; spawn / loot / render code 
 | `RANGE_THRESHOLDS` | `{ long:1000, medium:650, short:350 }` | 6390 |
 | `ENGAGED_DISTANCE` | `200` | 6391 |
 | `COMBAT_TRIANGLE` | `energy 2/0.5, kinetic 0.5/2, missile 1/1` | 6395 |
+| `COMBAT_DIST_BUFFER` | `60` — back off this far inside max range (per-ship movement) | ~4373 |
+| `COMBAT_MOVE_DEADBAND` | `8` — don't reposition within this distance of ideal | ~4374 |
+| `OVERCAP_PENALTY_PER_SHIP` | `0.10` — combat-effectiveness loss per ship over the soft cap | ~3992 |
+| `OVERCAP_PENALTY_FLOOR` | `0.20` — multiplier floor (max 80% loss) | ~3993 |
+| `MAX_FLEET_LEASH` | `500` — world-units a single ship can be sent from its flagship | ~3877 |
+
+### Combat 2.0 — formations & priority
+
+| Name | Value | Line |
+|---|---|---|
+| `COMBAT_PRIORITIES` | `["closest","weakest","strongest","followAdmiral"]` | ~3662 |
+| `DEFAULT_COMBAT_PRIORITY` | `"closest"` | ~3663 |
+| `FORMATION_TYPES` | `["pointForward","baseForward"]` | ~3666 |
+| `FORMATION_SPACINGS` | `["tight","normal","loose"]` | ~3667 |
+| `POWER_POSITION_PRIORITIES` | `["rareFront","rareBack"]` | ~3668 |
+| `FORMATION_SPACING_MUL` | `{tight:0.7, normal:1.0, loose:1.5}` | ~3808 |
+| `FORMATION_ROW_DIST / COL_DIST` | `22 / 24` (world-units, ×spacing multiplier) | ~3809 |
 
 ### Card draw
 

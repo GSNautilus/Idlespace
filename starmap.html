@@ -230,6 +230,162 @@ body.scaled {
   color: #4a5a7b;
   text-align: center;
 }
+/* Combat 2.0 — formation controls on player fleets. */
+#select-fleet-controls {
+  width: 220px;
+  margin-top: 10px;
+}
+#select-fleet-controls .fleet-controls-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(15,18,30,0.6);
+  border: 1px solid #1e2744;
+  border-radius: 4px;
+}
+#select-fleet-controls label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 10px;
+  color: #8090b0;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+#select-fleet-controls select {
+  background: #0a0e1a;
+  border: 1px solid #2a3460;
+  color: #c0d0e0;
+  font-size: 11px;
+  padding: 2px 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  min-width: 110px;
+}
+#select-fleet-controls select:hover { border-color: #4a7ac0; }
+/* Flagship card in the fleet roster: gold edge so the admiral's seat is
+   obvious at a glance. Permadeath logic lives in 2.4. */
+#select-panel-ships .fleet-ship-card.is-flagship {
+  outline: 2px solid #c0a020;
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+/* Combat 2.0 — fleet ops modals (split / combine / transfer admiral). */
+#fleet-op-modal {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+.fleet-op-modal-panel {
+  background: linear-gradient(145deg, #0c0f18 0%, #080a12 100%);
+  border: 1px solid #2a3460;
+  border-radius: 6px;
+  width: min(520px, 90vw);
+  max-height: 80vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.6);
+}
+.fleet-op-modal-title {
+  padding: 14px 18px;
+  font-size: 15px; font-weight: 600;
+  color: #c8d0e0;
+  letter-spacing: 0.3px;
+  border-bottom: 1px solid #1e2744;
+}
+.fleet-op-modal-body {
+  padding: 14px 18px;
+  overflow-y: auto;
+  color: #a0b4d0;
+  font-size: 13px;
+}
+.fleet-op-modal-actions {
+  padding: 10px 14px;
+  display: flex; justify-content: flex-end; gap: 8px;
+  border-top: 1px solid #1e2744;
+}
+.fleet-op-cancel, .fleet-op-apply {
+  padding: 6px 14px;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #2a3460;
+  background: #0e1422;
+  color: #a0b4d0;
+}
+.fleet-op-apply {
+  background: #2a5a3a;
+  border-color: #4a9b5a;
+  color: #d8f0d8;
+}
+.fleet-op-apply:hover { background: #347047; }
+.fleet-op-cancel:hover { background: #131a2c; }
+.fleet-op-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.fleet-op-ship-rarity {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.fleet-op-ship-name { color: #c0d0e0; }
+
+/* Combat 2.0 — per-ship combat priority dropdown (player fleets only). */
+.fleet-ship-priority {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #8090b0;
+}
+.fleet-ship-priority label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.fleet-ship-priority .ico { width: 12px; height: 12px; opacity: 0.7; }
+.fleet-ship-priority select {
+  flex: 1;
+  background: #0a0e1a;
+  border: 1px solid #2a3460;
+  color: #c0d0e0;
+  font-size: 10px;
+  padding: 1px 3px;
+  border-radius: 2px;
+  cursor: pointer;
+  min-width: 0;
+}
+.fleet-ship-priority select:hover { border-color: #4a7ac0; }
+/* Combat 2.0 — single-ship order controls (Send / Recall). */
+.fleet-ship-orders {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+}
+.fleet-ship-send, .fleet-ship-recall {
+  flex: 1;
+  background: #0a0e1a;
+  border: 1px solid #2a3460;
+  color: #c0d0e0;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.fleet-ship-send:hover, .fleet-ship-recall:hover { border-color: #4a7ac0; }
+.fleet-ship-send.ordering {
+  background: rgba(96,168,255,0.2);
+  border-color: #60a8ff;
+  color: #60a8ff;
+}
+.fleet-ship-recall { color: #c0a020; border-color: #604a10; }
+.fleet-ship-recall:hover { background: rgba(192,160,32,0.15); border-color: #c0a020; }
 .planet-count {
   margin-top: 10px;
   font-size: 12px;
@@ -825,6 +981,61 @@ body.scaled {
 .combat-ship-tile:hover { background: #111628; border-color: #2a3460; }
 .combat-ship-tile.dead { opacity: 0.35; filter: grayscale(0.6); }
 .combat-ship-tile.dead:hover { background: #0a0c14; }
+/* Combat 2.0 — flagship tile gets a gold border + glow. */
+.combat-ship-tile.is-flagship { border-color: #c0a020; box-shadow: inset 0 0 0 1px #c0a02040; }
+/* Combat 2.0 — manual focus-fire highlights. Picker = active focus-pick
+   source (your ship). Target = the enemy ship being focused (from any
+   player ship). */
+.combat-ship-tile.focus-picker {
+  border-color: #60a8ff;
+  box-shadow: 0 0 0 1px #60a8ff80, 0 0 8px #60a8ff40;
+}
+.combat-ship-tile.focus-target {
+  border-color: #ff6464;
+  box-shadow: 0 0 0 1px #ff646480, 0 0 8px #ff646440;
+}
+.combat-ship-tile-ctrls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px 4px;
+}
+.combat-focus-btn,
+.combat-focus-clear {
+  border: 1px solid #2a3460;
+  background: rgba(15,18,30,0.7);
+  color: #c0d0e0;
+  font-size: 11px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.combat-focus-btn:hover,
+.combat-focus-clear:hover { background: rgba(40,50,80,0.9); border-color: #4a7ac0; }
+.combat-ship-tile.focus-picker .combat-focus-btn {
+  background: rgba(96,168,255,0.25);
+  border-color: #60a8ff;
+}
+.combat-ship-tile-flagship {
+  display: inline-flex; align-items: center;
+  margin-right: 4px; color: #c0a020;
+}
+.combat-ship-tile-flagship .ico { width: 11px; height: 11px; }
+.combat-admiral-line {
+  display: flex; align-items: center; gap: 4px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: #c0a020;
+  letter-spacing: 0.3px;
+}
+.combat-admiral-line .ico { width: 12px; height: 12px; }
 .combat-ship-tile-stripe {
   width: 5px; flex-shrink: 0;
 }
@@ -1301,6 +1512,22 @@ body.scaled {
   cursor: pointer;
   position: relative;
   overflow: hidden;
+}
+/* Combat 2.0 — overcap slots (past the admiral's soft cap) get an amber
+   warning tint to signal the combat-effectiveness penalty. Empty overcap
+   slots show a ⚠ glyph; filled ones get a tinted border with a corner badge. */
+.fleet-ship-slot.overcap { border-color: #806020; color: #806020; }
+.fleet-ship-slot.overcap.occupied { border-style: dashed; border-color: #e0a040; }
+.fleet-ship-slot.overcap.occupied::after {
+  content: "⚠";
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  color: #e0a040;
+  font-size: 14px;
+  pointer-events: none;
+  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  z-index: 2;
 }
 .fleet-ship-slot:hover { border-color: #2a3a60; background: rgba(15,18,30,0.6); }
 .fleet-ship-slot.drag-over { border-color: #4a7ac0; background: rgba(30,40,80,0.5); }
@@ -1824,6 +2051,7 @@ body.scaled {
     <div id="select-card-slot"></div>
     <div id="select-actions"></div>
     <div id="select-panel-info"></div>
+    <div id="select-fleet-controls"></div>
     <div id="select-panel-ships"></div>
   </div>
   <div id="system-backdrop"></div>
@@ -2444,13 +2672,20 @@ function maybeSpawnNpcFleet(rng, cx, cy, density, centerX, centerY, faction) {
   }
   if (!ships.length) return;
 
-  mapEntities.push({
+  const ent = {
     type: "fleet", owner: "npc", faction: faction.id, ships, admiral: null,
     stance: "aggressive", x: px, y: py, destX: null, destY: null,
     speed: Math.min(...ships.map(s => s.stats.speed || 1)),
     sensorRange: Math.max(...ships.map(s => s.stats.sensorRange || 0)),
     stealth: 0, label: faction.label, inCombat: null,
-  });
+    formationType: DEFAULT_FORMATION_TYPE,
+    formationSpacing: DEFAULT_FORMATION_SPACING,
+    powerPositionPriority: DEFAULT_POWER_POSITION,
+    heading: 0,
+  };
+  for (const s of ships) initShipCombatState(s, { isFlagship: false });
+  recalcFormation(ent);
+  mapEntities.push(ent);
 }
 
 const ACTION_TO_CATEGORY = { buildings:"building", admirals:"admiral", leaders:"leader", ships:"ship" };
@@ -3325,7 +3560,13 @@ function applyScoutAnomaly(anomaly, star, scoutFleetEnt) {
       }
       const losses = removed.length;
       if (scoutFleetEnt.type === "fleet") {
+        const hadFs = scoutFleetEnt.ships.some(s => s._isFlagship);
+        const fsSurvived = survivors.some(s => s._isFlagship);
         scoutFleetEnt.ships = survivors;
+        if (hadFs && !fsSurvived && scoutFleetEnt.admiral && survivors.length > 0) {
+          setFlagship(scoutFleetEnt, pickFlagshipIndex(survivors));
+        }
+        if (survivors.length > 0) recalcFormation(scoutFleetEnt);
         if (survivors.length === 0) {
           const idx = mapEntities.indexOf(scoutFleetEnt);
           if (idx >= 0) {
@@ -3379,7 +3620,7 @@ function applyScoutAnomaly(anomaly, star, scoutFleetEnt) {
       // Small offset from the star so they don't spawn dead-center on top of it.
       const jitterAng = Math.random() * Math.PI * 2;
       const jitterR = 80 + Math.random() * 120;
-      mapEntities.push({
+      const ambushEnt = {
         type: "fleet", owner: "npc", faction: "pirate", ships: pirateShips, admiral: null,
         stance: "aggressive",
         x: star.x + Math.cos(jitterAng) * jitterR,
@@ -3388,7 +3629,14 @@ function applyScoutAnomaly(anomaly, star, scoutFleetEnt) {
         speed: Math.min(...pirateShips.map(s => s.stats.speed || 1)),
         sensorRange: Math.max(...pirateShips.map(s => s.stats.sensorRange || 0)),
         stealth: 0, label: "Pirates", inCombat: null,
-      });
+        formationType: DEFAULT_FORMATION_TYPE,
+        formationSpacing: DEFAULT_FORMATION_SPACING,
+        powerPositionPriority: DEFAULT_POWER_POSITION,
+        heading: 0,
+      };
+      for (const s of pirateShips) initShipCombatState(s, { isFlagship: false });
+      recalcFormation(ambushEnt);
+      mapEntities.push(ambushEnt);
       anomaly.result = `${pirateShips.length} hostile ship${pirateShips.length === 1 ? "" : "s"} dropped out of stealth at the heliopause.`;
       break;
     }
@@ -3564,7 +3812,7 @@ function consumeColonyShip(ent) {
   if (!ent.ships) return false;
   const shipIdx = ent.ships.findIndex(s => s && s.special === "colonize");
   if (shipIdx < 0) return false;
-  ent.ships.splice(shipIdx, 1);
+  const removed = ent.ships.splice(shipIdx, 1)[0];
   if (ent.ships.length === 0) {
     mapEntities.splice(idx, 1);
     if (selectedEntityIdx === idx) selectedEntityIdx = null;
@@ -3572,6 +3820,11 @@ function consumeColonyShip(ent) {
   } else {
     ent.speed = Math.min(...ent.ships.map(s => s.stats.speed || 1));
     ent.sensorRange = Math.max(...ent.ships.map(s => s.stats.sensorRange || 0));
+    // Auto-promote a new flagship if the colony ship happened to be it.
+    if (removed && removed._isFlagship && ent.admiral) {
+      setFlagship(ent, pickFlagshipIndex(ent.ships));
+    }
+    recalcFormation(ent);
   }
   return true;
 }
@@ -3638,6 +3891,15 @@ function entityETARealSec(ent, dist) {
 }
 const mapEntities = [];  // array of ships/fleets on the starmap
 let selectedEntityIdx = null;  // index into mapEntities, or null
+// Combat 2.0 — individual ship orders mode. When set, the next map left-click
+// becomes the dest for that ship (clamped to MAX_FLEET_LEASH from flagship).
+// Esc or right-click cancels. Stored as { entIdx, shipIdx }.
+let singleShipOrderMode = null;
+// Maximum world-units a single ship can be sent away from its fleet's
+// flagship. Roughly sensor-range scale so the fleet stays detectable as a
+// unit. Clamp applied at order time AND every tick (in case the flagship
+// moves and the ship's dest is now out of leash).
+const MAX_FLEET_LEASH = 500;
 
 function createSoloShip(card, x, y, owner) {
   const ent = {
@@ -3657,22 +3919,267 @@ function createSoloShip(card, x, y, owner) {
   return ent;
 }
 
+// Combat-priority enum. Each ship picks its own target during combat per
+// this value; "followAdmiral" mirrors the flagship's current target.
+const COMBAT_PRIORITIES = ["closest", "weakest", "strongest", "followAdmiral"];
+const DEFAULT_COMBAT_PRIORITY = "closest";
+
+// Formation defaults. The fleet entity carries `formationType`,
+// `formationSpacing`, and `powerPositionPriority` — see §12 + computeFormation.
+const FORMATION_TYPES = ["pointForward", "baseForward"];
+const FORMATION_SPACINGS = ["tight", "normal", "loose"];
+const POWER_POSITION_PRIORITIES = ["rareFront", "rareBack"];
+const DEFAULT_FORMATION_TYPE = "pointForward";
+const DEFAULT_FORMATION_SPACING = "normal";
+const DEFAULT_POWER_POSITION = "rareFront";
+
+// Initialize per-ship combat/movement state on a ship card the first time it
+// enters a fleet. Idempotent — re-running doesn't clobber existing values.
+// Combat 2.0 (v0.2.0 Phase 2): each ship carries its own target, priority,
+// formation slot, and independent movement state.
+function initShipCombatState(card, opts) {
+  if (!card) return;
+  opts = opts || {};
+  if (card._combatPriority == null) card._combatPriority = DEFAULT_COMBAT_PRIORITY;
+  if (card._isFlagship == null) card._isFlagship = !!opts.isFlagship;
+  // Position fields stay null until the formation lays them out — that way
+  // recomputing the formation can rewrite them without first having to
+  // distinguish initial-state from a legitimate slot snapshot.
+  if (card._posOffsetX == null) card._posOffsetX = null;
+  if (card._posOffsetY == null) card._posOffsetY = null;
+  if (card._destOffsetX == null) card._destOffsetX = null;
+  if (card._destOffsetY == null) card._destOffsetY = null;
+  // _forcedTarget: per-volley override set by manual focus-fire. Cleared on
+  // target death or via the Clear-focus button. (See 2.6.)
+  if (card._forcedTarget == null) card._forcedTarget = null;
+}
+
 function createFleet(admiral, ships, x, y, owner) {
   const ent = {
     type: "fleet",
     owner: owner || "player",
-    admiral,   // admiral card or null
-    ships,     // array of ship cards
+    admiral,   // admiral card or null (flagship-marked card if present)
+    ships,     // array of ship cards (each carrying per-ship combat state)
     stance: "aggressive",
     x, y,
     destX: null, destY: null,
     speed: 1, sensorRange: 0, stealth: 0,
     label: admiral ? admiral.name : "Fleet",
     inCombat: null,
+    // Combat 2.0 formation settings (v0.2.0 Phase 2). Player tweaks via the
+    // fleet panel; serialized as part of the entity.
+    formationType: DEFAULT_FORMATION_TYPE,
+    formationSpacing: DEFAULT_FORMATION_SPACING,
+    powerPositionPriority: DEFAULT_POWER_POSITION,
   };
+  // Initialize per-ship combat state and flag the flagship if there's an
+  // admiral. The admiral always sits on a specific ship (the flagship);
+  // pickFlagshipIndex chooses the rarest ship as the default.
+  const flagshipIdx = admiral ? pickFlagshipIndex(ships) : -1;
+  for (let i = 0; i < ships.length; i++) initShipCombatState(ships[i], { isFlagship: i === flagshipIdx });
   recalcFleetStats(ent);
+  // Lay out slot positions once so the formation is populated before the
+  // first frame draws (otherwise ships render at the anchor for one frame).
+  recalcFormation(ent);
   mapEntities.push(ent);
   return ent;
+}
+
+// Choose the flagship slot for a freshly-built fleet. Defaults to the
+// highest-rarity ship; ties broken by index (first match wins). Returns -1
+// if `ships` is empty.
+function pickFlagshipIndex(ships) {
+  if (!ships || ships.length === 0) return -1;
+  const RARITY_RANK = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+  let bestIdx = 0, bestRank = -1;
+  for (let i = 0; i < ships.length; i++) {
+    const r = RARITY_RANK[ships[i].rarity] != null ? RARITY_RANK[ships[i].rarity] : 0;
+    if (r > bestRank) { bestRank = r; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
+// Combat 2.0 — fleet split. Move the chosen ships out of the source fleet
+// into a brand-new fleet co-located with it. Admiral stays with the parent
+// by default; pass `takeAdmiral: true` to send the admiral to the split.
+// Returns the new fleet entity index, or -1 on failure.
+function splitFleet(srcIdx, shipIndicesToSplit, takeAdmiral) {
+  const src = mapEntities[srcIdx];
+  if (!src || src.type !== "fleet" || src.inCombat) return -1;
+  if (!Array.isArray(shipIndicesToSplit) || shipIndicesToSplit.length === 0) return -1;
+  // Take the actual cards off the source by sorted-desc index splice.
+  const sorted = [...new Set(shipIndicesToSplit)].sort((a, b) => b - a);
+  const taken = [];
+  for (const i of sorted) {
+    if (i < 0 || i >= src.ships.length) continue;
+    const removed = src.ships.splice(i, 1)[0];
+    if (removed) taken.unshift(removed); // preserve original order
+  }
+  if (taken.length === 0) return -1;
+  let newAdmiral = null;
+  if (takeAdmiral && src.admiral) {
+    newAdmiral = src.admiral;
+    src.admiral = null;
+  }
+  // If the split has no ships somehow, abort and restore.
+  if (taken.length === 0) {
+    if (newAdmiral) src.admiral = newAdmiral;
+    return -1;
+  }
+  // Refresh source: re-pick flagship if needed; re-lay-out.
+  const srcHadFlagship = src.ships.some(s => s._isFlagship);
+  if (src.ships.length > 0) {
+    if (!srcHadFlagship && src.admiral) setFlagship(src, pickFlagshipIndex(src.ships));
+    recalcFleetStats(src);
+    recalcFormation(src);
+  } else {
+    // Source emptied — remove it.
+    mapEntities.splice(srcIdx, 1);
+    if (selectedEntityIdx === srcIdx) selectedEntityIdx = null;
+    else if (selectedEntityIdx !== null && selectedEntityIdx > srcIdx) selectedEntityIdx--;
+  }
+  // Strip any lingering flagship flag on taken ships so createFleet can re-pick.
+  for (const s of taken) s._isFlagship = false;
+  // Co-locate the split slightly offset so the two fleets don't overlap.
+  const ang = Math.random() * Math.PI * 2;
+  const r = 45;
+  const newEnt = createFleet(newAdmiral, taken, src.x + Math.cos(ang) * r, src.y + Math.sin(ang) * r, "player");
+  newEnt.stance = src.stance;
+  return mapEntities.indexOf(newEnt);
+}
+
+// Combat 2.0 — merge `mergeIdx` fleet into `targetIdx` fleet. The two
+// must be friendly (player-owned), out of combat, and within mutual sensor
+// range. `keepAdmiral` picks which admiral leads the merged fleet:
+// "target" (default), "merge", or "none". The other admiral returns to the
+// shared colony queue if a colony is in range, else rides along on the
+// merged ship roster's leader slot... no — admiral has its own card, not a
+// ship card. If no colony in range, the loser admiral is consumed (the
+// fleet can only carry one). The merged fleet inherits the target's id.
+function combineFleets(targetIdx, mergeIdx, keepAdmiral) {
+  if (targetIdx === mergeIdx) return false;
+  const target = mapEntities[targetIdx];
+  const merge = mapEntities[mergeIdx];
+  if (!target || !merge) return false;
+  if (target.type !== "fleet" || merge.type !== "fleet") return false;
+  if (target.owner !== "player" || merge.owner !== "player") return false;
+  if (target.inCombat || merge.inCombat) return false;
+  // Range check — symmetric mutual visibility.
+  const baseRange = getEffectiveBaseSensorRange();
+  const dx = target.x - merge.x, dy = target.y - merge.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const inRange = dist <= (target.sensorRange || baseRange) * 50 && dist <= (merge.sensorRange || baseRange) * 50;
+  if (!inRange) return false;
+  // Decide which admiral leads the merged fleet. The other admiral returns
+  // to the colony queue if both fleets are at a colony; otherwise the
+  // unused admiral is lost (this is a deliberate cost of combining without
+  // a colony nearby — the merge is permanent without a place to store it).
+  let losingAdmiral = null;
+  if (keepAdmiral === "merge") {
+    losingAdmiral = target.admiral;
+    target.admiral = merge.admiral;
+  } else if (keepAdmiral === "none") {
+    losingAdmiral = target.admiral || merge.admiral;
+    target.admiral = null;
+  } else {
+    losingAdmiral = merge.admiral;
+    // keep target.admiral as-is
+  }
+  if (losingAdmiral) {
+    const colHere = getEntityColony(target);
+    if (colHere) {
+      colHere.planet.colony.queue.push(losingAdmiral);
+    }
+    // else: admiral is consumed (warned about in the modal copy).
+  }
+  // Move ships over (clear flagship flags so the merged fleet re-picks one).
+  for (const s of merge.ships) s._isFlagship = false;
+  for (const s of target.ships) s._isFlagship = false;
+  target.ships.push(...merge.ships);
+  // Pick a flagship if the merged fleet has an admiral.
+  if (target.admiral) setFlagship(target, pickFlagshipIndex(target.ships));
+  // Re-init per-ship state + re-lay-out the formation.
+  for (const s of target.ships) initShipCombatState(s, { isFlagship: !!s._isFlagship });
+  recalcFleetStats(target);
+  recalcFormation(target);
+  // Remove the merged-in fleet entity.
+  const removeIdx = mapEntities.indexOf(merge);
+  if (removeIdx >= 0) {
+    mapEntities.splice(removeIdx, 1);
+    if (selectedEntityIdx === removeIdx) selectedEntityIdx = null;
+    else if (selectedEntityIdx !== null && selectedEntityIdx > removeIdx) selectedEntityIdx--;
+  }
+  return true;
+}
+
+// Combat 2.0 — move an admiral between two friendly fleets. Eligibility:
+// both fleets player-owned, out of combat, and BOTH flagships must be
+// mutually within sensor range. Receiving fleet auto-picks a new flagship.
+// If the source ends up with no admiral, its existing flagship flag clears
+// and any later combat treats it as admiral-less.
+function transferAdmiral(srcIdx, dstIdx) {
+  if (srcIdx === dstIdx) return false;
+  const src = mapEntities[srcIdx];
+  const dst = mapEntities[dstIdx];
+  if (!src || !dst) return false;
+  if (src.type !== "fleet" || dst.type !== "fleet") return false;
+  if (src.owner !== "player" || dst.owner !== "player") return false;
+  if (src.inCombat || dst.inCombat) return false;
+  if (!src.admiral) return false;
+  const baseRange = getEffectiveBaseSensorRange();
+  const dx = src.x - dst.x, dy = src.y - dst.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const inRange = dist <= (src.sensorRange || baseRange) * 50 && dist <= (dst.sensorRange || baseRange) * 50;
+  if (!inRange) return false;
+  // If destination already has an admiral, this is a swap — the existing
+  // dst admiral goes to the source slot.
+  const incoming = src.admiral;
+  const outgoing = dst.admiral; // may be null
+  src.admiral = outgoing;
+  dst.admiral = incoming;
+  // Re-pick flagships on both fleets to match the new admiral state.
+  for (const s of src.ships) s._isFlagship = false;
+  for (const s of dst.ships) s._isFlagship = false;
+  if (src.admiral && src.ships.length > 0) setFlagship(src, pickFlagshipIndex(src.ships));
+  if (dst.admiral && dst.ships.length > 0) setFlagship(dst, pickFlagshipIndex(dst.ships));
+  recalcFleetStats(src);
+  recalcFleetStats(dst);
+  return true;
+}
+
+// Eligible-friend list for the Combine / Transfer modals. Returns indices of
+// player-owned, non-combat fleets within mutual sensor range of `srcIdx`.
+function getNearbyFriendlyFleets(srcIdx) {
+  const src = mapEntities[srcIdx];
+  if (!src || src.type !== "fleet") return [];
+  const baseRange = getEffectiveBaseSensorRange();
+  const out = [];
+  for (let i = 0; i < mapEntities.length; i++) {
+    if (i === srcIdx) continue;
+    const e = mapEntities[i];
+    if (!e || e.type !== "fleet" || e.owner !== "player" || e.inCombat) continue;
+    const dx = src.x - e.x, dy = src.y - e.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist <= (src.sensorRange || baseRange) * 50 && dist <= (e.sensorRange || baseRange) * 50) out.push(i);
+  }
+  return out;
+}
+
+// Promote `ships[idx]` to flagship, clearing the flag on every other ship.
+// Returns the new flagship card or null.
+function setFlagship(ent, idx) {
+  if (!ent || !ent.ships) return null;
+  if (idx < 0 || idx >= ent.ships.length) return null;
+  for (let i = 0; i < ent.ships.length; i++) ent.ships[i]._isFlagship = (i === idx);
+  return ent.ships[idx];
+}
+
+// Find the current flagship's ship-array index. Returns -1 if no admiral or
+// no flagship has been marked.
+function getFlagshipIndex(ent) {
+  if (!ent || !ent.admiral || !ent.ships) return -1;
+  for (let i = 0; i < ent.ships.length; i++) if (ent.ships[i]._isFlagship) return i;
+  return -1;
 }
 
 function recalcFleetStats(ent) {
@@ -3695,16 +4202,25 @@ function recalcFleetStats(ent) {
   // Artifact sensorRangePercent: stacks on top of admiral bonus.
   const sensorMul = getArtifactBonuses().sensorMul;
   if (sensorMul) ent.sensorRange = Math.round(ent.sensorRange * (1 + sensorMul / 100));
+  // Soft-cap penalty (Combat 2.0): a fleet packed over its admiral's
+  // comfortable size sees less, since coordinating the extras eats into
+  // sensor discipline. Combat damage is penalised separately in fireShot.
+  const overcap = getFleetOvercapPenalty(ent);
+  if (overcap < 1.0) {
+    ent.sensorRange = Math.max(1, Math.round(ent.sensorRange * overcap));
+  }
 }
 
-// ── Fleet formation layout ──
-// Per-ship polar offsets from the fleet center. Used to place miniature
-// ship icons around the main fleet mark and to source weapon-origin
-// positions for combat visuals. Offsets are in WORLD units so they stay
-// consistent across zoom. Lazy-computed and cached on the entity; derived
-// from ships.length so it doesn't need to round-trip through save files.
-const FORMATION_RING_CAPS  = [6, 12, 18, 24];   // max ships per ring
-const FORMATION_RING_RADII = [18, 32, 46, 60];  // world units per ring
+// ── Fleet formation layout (Combat 2.0, v0.2.0 Phase 2) ──
+// Each ship holds its own slot offset (_posOffsetX/Y) in fleet-local frame:
+//   +x = forward (direction the fleet currently faces)
+//   +y = perpendicular (left of the fleet)
+// recalcFormation lays the slots out as a filled triangle (point-forward or
+// base-forward) sorted by rarity per powerPositionPriority. getShipWorldPos
+// rotates the local offset by ent.heading into world coordinates.
+// Once combat starts, per-ship movement (2.5) drifts _posOffsetX/Y away from
+// these slot positions; recalcFormation only re-snaps when the fleet's
+// membership / formation settings change.
 
 // Miniature ship triangle size (at zoom 1.0), by rarity. Wide spread so a
 // legendary flagship in the formation visually dominates common escorts.
@@ -3716,63 +4232,143 @@ const MINI_SHIP_SIZES = {
   legendary: 9.0,
 };
 
-function _formationHash(i, salt) {
-  // Deterministic per-ship jitter; returns 0..1.
-  let x = (i * 374761393 + salt * 668265263) | 0;
-  x = (x ^ (x >>> 13)) * 1274126177;
-  return ((x ^ (x >>> 16)) >>> 0) / 4294967296;
-}
+const FORMATION_SPACING_MUL = { tight: 0.7, normal: 1.0, loose: 1.5 };
+const FORMATION_ROW_DIST = 22;  // base world-units between rows
+const FORMATION_COL_DIST = 24;  // base world-units between ships in a row
 
-function computeFormation(n) {
+// Generate triangle slot offsets in fleet-local frame (+x = forward).
+// pointForward: apex at front (1 ship), widens toward rear.
+// baseForward:  wide base at front, single apex at rear.
+// Last row is partially filled when N isn't triangular.
+function computeFormation(n, type, spacing) {
+  if (n <= 0) return [];
+  const sm = FORMATION_SPACING_MUL[spacing] || 1.0;
+  const rowDist = FORMATION_ROW_DIST * sm;
+  const colDist = FORMATION_COL_DIST * sm;
+  // How many rows we need so 1+2+...+totalRows >= n.
+  let totalRows = 1, capSum = 0;
+  while (capSum < n) {
+    capSum += totalRows;
+    if (capSum >= n) break;
+    totalRows++;
+  }
+  // Front-to-back row widths. pointForward = narrow → wide. baseForward = wide → narrow.
+  const rowCounts = [];
+  if (type === "baseForward") {
+    for (let r = totalRows; r >= 1; r--) rowCounts.push(r);
+  } else {
+    for (let r = 1; r <= totalRows; r++) rowCounts.push(r);
+  }
+  // x-axis: row 0 at +xFront, row totalRows-1 at -xFront → anchor stays in the middle.
+  const totalSpan = (totalRows - 1) * rowDist;
+  const xFront = totalSpan / 2;
   const offsets = [];
-  let idx = 0;
-  for (let ring = 0; ring < FORMATION_RING_CAPS.length && idx < n; ring++) {
-    const count = Math.min(FORMATION_RING_CAPS[ring], n - idx);
-    const baseRadius = FORMATION_RING_RADII[ring];
-    const ringPhase = ring * 0.35;
-    for (let k = 0; k < count; k++) {
-      const evenAngle = (k / count) * Math.PI * 2 + ringPhase;
-      const jitterA = (_formationHash(idx, 1) - 0.5) * (Math.PI * 2 / count) * 0.25;
-      const jitterR = (_formationHash(idx, 2) - 0.5) * 0.18;
-      offsets.push({
-        angle: evenAngle + jitterA,
-        radius: baseRadius * (1 + jitterR),
-      });
-      idx++;
+  let placed = 0;
+  for (let r = 0; r < rowCounts.length && placed < n; r++) {
+    const cap = rowCounts[r];
+    const rowShips = Math.min(cap, n - placed);
+    const x = xFront - r * rowDist;
+    for (let c = 0; c < rowShips; c++) {
+      const y = (c - (rowShips - 1) / 2) * colDist;
+      offsets.push({ x, y });
+      placed++;
     }
   }
   return offsets;
 }
 
-function getFormation(ent) {
-  if (ent.type !== "fleet") return null;
-  const n = ent.ships ? ent.ships.length : 0;
-  if (!ent._formation || ent._formationN !== n) {
-    ent._formation = computeFormation(n);
-    ent._formationN = n;
+// Lay out ships into formation slots. Writes _posOffsetX/Y onto each ship.
+// Sorts ships by rarity per the fleet's powerPositionPriority so the rarest
+// ships sit at the front (or back) of the triangle.
+const _RARITY_RANK = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+function recalcFormation(ent) {
+  if (!ent || ent.type !== "fleet" || !ent.ships || ent.ships.length === 0) return;
+  const slots = computeFormation(
+    ent.ships.length,
+    ent.formationType || DEFAULT_FORMATION_TYPE,
+    ent.formationSpacing || DEFAULT_FORMATION_SPACING,
+  );
+  // Sort ships by rarity. Default rareFront → highest rarity first (slot 0
+  // = front of formation). rareBack → commonest first.
+  const priority = ent.powerPositionPriority || DEFAULT_POWER_POSITION;
+  const indexed = ent.ships.map((s, i) => ({ s, i, rank: _RARITY_RANK[s.rarity] != null ? _RARITY_RANK[s.rarity] : 0 }));
+  indexed.sort((a, b) => priority === "rareBack" ? (a.rank - b.rank) || (a.i - b.i) : (b.rank - a.rank) || (a.i - b.i));
+  for (let k = 0; k < indexed.length; k++) {
+    const slot = slots[k] || { x: 0, y: 0 };
+    const ship = indexed[k].s;
+    ship._posOffsetX = slot.x;
+    ship._posOffsetY = slot.y;
+    ship._slotIdx = k;
+    ship._destOffsetX = null;
+    ship._destOffsetY = null;
   }
-  return ent._formation;
+  ent._formationDirty = false;
 }
 
 // World coordinates for a given ship. For solo ships, returns the entity's
-// position. For fleets, adds the ship's formation offset to the fleet
-// center. The `_time` argument is reserved for future formation sway.
+// position. For fleets, rotates the ship's local offset by ent.heading and
+// adds to the fleet anchor. Per-ship movement (2.5) updates _posOffsetX/Y
+// directly so this fn keeps working as ships drift.
 function getShipWorldPos(ent, shipIdx, _time) {
   if (ent.type !== "fleet") {
     return { x: ent.x, y: ent.y };
   }
-  const formation = getFormation(ent);
-  const slot = formation[shipIdx];
-  if (!slot) return { x: ent.x, y: ent.y };
+  const ship = ent.ships && ent.ships[shipIdx];
+  if (!ship || ship._posOffsetX == null) return { x: ent.x, y: ent.y };
+  const h = ent.heading || 0;
+  const cos = Math.cos(h), sin = Math.sin(h);
+  const ox = ship._posOffsetX, oy = ship._posOffsetY;
   return {
-    x: ent.x + Math.cos(slot.angle) * slot.radius,
-    y: ent.y + Math.sin(slot.angle) * slot.radius,
+    x: ent.x + ox * cos - oy * sin,
+    y: ent.y + ox * sin + oy * cos,
   };
 }
 
+// Update the fleet's heading from movement / combat. Called from
+// tickEntities (out of combat) and tickCombats (in combat). Heading is the
+// world-angle that "forward" points.
+function updateFleetHeading(ent) {
+  if (!ent || ent.type !== "fleet") return;
+  let tx = null, ty = null;
+  if (ent.inCombat) {
+    // Face the combat partner — heading derives from combat state via the
+    // combat record's other side. tickCombats sets _combatHeading for us
+    // before this is invoked, so we just consume it.
+    if (ent._combatHeading != null) ent.heading = ent._combatHeading;
+    return;
+  }
+  if (ent.destX != null && ent.destY != null) {
+    tx = ent.destX; ty = ent.destY;
+  }
+  if (tx == null) return; // idle — keep last heading
+  const dx = tx - ent.x, dy = ty - ent.y;
+  if (dx * dx + dy * dy < 1e-6) return;
+  ent.heading = Math.atan2(dy, dx);
+}
+
+// Soft fleet cap (Combat 2.0, v0.2.0 Phase 2). Returns the admiral's
+// "comfortable" ship count — fleets can EXCEED this freely, but each ship
+// over the cap drags the fleet's combat effectiveness down via
+// getFleetOvercapPenalty (applied in fireShot + recalcFleetStats sensor).
+// The old hard cap that ejected excess ships back to the colony queue is
+// gone — the player decides how oversized a fleet they want to fight with.
 function getMaxFleetShips(admiral) {
   const base = admiral ? (admiral.stats.maxFleetSize || 4) : 3;
   return base + getArtifactBonuses().fleetSize;
+}
+
+// Combat-effectiveness multiplier from being over the soft cap. Each
+// over-cap ship subtracts 10% effectiveness, capped at 80% loss so a deeply
+// over-cap fleet still does *some* damage (and still sees out a bit). Solo
+// ships and fleets at-or-under the cap return 1.0.
+const OVERCAP_PENALTY_PER_SHIP = 0.10;
+const OVERCAP_PENALTY_FLOOR = 0.20; // 1 - 0.80 cap
+function getFleetOvercapPenalty(ent) {
+  if (!ent || ent.type !== "fleet" || !ent.ships) return 1.0;
+  const cap = getMaxFleetShips(ent.admiral);
+  const over = ent.ships.length - cap;
+  if (over <= 0) return 1.0;
+  return Math.max(OVERCAP_PENALTY_FLOOR, 1 - over * OVERCAP_PENALTY_PER_SHIP);
 }
 
 // Check if entity is at a colony star (within snap distance)
@@ -3813,6 +4409,12 @@ function tickEntities(dt) {
     const dy = ent.destY - ent.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const move = ent.speed * dt * WORLD_SPEED_MULT;
+
+    // Refresh fleet heading from movement direction. This rotates the
+    // triangle formation so the apex/base points along the travel vector.
+    if (ent.type === "fleet" && dist > 1e-6) {
+      ent.heading = Math.atan2(dy, dx);
+    }
 
     if (move >= dist) {
       // Arrived
@@ -3997,6 +4599,118 @@ function pickRandomAlive(ships) {
   return alive.length > 0 ? alive[Math.floor(Math.random() * alive.length)] : null;
 }
 
+// Combat 2.0 — per-ship target selection. Uses the attacker's
+// _combatPriority (default "closest") and respects a manual focus-fire
+// override (_forcedTarget = enemy ship index, set in 2.6's overlay).
+// Returns a ship state object from enemySide.ships, or null if no alive
+// targets remain.
+function pickShipTarget(combat, attackerSide, enemySide, attackerShipState) {
+  if (!enemySide.ships.length) return null;
+  const aliveEnemies = enemySide.ships.filter(s => s.alive);
+  if (aliveEnemies.length === 0) return null;
+  const card = attackerShipState.card;
+  // Manual focus-fire (clicked-target). Stored as the enemy index — clear it
+  // if the target died so we don't keep checking.
+  if (card._forcedTarget != null) {
+    const t = enemySide.ships[card._forcedTarget];
+    if (t && t.alive) return t;
+    card._forcedTarget = null;
+  }
+  const priority = card._combatPriority || DEFAULT_COMBAT_PRIORITY;
+  if (priority === "weakest") {
+    return aliveEnemies.reduce((best, s) => {
+      const hp = (s.currentShields || 0) + (s.currentArmor || 0);
+      const bestHp = (best.currentShields || 0) + (best.currentArmor || 0);
+      return hp < bestHp ? s : best;
+    });
+  }
+  if (priority === "strongest") {
+    return aliveEnemies.reduce((best, s) => {
+      const hp = (s.currentShields || 0) + (s.currentArmor || 0);
+      const bestHp = (best.currentShields || 0) + (best.currentArmor || 0);
+      return hp > bestHp ? s : best;
+    });
+  }
+  if (priority === "followAdmiral") {
+    // Mirror the flagship's current target. Flagship still uses its own
+    // priority (not "followAdmiral" recursively).
+    const flagship = attackerSide.ships.find(s => s.alive && s.card._isFlagship);
+    if (flagship && flagship !== attackerShipState && flagship._currentTarget && flagship._currentTarget.alive) {
+      return flagship._currentTarget;
+    }
+    // No usable flagship → fall through to "closest".
+  }
+  // closest (and followAdmiral fallback): nearest enemy by world distance.
+  const attackerIdx = attackerSide.ships.indexOf(attackerShipState);
+  const aPos = getShipWorldPos(attackerSide.entity, attackerIdx, 0);
+  let best = aliveEnemies[0], bestDist = Infinity;
+  for (const s of aliveEnemies) {
+    const tIdx = enemySide.ships.indexOf(s);
+    const tPos = getShipWorldPos(enemySide.entity, tIdx, 0);
+    const d = (tPos.x - aPos.x) ** 2 + (tPos.y - aPos.y) ** 2;
+    if (d < bestDist) { bestDist = d; best = s; }
+  }
+  return best;
+}
+
+// Per-ship combat movement. Each alive ship picks (or keeps) a target via
+// pickShipTarget, then steps toward its ideal engagement distance from that
+// target — the max range of its longest weapon minus a small buffer so
+// brief drift doesn't immediately kick it out of range. Brawlers (short
+// range) naturally push forward; snipers (long range) hang back. Per-ship
+// _posOffsetX/Y is updated in fleet-local coords so getShipWorldPos picks
+// up the new position.
+const COMBAT_DIST_BUFFER = 60;        // back off this far inside max range
+const COMBAT_MOVE_DEADBAND = 8;       // don't fidget within this distance of ideal
+function tickShipMovement(combat, dt) {
+  for (const sideKey of ["sideA", "sideB"]) {
+    const side = combat[sideKey];
+    const enemy = sideKey === "sideA" ? combat.sideB : combat.sideA;
+    if (side.entity.type !== "fleet" || !side.entity.ships) continue;
+    const h = side.entity.heading || 0;
+    const cosNegH = Math.cos(-h), sinNegH = Math.sin(-h);
+    for (let i = 0; i < side.ships.length; i++) {
+      const shipState = side.ships[i];
+      if (!shipState.alive) continue;
+      // Cache target across volleys so movement and firing agree.
+      if (!shipState._currentTarget || !shipState._currentTarget.alive) {
+        shipState._currentTarget = pickShipTarget(combat, side, enemy, shipState);
+      }
+      const target = shipState._currentTarget;
+      if (!target) continue;
+      // Ideal engagement distance = longest weapon range - buffer.
+      const weapons = getWeaponInfo(shipState.card);
+      let maxRange = 0;
+      for (const w of weapons) {
+        const r = RANGE_THRESHOLDS[w.range] || 0;
+        if (r > maxRange) maxRange = r;
+      }
+      if (maxRange === 0) continue; // weaponless ship — stay in formation
+      const idealDist = Math.max(40, maxRange - COMBAT_DIST_BUFFER);
+      // Current world positions.
+      const shipPos = getShipWorldPos(side.entity, i, 0);
+      const targetIdx = enemy.ships.indexOf(target);
+      const targetPos = getShipWorldPos(enemy.entity, targetIdx, 0);
+      const dx = targetPos.x - shipPos.x;
+      const dy = targetPos.y - shipPos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const offset = dist - idealDist; // +ve = too far → close; -ve = too close → back off
+      if (Math.abs(offset) < COMBAT_MOVE_DEADBAND) continue;
+      const dirSign = offset > 0 ? 1 : -1;
+      const nx = dist > 1e-6 ? dx / dist : 0;
+      const ny = dist > 1e-6 ? dy / dist : 0;
+      const stepMag = Math.min(Math.abs(offset), (shipState.card.stats.speed || 1) * dt * WORLD_SPEED_MULT);
+      const newWX = shipPos.x + nx * stepMag * dirSign;
+      const newWY = shipPos.y + ny * stepMag * dirSign;
+      // Inverse-rotate the new world delta back into fleet-local coords.
+      const ax = newWX - side.entity.x;
+      const ay = newWY - side.entity.y;
+      shipState.card._posOffsetX = ax * cosNegH - ay * sinNegH;
+      shipState.card._posOffsetY = ax * sinNegH + ay * cosNegH;
+    }
+  }
+}
+
 function applyDamage(target, weaponType, baseDmg) {
   const mult = COMBAT_TRIANGLE[weaponType];
   let dmg = baseDmg;
@@ -4028,30 +4742,53 @@ function fireShot(combat, turnEntry) {
   const ship = turnEntry.ship;
   if (!ship.alive) return;
   const enemySide = turnEntry.enemySide;
+  const attackerSide = turnEntry.side === "a" ? combat.sideA : combat.sideB;
 
   const weapons = getWeaponInfo(ship.card);
   if (weapons.length === 0) return;
 
-  // Every weapon whose range covers the current distance fires this volley.
-  const inRange = weapons.filter(w => combat.distance <= (RANGE_THRESHOLDS[w.range] ?? 0));
+  const attackerEnt  = attackerSide.entity;
+  const defenderEnt  = enemySide.entity;
+  const firerIdx  = Math.max(0, attackerSide.ships.indexOf(ship));
+  const firerPos  = getShipWorldPos(attackerEnt, firerIdx, 0);
+  // Soft-cap penalty: scale this attacker's damage by the fleet's
+  // overcap multiplier. Solo ships and at-cap fleets see no change.
+  const damageMul = getFleetOvercapPenalty(attackerEnt);
+
+  // Combat 2.0 — per-ship targeting. Pick this volley's target via
+  // pickShipTarget (priority + manual focus-fire); cache it on the ship for
+  // movement to read. If the target dies mid-volley, re-pick once for the
+  // remaining weapons.
+  let target = pickShipTarget(combat, attackerSide, enemySide, ship);
+  if (!target) return;
+  ship._currentTarget = target;
+
+  // Per-pair distance — Combat 2.0 individual ships have different distances
+  // from their targets, so we range-check per attacker/target pair rather
+  // than using combat.distance (which is only fleet-centroid).
+  let targetIdx = Math.max(0, enemySide.ships.indexOf(target));
+  let targetPos = getShipWorldPos(defenderEnt, targetIdx, 0);
+  let pairDist = Math.sqrt((targetPos.x - firerPos.x) ** 2 + (targetPos.y - firerPos.y) ** 2);
+  let inRange = weapons.filter(w => pairDist <= (RANGE_THRESHOLDS[w.range] ?? 0));
   if (inRange.length === 0) {
     combat.log.push({ time: combat.gameTime, text: `${ship.card.name} — out of range`, type: "range" });
     return;
   }
 
-  const attackerSide = turnEntry.side === "a" ? combat.sideA : combat.sideB;
-  const attackerEnt  = attackerSide.entity;
-  const defenderEnt  = enemySide.entity;
-  const firerIdx  = Math.max(0, attackerSide.ships.indexOf(ship));
-  const firerPos  = getShipWorldPos(attackerEnt, firerIdx, 0);
-
   for (const firedWeapon of inRange) {
-    // Re-pick target per weapon so a kill mid-volley redirects remaining fire.
-    const target = pickRandomAlive(enemySide.ships);
-    if (!target) return;
-
-    const targetIdx = Math.max(0, enemySide.ships.indexOf(target));
-    const targetPos = getShipWorldPos(defenderEnt, targetIdx, 0);
+    // If the target died this volley, re-pick. This matches the prior
+    // "kill mid-volley redirects remaining fire" behavior.
+    if (!target.alive) {
+      const next = pickShipTarget(combat, attackerSide, enemySide, ship);
+      if (!next) return;
+      target = next;
+      ship._currentTarget = target;
+      targetIdx = Math.max(0, enemySide.ships.indexOf(target));
+      targetPos = getShipWorldPos(defenderEnt, targetIdx, 0);
+      pairDist = Math.sqrt((targetPos.x - firerPos.x) ** 2 + (targetPos.y - firerPos.y) ** 2);
+      // Range-check this weapon against the new target.
+      if (pairDist > (RANGE_THRESHOLDS[firedWeapon.range] ?? 0)) continue;
+    }
     const midPx = (firerPos.x + targetPos.x) / 2;
     const midPy = (firerPos.y + targetPos.y) / 2;
 
@@ -4073,15 +4810,34 @@ function fireShot(combat, turnEntry) {
       }
     }
 
-    applyDamage(target, firedWeapon.type, firedWeapon.dmg);
+    const effectiveDmg = Math.max(1, Math.round(firedWeapon.dmg * damageMul));
+    applyDamage(target, firedWeapon.type, effectiveDmg);
     const killText = target.alive ? "" : " — DESTROYED";
     spawnWeaponVisual(firerPos.x, firerPos.y, targetPos.x, targetPos.y, firedWeapon.type);
     spawnCombatParticle(targetPos.x, targetPos.y, firedWeapon.type, true);
     combat.log.push({
       time: combat.gameTime,
-      text: `${ship.card.name} fires ${firedWeapon.type} at ${target.card.name} — HIT ${firedWeapon.dmg} dmg${killText}`,
+      text: `${ship.card.name} fires ${firedWeapon.type} at ${target.card.name} — HIT ${effectiveDmg} dmg${killText}`,
       type: target.alive ? "hit" : "kill",
     });
+    // Combat 2.0 — flagship permadeath. When the killed ship was carrying
+    // the admiral, destroy the admiral card permanently and recompute fleet
+    // stats RIGHT NOW so the overcap penalty climbs (smaller maxFleetSize)
+    // and the commandBonus is gone for the remaining volleys this combat.
+    // The admiral card never re-enters circulation — heaviest stakes in the
+    // game, per the design.
+    if (!target.alive && target.card._isFlagship && enemySide.entity && enemySide.entity.admiral) {
+      const lostAdmiral = enemySide.entity.admiral;
+      enemySide.entity.admiral = null;
+      if (enemySide.entity.type === "fleet" && enemySide.entity.ships && enemySide.entity.ships.length > 0) {
+        recalcFleetStats(enemySide.entity);
+      }
+      combat.log.push({
+        time: combat.gameTime,
+        text: `Admiral ${lostAdmiral.name} lost with flagship ${target.card.name}!`,
+        type: "kill",
+      });
+    }
   }
 }
 
@@ -4105,8 +4861,19 @@ function syncSurvivorState(side) {
       s.card._combatArmor = s.currentArmor;
       return s.card;
     });
+    // Detect flagship loss before rebuilding — if the previous flagship
+    // didn't survive, auto-pick a new one from the survivors. (Permadeath of
+    // the admiral card itself lives in 2.4's combat-end logic.)
+    const hadFlagship = ent.ships.some(s => s._isFlagship);
+    const flagshipSurvived = aliveCards.some(s => s._isFlagship);
     ent.ships = aliveCards;
-    if (ent.ships.length > 0) recalcFleetStats(ent);
+    if (ent.ships.length > 0) {
+      if (hadFlagship && !flagshipSurvived && ent.admiral) {
+        setFlagship(ent, pickFlagshipIndex(ent.ships));
+      }
+      recalcFleetStats(ent);
+      recalcFormation(ent);
+    }
   } else if (ent.type === "ship") {
     const state = side.ships[0];
     if (state.alive) {
@@ -4309,11 +5076,14 @@ function tickCombats(rawDt) {
     const dist = Math.sqrt(dx * dx + dy * dy);
     combat.distance = dist;
 
-    // Face each other throughout the engagement (ships would otherwise
-    // keep their pre-combat heading from lastHeadingAngle).
+    // Face each other throughout the engagement. Sets `heading` (Combat 2.0
+    // — used by getShipWorldPos and the formation rotation) and the legacy
+    // `lastHeadingAngle` (solo-ship icon orientation).
     if (dx !== 0 || dy !== 0) {
-      entA.lastHeadingAngle = Math.atan2(dy, dx);
-      entB.lastHeadingAngle = Math.atan2(-dy, -dx);
+      const ha = Math.atan2(dy, dx);
+      const hb = Math.atan2(-dy, -dx);
+      entA.lastHeadingAngle = ha; entA.heading = ha;
+      entB.lastHeadingAngle = hb; entB.heading = hb;
     }
 
     if (dist > ENGAGED_DISTANCE) {
@@ -4333,6 +5103,11 @@ function tickCombats(rawDt) {
       tryDisengage(combat);
       if (combat.phase === "resolved") continue;
     }
+
+    // Combat 2.0 — per-ship movement. Each ship maintains its own ideal
+    // engagement distance from its current target. Runs every tick so the
+    // positions update smoothly across closing → engaged.
+    tickShipMovement(combat, dt);
 
     // Shot timer
     combat.shotTimer -= dt;
@@ -4467,6 +5242,34 @@ function drawEntities(ctx, time) {
       ctx.fill();
     }
 
+    // Combat 2.0 — per-ship destination arrows (individual ship orders).
+    // Drawn dimmer than the fleet line and in a distinct hue so the player
+    // can tell which dest belongs to which order.
+    if (ent.type === "fleet" && ent.ships && ent.owner === "player") {
+      for (let si = 0; si < ent.ships.length; si++) {
+        const s = ent.ships[si];
+        if (s._destWX == null || s._destWY == null) continue;
+        const shipWorld = getShipWorldPos(ent, si, 0);
+        const shipScreen = worldToScreen(shipWorld.x, shipWorld.y);
+        const dstScreen = worldToScreen(s._destWX, s._destWY);
+        ctx.save();
+        ctx.strokeStyle = "rgba(192, 160, 80, 0.55)"; // warm tone, distinct from fleet blue
+        ctx.lineWidth = 1.2 * camera.zoom;
+        ctx.setLineDash([5 * camera.zoom, 4 * camera.zoom]);
+        ctx.lineDashOffset = -time * 30;
+        ctx.beginPath();
+        ctx.moveTo(shipScreen.x, shipScreen.y);
+        ctx.lineTo(dstScreen.x, dstScreen.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(192, 160, 80, 0.45)";
+        ctx.beginPath();
+        ctx.arc(dstScreen.x, dstScreen.y, 2.5 * camera.zoom, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
     // Entity icon
     const isFleet = ent.type === "fleet";
     const size = (isFleet ? 8 : 6) * camera.zoom;
@@ -4570,19 +5373,18 @@ function drawEntities(ctx, time) {
       // When stationary, ships point radially outward from the fleet
       // center, suggesting the formation "facing out".
       if (ent.ships.length > 0 && camera.zoom > 0.45) {
-        const formation = getFormation(ent);
         const shipCap = camera.zoom < 1.0 ? 6 : 18;
         const visibleShips = Math.min(ent.ships.length, shipCap);
 
         const moving = (ent.destX !== null && ent.destY !== null);
+        // Heading is maintained by updateFleetHeading; only compute a fresh
+        // value here for the sway perpendicular when moving.
         let currentHeading = null;
         if (moving) {
           const dxh = ent.destX - ent.x;
           const dyh = ent.destY - ent.y;
           if (dxh !== 0 || dyh !== 0) currentHeading = Math.atan2(dyh, dxh);
         }
-        // Remember the last heading so ships retain their facing after stopping.
-        if (currentHeading !== null) ent.lastHeadingAngle = currentHeading;
         // Perpendicular unit vector to CURRENT heading (used for sway — only
         // while actually moving, so stationary ships don't drift sideways).
         let perpX = 0, perpY = 0;
@@ -4590,16 +5392,19 @@ function drawEntities(ctx, time) {
           perpX = -Math.sin(currentHeading);
           perpY =  Math.cos(currentHeading);
         }
+        // Fleet's current orientation for rotating the slot offsets.
+        const h = ent.heading || 0;
+        const cosH = Math.cos(h), sinH = Math.sin(h);
 
         for (let si = 0; si < visibleShips; si++) {
           const ship = ent.ships[si];
-          const slot = formation[si];
-          if (!slot) continue;
+          if (ship._posOffsetX == null) continue; // formation not yet laid out
           const phase = si * 1.31;  // prime-ish spacing so ships don't sync
 
-          // Formation offset (world units) with sway only while actually moving.
-          let offWX = Math.cos(slot.angle) * slot.radius;
-          let offWY = Math.sin(slot.angle) * slot.radius;
+          // Rotate the fleet-local slot offset into world coords.
+          const lx = ship._posOffsetX, ly = ship._posOffsetY;
+          let offWX = lx * cosH - ly * sinH;
+          let offWY = lx * sinH + ly * cosH;
           if (currentHeading !== null) {
             const sway = Math.sin(time * 1.4 + phase) * 3.5;  // world units
             offWX += perpX * sway;
@@ -4608,18 +5413,13 @@ function drawEntities(ctx, time) {
           const fx = offWX * camera.zoom;
           const fy = offWY * camera.zoom;
 
-          // Orientation: last known heading if available (persists after
-          // stopping), else radial-outward default for brand-new formations.
-          // Wobble only while actively moving.
-          let triAngle;
-          if (ent.lastHeadingAngle !== undefined) {
-            const wobble = (currentHeading !== null)
-              ? Math.sin(time * 2.1 + phase * 0.7) * 0.12
-              : 0;
-            triAngle = ent.lastHeadingAngle + Math.PI / 2 + wobble;
-          } else {
-            triAngle = slot.angle + Math.PI / 2;
-          }
+          // Orientation: point along the fleet's heading + small wobble
+          // when moving. The +π/2 offset matches the silhouette/glyph
+          // convention used by solo ships.
+          const wobble = (currentHeading !== null)
+            ? Math.sin(time * 2.1 + phase * 0.7) * 0.12
+            : 0;
+          const triAngle = h + Math.PI / 2 + wobble;
 
           const shipRarity = ship.rarity || "common";
           const shipCol = ent.owner === "npc"
@@ -4983,6 +5783,10 @@ function getCombatAtScreen(sx, sy) {
 
 // ── Combat Overlay UI ──
 let viewedCombat = null;
+// Combat 2.0 — manual focus-fire UI state. When set, the next click on an
+// enemy tile binds that target to the picker ship's `_forcedTarget`.
+// Cleared on bind, on Esc, or by re-clicking the picker tile.
+let combatFocusPick = null; // { sideKey: "a"|"b", shipIdx: number }
 let lastLogLength = 0;
 
 function showCombatOverlay(combat) {
@@ -5000,6 +5804,7 @@ function showCombatOverlay(combat) {
 
 function hideCombatOverlay() {
   viewedCombat = null;
+  combatFocusPick = null; // exit any in-flight focus-pick when overlay closes
   const overlay = document.getElementById("combat-overlay");
   const backdrop = document.getElementById("combat-backdrop");
   overlay.classList.remove("visible");
@@ -5007,10 +5812,36 @@ function hideCombatOverlay() {
   setTimeout(() => { overlay.style.display = "none"; }, 300);
 }
 
+// Cancel combat focus-pick on Escape (when the overlay is open).
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && combatFocusPick && viewedCombat) {
+    combatFocusPick = null;
+    refreshCombatOverlay();
+    return;
+  }
+  // Combat 2.0 — Esc also cancels single-ship order mode (starmap).
+  if (e.key === "Escape" && singleShipOrderMode) {
+    const entIdx = singleShipOrderMode.entIdx;
+    singleShipOrderMode = null;
+    if (selectedEntityIdx === entIdx) showEntityPanel(entIdx);
+  }
+});
+
 function renderCombatSide(container, side, label, sideKey) {
   const aCount = side.ships.filter(s => s.alive).length;
   const tCount = side.ships.length;
-  let html = `<h3>${label} (${aCount}/${tCount})</h3>`;
+  // Combat 2.0 — note when the side's admiral has been permadeath'd this
+  // combat. Easy tell-tale: side.entity.admiral is null but at least one
+  // ship still carries the _isFlagship flag (or did before death).
+  const ent = side.entity;
+  const adminLine = (ent && ent.type === "fleet" && ent.admiral)
+    ? `<div class="combat-admiral-line" title="Admiral on the flagship — destruction is permanent">${ico("i-admiral", "sm")}<span>${ent.admiral.name}</span></div>`
+    : "";
+  let html = `<h3>${label} (${aCount}/${tCount})</h3>${adminLine}`;
+  // Player-side ships get focus-fire controls; enemy ships get a target
+  // overlay when picked. Identify which side is the player so the tile-
+  // click handler knows whether to enter focus-pick or bind a target.
+  const isPlayer = ent && ent.owner === "player";
   for (let i = 0; i < side.ships.length; i++) {
     const s = side.ships[i];
     const maxS = (s.card.stats.shields || 0) * COMBAT_HP_SCALE;
@@ -5020,11 +5851,27 @@ function renderCombatSide(container, side, label, sideKey) {
     const aPct = totalMax > 0 ? (s.currentArmor / totalMax * 100) : 0;
     const rarityCol = RARITY_COLORS[s.card.rarity] || "#6a7a9b";
     const deadClass = s.alive ? "" : " dead";
-    html += `<div class="combat-ship-tile${deadClass}" onclick="showCombatCardMagnified('${sideKey}', ${i})">
+    const flagshipClass = s.card._isFlagship ? " is-flagship" : "";
+    const flagshipPip = s.card._isFlagship ? `<span class="combat-ship-tile-flagship" title="Flagship — carries the admiral">${ico("i-admiral", "sm")}</span>` : "";
+    // Focus state: this player ship is mid-pick, OR this enemy ship is the
+    // target of an active focus on the other side. Both get a highlight.
+    const isPicker = combatFocusPick && combatFocusPick.sideKey === sideKey && combatFocusPick.shipIdx === i;
+    const isFocusedEnemy = !isPlayer && s.card && combatHasFocusOn(viewedCombat, sideKey, i);
+    const focusClass = isPicker ? " focus-picker" : (isFocusedEnemy ? " focus-target" : "");
+    // Player-ship controls: focus button + clear button. Hidden on dead ships.
+    let ctrls = "";
+    if (isPlayer && s.alive) {
+      const hasForced = s.card._forcedTarget != null;
+      ctrls = `<div class="combat-ship-tile-ctrls">
+        <button class="combat-focus-btn" onclick="event.stopPropagation();toggleCombatFocusPick('${sideKey}', ${i})" title="${isPicker ? "Cancel focus pick" : "Pick a focus target"}">${isPicker ? "✕" : "🎯"}</button>
+        ${hasForced ? `<button class="combat-focus-clear" onclick="event.stopPropagation();clearCombatFocus('${sideKey}', ${i})" title="Clear focus target">↺</button>` : ""}
+      </div>`;
+    }
+    html += `<div class="combat-ship-tile${deadClass}${flagshipClass}${focusClass}" onclick="onCombatTileClick('${sideKey}', ${i})">
       <div class="combat-ship-tile-stripe" style="background:${rarityCol}"></div>
       <div class="combat-ship-tile-body">
         <div class="combat-ship-tile-head">
-          <span class="combat-ship-tile-name">${s.card.name}</span>
+          <span class="combat-ship-tile-name">${flagshipPip}${s.card.name}</span>
           <span class="combat-ship-tile-hp">${Math.ceil(s.currentShields)}s ${Math.ceil(s.currentArmor)}a</span>
         </div>
         <div class="combat-hp-bar">
@@ -5032,9 +5879,66 @@ function renderCombatSide(container, side, label, sideKey) {
           <div class="combat-hp-armor" style="width:${aPct}%"></div>
         </div>
       </div>
+      ${ctrls}
     </div>`;
   }
   container.innerHTML = html;
+}
+
+// Combat 2.0 — manual focus-fire dispatch. Click semantics:
+//   - Click your ship tile (when not in pick mode) → magnify the card.
+//   - Click the 🎯 button → enter focus-pick mode for that ship.
+//   - In focus-pick, click an enemy tile → bind _forcedTarget and exit.
+//   - In focus-pick, click anywhere else → magnify (cancel pick).
+function onCombatTileClick(sideKey, shipIdx) {
+  if (!viewedCombat) return;
+  if (combatFocusPick) {
+    // We're in focus-pick. If this is an ENEMY tile (opposite side of the
+    // picker), bind. Otherwise magnify and cancel pick.
+    if (combatFocusPick.sideKey !== sideKey) {
+      const pickerSide = combatFocusPick.sideKey === "a" ? viewedCombat.sideA : viewedCombat.sideB;
+      const picker = pickerSide.ships[combatFocusPick.shipIdx];
+      const enemySide = sideKey === "a" ? viewedCombat.sideA : viewedCombat.sideB;
+      const target = enemySide.ships[shipIdx];
+      if (picker && picker.alive && target && target.alive) {
+        picker.card._forcedTarget = shipIdx;
+        // Update the cached target so movement re-snaps next tick.
+        picker._currentTarget = target;
+      }
+      combatFocusPick = null;
+      refreshCombatOverlay();
+      return;
+    }
+    // Click on picker's own side — magnify and clear pick state.
+    combatFocusPick = null;
+    refreshCombatOverlay();
+  }
+  showCombatCardMagnified(sideKey, shipIdx);
+}
+function toggleCombatFocusPick(sideKey, shipIdx) {
+  if (combatFocusPick && combatFocusPick.sideKey === sideKey && combatFocusPick.shipIdx === shipIdx) {
+    combatFocusPick = null;
+  } else {
+    combatFocusPick = { sideKey, shipIdx };
+  }
+  refreshCombatOverlay();
+}
+function clearCombatFocus(sideKey, shipIdx) {
+  if (!viewedCombat) return;
+  const side = sideKey === "a" ? viewedCombat.sideA : viewedCombat.sideB;
+  const ship = side.ships[shipIdx];
+  if (ship && ship.card) ship.card._forcedTarget = null;
+  refreshCombatOverlay();
+}
+function combatHasFocusOn(combat, enemySideKey, enemyShipIdx) {
+  if (!combat) return false;
+  // Check the OTHER side's player ships for a _forcedTarget pointing here.
+  const pickerSide = enemySideKey === "a" ? combat.sideB : combat.sideA;
+  if (!pickerSide.entity || pickerSide.entity.owner !== "player") return false;
+  for (const s of pickerSide.ships) {
+    if (s.card && s.card._forcedTarget === enemyShipIdx) return true;
+  }
+  return false;
 }
 
 function refreshCombatOverlay() {
@@ -6927,7 +7831,7 @@ function showEntityPanel(idx) {
     slot.innerHTML = `<div style="padding:20px;text-align:center;color:#6a7a9b">Fleet (${ent.ships.length} ships)</div>`;
   }
 
-  // Stance toggle + disband
+  // Stance toggle + disband + Combat 2.0 fleet ops (split / combine / transfer).
   const stanceColor = ent.stance === "aggressive" ? "#e05050" : "#50a0e0";
   const stanceText = ent.stance === "aggressive" ? "Aggressive" : "Evasive";
   const atColony = getEntityColony(ent);
@@ -6935,13 +7839,33 @@ function showEntityPanel(idx) {
   if (atColony) {
     actionsHtml += `<button class="card-action-btn" onclick="disbandEntityFromPanel(${idx})">Disband</button>`;
   }
+  // Fleet ops (player fleets only, not in combat).
+  if (ent.type === "fleet" && ent.owner === "player" && !ent.inCombat) {
+    if (ent.ships && ent.ships.length >= 2) {
+      actionsHtml += `<button class="card-action-btn" onclick="openSplitFleetModal(${idx})" title="Split this fleet into two">Split</button>`;
+    }
+    const friends = getNearbyFriendlyFleets(idx);
+    if (friends.length > 0) {
+      actionsHtml += `<button class="card-action-btn" onclick="openCombineFleetModal(${idx})" title="Merge with a nearby friendly fleet">Combine</button>`;
+      if (ent.admiral) {
+        actionsHtml += `<button class="card-action-btn" onclick="openTransferAdmiralModal(${idx})" title="Move the admiral to a nearby friendly fleet">Transfer Admiral</button>`;
+      }
+    }
+  }
   actions.innerHTML = actionsHtml;
 
   // Info summary
   let infoHtml = "";
   const row = (iconId, text) => `<div style="display:flex;align-items:center;gap:5px">${ico(iconId, "sm")}<span>${text}</span></div>`;
   if (ent.type === "fleet") {
-    infoHtml += row("i-solo-ship", `${ent.ships.length} ship${ent.ships.length !== 1 ? "s" : ""}`);
+    const cap = getMaxFleetShips(ent.admiral);
+    const overBy = ent.ships.length - cap;
+    const capStr = overBy > 0 ? ` <span style="color:#e0a040">(${ent.ships.length}/${cap})</span>` : ` (${ent.ships.length}/${cap})`;
+    infoHtml += `<div style="display:flex;align-items:center;gap:5px">${ico("i-solo-ship", "sm")}<span>ships${capStr}</span></div>`;
+    if (overBy > 0) {
+      const penaltyPct = Math.min(80, overBy * 10);
+      infoHtml += `<div style="color:#e0a040;font-size:10px;display:flex;align-items:center;gap:4px">${ico("i-warning", "sm")}<span>Over soft cap — combat & sensor −${penaltyPct}%</span></div>`;
+    }
   }
   infoHtml += `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">`
     + `${ico("i-speed", "sm")}<span>Speed: ${ent.speed}</span>`
@@ -6961,21 +7885,318 @@ function showEntityPanel(idx) {
   }
   info.innerHTML = infoHtml;
 
+  // Combat 2.0 — Fleet controls (player fleets only). Three dropdowns:
+  // formation shape, spacing, and rare-ships-front-vs-back. Editing any
+  // triggers recalcFormation so the new layout takes effect immediately.
+  const controlsEl = document.getElementById("select-fleet-controls");
+  if (controlsEl) {
+    if (ent.type === "fleet" && ent.owner === "player" && ent.ships && ent.ships.length > 0) {
+      const ft = ent.formationType || DEFAULT_FORMATION_TYPE;
+      const fs = ent.formationSpacing || DEFAULT_FORMATION_SPACING;
+      const pp = ent.powerPositionPriority || DEFAULT_POWER_POSITION;
+      controlsEl.innerHTML = `
+        <div class="fleet-controls-row">
+          <label title="Triangle shape — apex forward (single ship at the point) or base forward (wide edge into the enemy)">Formation
+            <select onchange="setFleetFormation(${idx}, 'formationType', this.value)">
+              <option value="pointForward"${ft === "pointForward" ? " selected" : ""}>Point Forward</option>
+              <option value="baseForward"${ft === "baseForward" ? " selected" : ""}>Base Forward</option>
+            </select>
+          </label>
+          <label title="How tightly ships pack into the formation — looser = harder to AoE, slower to concentrate fire">Spacing
+            <select onchange="setFleetFormation(${idx}, 'formationSpacing', this.value)">
+              <option value="tight"${fs === "tight" ? " selected" : ""}>Tight</option>
+              <option value="normal"${fs === "normal" ? " selected" : ""}>Normal</option>
+              <option value="loose"${fs === "loose" ? " selected" : ""}>Loose</option>
+            </select>
+          </label>
+          <label title="Where rare ships sit in the formation — front = best stats hit first, back = irreplaceables get screened">Priority
+            <select onchange="setFleetFormation(${idx}, 'powerPositionPriority', this.value)">
+              <option value="rareFront"${pp === "rareFront" ? " selected" : ""}>Rare Front</option>
+              <option value="rareBack"${pp === "rareBack" ? " selected" : ""}>Rare Back</option>
+            </select>
+          </label>
+        </div>`;
+    } else {
+      controlsEl.innerHTML = "";
+    }
+  }
+
   // Fleet ships list — one card per ship, stacked vertically under the stats.
   // For solo ships the primary card above already shows the ship, so nothing
   // additional is needed here.
+  //
+  // Combat 2.0: each player ship gets a combat-priority dropdown below the
+  // card so the player can set Weakest / Strongest / Closest / FollowAdmiral
+  // independently. NPC fleets render plain cards (no controls).
   if (shipsEl) {
     shipsEl.innerHTML = "";
     if (ent.type === "fleet" && ent.ships && ent.ships.length > 0) {
-      for (const ship of ent.ships) {
+      const isPlayer = ent.owner === "player";
+      for (let si = 0; si < ent.ships.length; si++) {
+        const ship = ent.ships[si];
         const wrap = document.createElement("div");
         wrap.className = "fleet-ship-card";
+        if (ship && ship._isFlagship) wrap.classList.add("is-flagship");
         if (ship && ship.id) wrap.setAttribute("data-card-id", ship.id);
         wrap.innerHTML = buildCardHtml(ship);
+        if (isPlayer) {
+          const ctrl = document.createElement("div");
+          ctrl.className = "fleet-ship-priority";
+          const prio = ship._combatPriority || DEFAULT_COMBAT_PRIORITY;
+          const hasDest = ship._destWX != null;
+          const isOrdering = singleShipOrderMode && singleShipOrderMode.entIdx === idx && singleShipOrderMode.shipIdx === si;
+          ctrl.innerHTML = `<label title="Combat target priority — who this ship fires on each volley">${ico("i-swords", "sm")}<select onchange="setShipPriority(${idx}, ${si}, this.value)">
+            <option value="closest"${prio === "closest" ? " selected" : ""}>Closest</option>
+            <option value="weakest"${prio === "weakest" ? " selected" : ""}>Weakest</option>
+            <option value="strongest"${prio === "strongest" ? " selected" : ""}>Strongest</option>
+            <option value="followAdmiral"${prio === "followAdmiral" ? " selected" : ""}>Follow Admiral</option>
+          </select></label>
+          <div class="fleet-ship-orders">
+            <button class="fleet-ship-send${isOrdering ? ' ordering' : ''}" onclick="event.stopPropagation();toggleSingleShipOrder(${idx}, ${si})" title="Send this ship to a map location (within leash of the flagship)">${isOrdering ? "Cancel" : "Send..."}</button>
+            ${hasDest ? `<button class="fleet-ship-recall" onclick="event.stopPropagation();clearShipDest(${idx}, ${si})" title="Recall this ship (clear its individual destination)">Recall</button>` : ""}
+          </div>`;
+          wrap.appendChild(ctrl);
+        }
         shipsEl.appendChild(wrap);
       }
     }
   }
+}
+
+// Update one ship's combat-targeting priority. Called from the dropdown
+// onchange in the fleet roster (player fleets only).
+function setShipPriority(entIdx, shipIdx, value) {
+  const ent = mapEntities[entIdx];
+  if (!ent || !ent.ships) return;
+  const ship = ent.ships[shipIdx];
+  if (!ship) return;
+  if (!COMBAT_PRIORITIES.includes(value)) return;
+  ship._combatPriority = value;
+}
+
+// Combat 2.0 — toggle single-ship order mode. While active, the next left-
+// click on the starmap binds that ship's destination (clamped to leash
+// from the flagship). Cancels on second click, Esc, or right-click.
+function toggleSingleShipOrder(entIdx, shipIdx) {
+  const ent = mapEntities[entIdx];
+  if (!ent || !ent.ships || !ent.ships[shipIdx]) return;
+  if (ent.inCombat) return; // in-combat orders are handled by Combat 2.0 movement system
+  if (singleShipOrderMode && singleShipOrderMode.entIdx === entIdx && singleShipOrderMode.shipIdx === shipIdx) {
+    singleShipOrderMode = null;
+  } else {
+    singleShipOrderMode = { entIdx, shipIdx };
+  }
+  showEntityPanel(entIdx);
+}
+
+function clearShipDest(entIdx, shipIdx) {
+  const ent = mapEntities[entIdx];
+  if (!ent || !ent.ships || !ent.ships[shipIdx]) return;
+  const s = ent.ships[shipIdx];
+  s._destWX = null;
+  s._destWY = null;
+  showEntityPanel(entIdx);
+}
+
+// Apply a click on the starmap as a single-ship destination order. wx/wy
+// in world coords. Returns true if consumed.
+function applySingleShipOrder(wx, wy) {
+  if (!singleShipOrderMode) return false;
+  const { entIdx, shipIdx } = singleShipOrderMode;
+  singleShipOrderMode = null;
+  const ent = mapEntities[entIdx];
+  if (!ent || !ent.ships || !ent.ships[shipIdx]) return true;
+  if (ent.inCombat) return true;
+  const ship = ent.ships[shipIdx];
+  // Leash anchor = flagship position if there is one, else the fleet anchor.
+  let anchorX = ent.x, anchorY = ent.y;
+  const flagIdx = getFlagshipIndex(ent);
+  if (flagIdx >= 0) {
+    const fp = getShipWorldPos(ent, flagIdx, 0);
+    anchorX = fp.x; anchorY = fp.y;
+  }
+  // Clamp the requested point to within MAX_FLEET_LEASH world-units of the anchor.
+  const dx = wx - anchorX, dy = wy - anchorY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  let destX = wx, destY = wy;
+  if (dist > MAX_FLEET_LEASH) {
+    const k = MAX_FLEET_LEASH / dist;
+    destX = anchorX + dx * k;
+    destY = anchorY + dy * k;
+  }
+  ship._destWX = destX;
+  ship._destWY = destY;
+  if (selectedEntityIdx === entIdx) showEntityPanel(entIdx);
+  return true;
+}
+
+// Per-tick movement for individual ship orders (out-of-combat only).
+// Combat-mode per-ship movement is tickShipMovement (different system).
+function tickIndividualShipOrders(dt) {
+  for (const ent of mapEntities) {
+    if (ent.type !== "fleet" || ent.inCombat || !ent.ships) continue;
+    const h = ent.heading || 0;
+    const cosNegH = Math.cos(-h), sinNegH = Math.sin(-h);
+    for (let i = 0; i < ent.ships.length; i++) {
+      const s = ent.ships[i];
+      if (s._destWX == null || s._destWY == null) continue;
+      const pos = getShipWorldPos(ent, i, 0);
+      const dx = s._destWX - pos.x, dy = s._destWY - pos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const moveMag = (s.stats.speed || 1) * dt * WORLD_SPEED_MULT;
+      if (moveMag >= dist - 1) {
+        // Arrived — snap and clear.
+        const ax = s._destWX - ent.x, ay = s._destWY - ent.y;
+        s._posOffsetX = ax * cosNegH - ay * sinNegH;
+        s._posOffsetY = ax * sinNegH + ay * cosNegH;
+        s._destWX = null;
+        s._destWY = null;
+      } else {
+        const nx = dx / dist, ny = dy / dist;
+        const newWX = pos.x + nx * moveMag;
+        const newWY = pos.y + ny * moveMag;
+        const ax = newWX - ent.x, ay = newWY - ent.y;
+        s._posOffsetX = ax * cosNegH - ay * sinNegH;
+        s._posOffsetY = ax * sinNegH + ay * cosNegH;
+      }
+    }
+  }
+}
+
+// Update one of the fleet's formation settings and re-lay-out the slots.
+// Re-renders the entity panel so the active dropdown values stay in sync
+// (defensive — the <select> already has the new value via onchange but
+// rebuilding lets the panel reflect any downstream changes the recalc
+// triggered).
+function setFleetFormation(idx, field, value) {
+  const ent = mapEntities[idx];
+  if (!ent || ent.type !== "fleet") return;
+  if (field === "formationType" && !FORMATION_TYPES.includes(value)) return;
+  if (field === "formationSpacing" && !FORMATION_SPACINGS.includes(value)) return;
+  if (field === "powerPositionPriority" && !POWER_POSITION_PRIORITIES.includes(value)) return;
+  ent[field] = value;
+  recalcFormation(ent);
+}
+
+// ── Combat 2.0 — fleet ops modals (split / combine / admiral transfer) ──
+// Lightweight inline modals appended to body. All three follow the same
+// pattern: backdrop + centred panel + cancel/apply actions; ESC dismisses.
+
+function _closeFleetOpModal() {
+  const el = document.getElementById("fleet-op-modal");
+  if (el) el.remove();
+}
+
+function _buildFleetOpModal(title, bodyHtml, applyLabel, onApply) {
+  _closeFleetOpModal();
+  const backdrop = document.createElement("div");
+  backdrop.id = "fleet-op-modal";
+  backdrop.innerHTML = `
+    <div class="fleet-op-modal-panel">
+      <div class="fleet-op-modal-title">${title}</div>
+      <div class="fleet-op-modal-body">${bodyHtml}</div>
+      <div class="fleet-op-modal-actions">
+        <button class="fleet-op-cancel">Cancel</button>
+        <button class="fleet-op-apply">${applyLabel}</button>
+      </div>
+    </div>`;
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) _closeFleetOpModal(); });
+  backdrop.querySelector(".fleet-op-cancel").addEventListener("click", _closeFleetOpModal);
+  backdrop.querySelector(".fleet-op-apply").addEventListener("click", () => {
+    try { onApply(backdrop); } finally { _closeFleetOpModal(); }
+  });
+  document.body.appendChild(backdrop);
+  const onKey = (e) => { if (e.key === "Escape") { _closeFleetOpModal(); document.removeEventListener("keydown", onKey); } };
+  document.addEventListener("keydown", onKey);
+}
+
+function openSplitFleetModal(idx) {
+  const ent = mapEntities[idx];
+  if (!ent || ent.type !== "fleet") return;
+  const shipsHtml = ent.ships.map((s, i) => `<label class="fleet-op-row">
+    <input type="checkbox" data-ship-idx="${i}">
+    <span class="fleet-op-ship-rarity" style="background:${RARITY_COLORS[s.rarity] || "#6a7a9b"}"></span>
+    <span class="fleet-op-ship-name">${s.name}${s._isFlagship ? " <em style='color:#c0a020'>(flagship)</em>" : ""}</span>
+  </label>`).join("");
+  const admToggle = ent.admiral
+    ? `<label class="fleet-op-row" style="margin-top:8px;border-top:1px solid #1e2744;padding-top:8px">
+        <input type="checkbox" id="split-take-admiral">
+        <span class="fleet-op-ship-rarity" style="background:#c0a020"></span>
+        <span class="fleet-op-ship-name">Send admiral <strong>${ent.admiral.name}</strong> with the split</span>
+      </label>`
+    : "";
+  const body = `<div style="margin-bottom:8px;color:#a0b4d0;font-size:12px">Pick which ships peel off into a new fleet.</div>
+    ${shipsHtml}${admToggle}`;
+  _buildFleetOpModal("Split Fleet", body, "Split", (modal) => {
+    const checked = Array.from(modal.querySelectorAll('input[data-ship-idx]:checked'))
+      .map(el => parseInt(el.getAttribute("data-ship-idx"), 10));
+    const takeAdm = !!modal.querySelector("#split-take-admiral")?.checked;
+    if (checked.length === 0 || checked.length === ent.ships.length) return;
+    splitFleet(idx, checked, takeAdm);
+    // Re-show the source panel (it may have shifted index if mapEntities mutated).
+    const newIdx = mapEntities.indexOf(ent);
+    if (newIdx >= 0) showEntityPanel(newIdx); else hideSelectPanel();
+  });
+}
+
+function openCombineFleetModal(idx) {
+  const friends = getNearbyFriendlyFleets(idx);
+  if (friends.length === 0) return;
+  const ent = mapEntities[idx];
+  const friendList = friends.map(fi => {
+    const f = mapEntities[fi];
+    const fAdm = f.admiral ? `Admiral: ${f.admiral.name}` : "no admiral";
+    return `<label class="fleet-op-row">
+      <input type="radio" name="combine-target" value="${fi}">
+      <span class="fleet-op-ship-name">${f.label} <span style="color:#6a7a9b">— ${f.ships.length} ships, ${fAdm}</span></span>
+    </label>`;
+  }).join("");
+  let admiralChoice = "";
+  // Admiral choice only matters when at least one of the merging fleets has one.
+  // The default picks this fleet's admiral; show the choice if both fleets carry an admiral.
+  admiralChoice = `<div style="margin-top:10px;padding-top:8px;border-top:1px solid #1e2744">
+    <div style="margin-bottom:6px;font-size:11px;color:#8090b0">Which admiral leads the merged fleet?</div>
+    <label class="fleet-op-row"><input type="radio" name="combine-admiral" value="target" checked><span class="fleet-op-ship-name">This fleet's admiral</span></label>
+    <label class="fleet-op-row"><input type="radio" name="combine-admiral" value="merge"><span class="fleet-op-ship-name">The other fleet's admiral</span></label>
+    <label class="fleet-op-row"><input type="radio" name="combine-admiral" value="none"><span class="fleet-op-ship-name">Neither (both admirals discarded)</span></label>
+    <div style="margin-top:6px;font-size:10px;color:#e0a040">${ico("i-warning", "sm")} The unused admiral returns to the colony queue only if this fleet is currently at a colony. Otherwise it's lost.</div>
+  </div>`;
+  const body = `<div style="margin-bottom:8px;color:#a0b4d0;font-size:12px">Merge this fleet (<strong>${ent.label}</strong>) with another nearby friendly fleet.</div>
+    ${friendList}${admiralChoice}`;
+  _buildFleetOpModal("Combine Fleets", body, "Combine", (modal) => {
+    const sel = modal.querySelector('input[name="combine-target"]:checked');
+    if (!sel) return;
+    const mergeIdx = parseInt(sel.value, 10);
+    const keepAdm = (modal.querySelector('input[name="combine-admiral"]:checked')?.value) || "target";
+    combineFleets(idx, mergeIdx, keepAdm);
+    const newIdx = mapEntities.indexOf(ent);
+    if (newIdx >= 0) showEntityPanel(newIdx); else hideSelectPanel();
+  });
+}
+
+function openTransferAdmiralModal(idx) {
+  const friends = getNearbyFriendlyFleets(idx);
+  if (friends.length === 0) return;
+  const ent = mapEntities[idx];
+  if (!ent.admiral) return;
+  const friendList = friends.map(fi => {
+    const f = mapEntities[fi];
+    const fAdm = f.admiral ? `currently ${f.admiral.name}` : "no admiral";
+    return `<label class="fleet-op-row">
+      <input type="radio" name="xfer-target" value="${fi}">
+      <span class="fleet-op-ship-name">${f.label} <span style="color:#6a7a9b">— ${f.ships.length} ships, ${fAdm}</span></span>
+    </label>`;
+  }).join("");
+  const body = `<div style="margin-bottom:8px;color:#a0b4d0;font-size:12px">Move <strong>${ent.admiral.name}</strong> to another nearby friendly fleet. If the target already has an admiral, the two swap.</div>
+    ${friendList}`;
+  _buildFleetOpModal("Transfer Admiral", body, "Transfer", (modal) => {
+    const sel = modal.querySelector('input[name="xfer-target"]:checked');
+    if (!sel) return;
+    const dstIdx = parseInt(sel.value, 10);
+    transferAdmiral(idx, dstIdx);
+    const newIdx = mapEntities.indexOf(ent);
+    if (newIdx >= 0) showEntityPanel(newIdx); else hideSelectPanel();
+  });
 }
 
 function toggleEntityStance(idx) {
@@ -7213,6 +8434,14 @@ function handlePointerEnd(e) {
       return;
     }
 
+    // Combat 2.0 — single-ship order mode. Same priority as tech targeting:
+    // a click while in this mode binds the destination and exits.
+    if (singleShipOrderMode) {
+      const world = screenToWorld(sx, sy);
+      applySingleShipOrder(world.x, world.y);
+      return;
+    }
+
     // Check combat icon click first
     const combatHit = getCombatAtScreen(sx, sy);
     if (combatHit) {
@@ -7267,6 +8496,14 @@ container.addEventListener("contextmenu", (e) => {
   // right-click would both cancel AND deselect, surprising the player.
   if (techTargetingMode) {
     cancelTechTargeting();
+    return;
+  }
+  // Combat 2.0 — right-click cancels single-ship order mode without
+  // deselecting the active entity.
+  if (singleShipOrderMode) {
+    const entIdx = singleShipOrderMode.entIdx;
+    singleShipOrderMode = null;
+    if (selectedEntityIdx === entIdx) showEntityPanel(entIdx);
     return;
   }
   if (selectedEntityIdx !== null) {
@@ -7797,9 +9034,17 @@ const TECH_EFFECTS = {
           for (const card of ent.ships) {
             if (!applyTechShipDamage(card, per)) survivors.push(card);
           }
+          const hadFlagship = ent.ships.some(s => s._isFlagship);
+          const flagshipSurvived = survivors.some(s => s._isFlagship);
           ent.ships = survivors;
           if (survivors.length === 0) toRemove.push(i);
-          else recalcFleetStats(ent);
+          else {
+            if (hadFlagship && !flagshipSurvived && ent.admiral) {
+              setFlagship(ent, pickFlagshipIndex(survivors));
+            }
+            recalcFleetStats(ent);
+            recalcFormation(ent);
+          }
         }
       }
       // Reverse-iterate so splices don't shift indices we still need.
@@ -9379,7 +10624,14 @@ function refreshColonyScreen() {
 }
 
 function refreshFleetTab(col) {
+  // Combat 2.0 — the cap is now a soft *target*. We render at least
+  // `maxShips` slots, but if the deploy already has ships beyond that we
+  // render extra slots (marked `.overcap`) so the player can see and
+  // reposition the over-cap ships. A handful of trailing empty `.overcap`
+  // slots stay open so the player can drop more in if they're willing to
+  // pay the combat penalty.
   const maxShips = getMaxFleetShips(deployAdmiral);
+  const totalSlots = Math.max(maxShips, deployShips.length) + 2; // +2 spare overcap slots
   const slotsEl = document.getElementById("fleet-ship-slots");
   slotsEl.innerHTML = "";
 
@@ -9392,8 +10644,8 @@ function refreshFleetTab(col) {
       e.stopPropagation();
       col.queue.push(deployAdmiral);
       deployAdmiral = null;
-      const max = getMaxFleetShips(null);
-      while (deployShips.length > max) col.queue.push(deployShips.pop());
+      // No ship-overflow eviction — soft cap (Combat 2.0). The player keeps
+      // their ships; combat just applies a penalty until they're under cap.
       refreshColonyScreen();
     });
   } else {
@@ -9413,19 +10665,19 @@ function refreshFleetTab(col) {
     if (deployAdmiral) col.queue.push(deployAdmiral);
     deployAdmiral = draggedCard.card;
     if (draggedCard.source === "queue") col.queue.splice(draggedCard.index, 1);
-    const max = getMaxFleetShips(deployAdmiral);
-    while (deployShips.length > max) col.queue.push(deployShips.pop());
+    // No overflow ejection — soft cap.
     draggedCard = null;
     refreshColonyScreen();
   });
   slotsEl.appendChild(admSlot);
 
   // ── Ship slots ──
-  for (let i = 0; i < maxShips; i++) {
+  for (let i = 0; i < totalSlots; i++) {
     const card = deployShips[i] || null;
     const slot = document.createElement("div");
+    const isOvercap = i >= maxShips;
     if (card) {
-      slot.className = "fleet-ship-slot occupied";
+      slot.className = "fleet-ship-slot occupied" + (isOvercap ? " overcap" : "");
       slot.innerHTML = buildCardHtml(card);
       slot.draggable = true;
       slot.addEventListener("dragstart", (e) => {
@@ -9440,8 +10692,9 @@ function refreshFleetTab(col) {
         refreshColonyScreen();
       });
     } else {
-      slot.className = "fleet-ship-slot";
-      slot.textContent = "+";
+      slot.className = "fleet-ship-slot" + (isOvercap ? " overcap" : "");
+      slot.textContent = isOvercap ? "⚠" : "+";
+      if (isOvercap) slot.title = "Over soft cap — each ship past the cap reduces combat damage and sensor by 10% (capped at 80%).";
     }
     // Drop target for ships
     slot.addEventListener("dragover", (e) => {
@@ -9455,7 +10708,7 @@ function refreshFleetTab(col) {
       e.preventDefault();
       slot.classList.remove("drag-over");
       if (!draggedCard || draggedCard.card.category !== "ship") return;
-      if (deployShips.length >= maxShips) return;
+      // Soft cap — allow drops past maxShips. Combat penalty handles it.
       deployShips.push(draggedCard.card);
       if (draggedCard.source === "queue") col.queue.splice(draggedCard.index, 1);
       else if (draggedCard.source === "fleet-ship") deployShips.splice(draggedCard.index, 1);
@@ -9478,7 +10731,8 @@ function refreshFleetTab(col) {
     refreshFleetTab(col);
   });
 
-  // Cost info
+  // Cost info — plus soft-cap warning when the deploy is over the admiral's
+  // comfortable size (Combat 2.0).
   const infoEl = document.getElementById("fleet-info");
   const allCards = [...deployShips];
   if (deployAdmiral) allCards.push(deployAdmiral);
@@ -9492,7 +10746,13 @@ function refreshFleetTab(col) {
       const iconHtml = iconId ? ico(iconId, `sm ${k}`) : "";
       return `${iconHtml}${v}`;
     }).join(" ");
-    infoEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px">Cost: ${costStr}</span>`;
+    let overcapNote = "";
+    const overBy = deployShips.length - maxShips;
+    if (overBy > 0) {
+      const penaltyPct = Math.min(80, overBy * 10);
+      overcapNote = `<div style="color:#e0a040;font-size:10px;margin-top:3px">${ico("i-warning", "sm")} Over soft cap (${deployShips.length}/${maxShips}) — combat damage and sensor reduced by ${penaltyPct}%</div>`;
+    }
+    infoEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px">Cost: ${costStr}</span>${overcapNote}`;
   } else {
     infoEl.textContent = "Drag ships from queue";
   }
@@ -9816,6 +11076,7 @@ function gameLoop(timestamp) {
   const scaledDt = dt * BASE_GAME_SPEED * gameSpeed;
   tickEconomy(scaledDt);
   tickEntities(scaledDt);
+  tickIndividualShipOrders(scaledDt);
   tickCombats(scaledDt);
   tickScouts(scaledDt);
   // Combat particles and weapon-flash visuals were tuned for the pre-rebase
@@ -10114,7 +11375,18 @@ let lastSaveStatus = "";
 // Legacy full-card shapes (pre-Phase-4) also hydrate cleanly: full cards
 // already carry an `id` from the template spread, and the same instance
 // fields live at the top level.
-const CARD_INSTANCE_FIELDS = ["stats", "statRanges", "bonuses", "bonusRanges", "planetSlots", "name"];
+const CARD_INSTANCE_FIELDS = [
+  "stats", "statRanges", "bonuses", "bonusRanges", "planetSlots", "name",
+  // v0.2.0 Phase 1 — planet size sits on the card so it round-trips with the
+  // planet card on save/load.
+  "size",
+  // Combat 2.0 (v0.2.0 Phase 2) — per-ship state stored on the card object.
+  "_combatPriority", "_isFlagship", "_forcedTarget",
+  "_posOffsetX", "_posOffsetY", "_slotIdx",
+  // Individual ship orders (2.8): world-coord destination for a single-ship
+  // peel-off move. tickIndividualShipOrders resolves it.
+  "_destWX", "_destWY",
+];
 
 function serializeCardRef(card) {
   if (!card) return null;
@@ -10261,6 +11533,13 @@ function serializeGame() {
       card: e.card ? serializeCardRef(e.card) : null,
       ships: e.ships ? e.ships.map(serializeCardRef).filter(Boolean) : null,
       admiral: e.admiral ? serializeCardRef(e.admiral) : null,
+      // Combat 2.0 formation settings — per-ship state (priority/flagship/
+      // posOffsets) is saved alongside in 2.10. Older saves load with default
+      // values via the loader.
+      formationType: e.formationType,
+      formationSpacing: e.formationSpacing,
+      powerPositionPriority: e.powerPositionPriority,
+      heading: e.heading,
     })),
     selectedEntityIdx,
 
@@ -10411,6 +11690,29 @@ function deserializeGame(data) {
     if (e.card) ent.card = hydrateCardRef(e.card) || e.card;
     if (e.ships) ent.ships = e.ships.map(s => hydrateCardRef(s) || s);
     if (e.admiral) ent.admiral = hydrateCardRef(e.admiral) || e.admiral;
+    // Combat 2.0 — restore formation settings (or fall back to defaults).
+    // Per-ship state (priority, posOffsets, flagship) round-trips via the
+    // CARD_INSTANCE_FIELDS whitelist in serializeCardRef.
+    if (ent.type === "fleet") {
+      ent.formationType = FORMATION_TYPES.includes(e.formationType) ? e.formationType : DEFAULT_FORMATION_TYPE;
+      ent.formationSpacing = FORMATION_SPACINGS.includes(e.formationSpacing) ? e.formationSpacing : DEFAULT_FORMATION_SPACING;
+      ent.powerPositionPriority = POWER_POSITION_PRIORITIES.includes(e.powerPositionPriority) ? e.powerPositionPriority : DEFAULT_POWER_POSITION;
+      ent.heading = (typeof e.heading === "number") ? e.heading : 0;
+      if (ent.ships) {
+        // Backfill missing per-ship state. initShipCombatState only writes
+        // fields that are still null, so saved priorities/flagship/offsets
+        // come through intact. Pre-Combat-2.0 saves get default values.
+        const anyFlagship = ent.ships.some(s => s._isFlagship);
+        const flagshipIdx = (!anyFlagship && ent.admiral) ? pickFlagshipIndex(ent.ships) : -1;
+        for (let i = 0; i < ent.ships.length; i++) {
+          initShipCombatState(ent.ships[i], { isFlagship: !anyFlagship && i === flagshipIdx });
+        }
+        // Only re-lay-out the formation if NO ship carries a saved offset
+        // (pre-Combat-2.0 save). Otherwise the loaded positions stand.
+        const hasSavedOffsets = ent.ships.some(s => s._posOffsetX != null);
+        if (!hasSavedOffsets) recalcFormation(ent);
+      }
+    }
     mapEntities.push(ent);
   }
   selectedEntityIdx = data.selectedEntityIdx ?? null;

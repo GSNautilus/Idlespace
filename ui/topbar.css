@@ -126,9 +126,14 @@
   white-space: nowrap;
   position: relative; /* anchor for the progress bar */
 }
-/* Sub-tick progress bar — fills 0→100% across each game-second, then resets.
-   Acts as a shared idle "tick clock" so the player sees the rhythm of the
-   economy even when individual resource increments are sub-1/sec. */
+/* Per-resource progress bar — fills 0→100% at the resource's actual rate
+   (rate per real-second). Wraps `rate` times per second. No CSS transition
+   on width: fast-cycling bars were getting smoothed into mush by the old
+   0.05s transition. Snap-per-frame at 60fps reads as fluid motion.
+   Background gradient is set inline per-cell from RESOURCE_DEFS[i].color so
+   each bar matches its resource's palette colour (gold credits, magenta
+   research, etc.). The fallback below is only used if the inline style
+   somehow doesn't apply. */
 .tb-res-bar {
   position: absolute;
   left: 9px;
@@ -136,10 +141,9 @@
   bottom: 1px;
   height: 2px;
   border-radius: 1px;
-  background: linear-gradient(90deg, var(--metal-edge), var(--fg-strong));
+  background: linear-gradient(90deg, transparent, var(--fg-strong));
   width: 0;
-  transition: width 0.05s linear;
-  opacity: 0.6;
+  opacity: 0.7;
   pointer-events: none;
 }
 /* "More resources" chevron button at the right edge of the rack. */

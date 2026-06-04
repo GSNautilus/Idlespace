@@ -7454,7 +7454,9 @@ function buildResourceRack() {
     div.innerHTML = `<svg class="ico ${d.id}"><use href="#${d.sprite}"/></svg>`
       + `<span class="tb-res-val" id="res-${d.id}">0</span>`
       + `<span class="tb-res-rate" id="rate-${d.id}">+0/s</span>`
-      + (resourceProgressMode !== "off" ? `<span class="tb-res-bar" id="rack-bar-${d.id}"></span>` : "");
+      + (resourceProgressMode !== "off"
+          ? `<span class="tb-res-bar" id="rack-bar-${d.id}" style="background: linear-gradient(90deg, transparent, ${d.color})"></span>`
+          : "");
     // Right-click cell to unpin (skip if it would empty the rack — at least
     // one resource always stays pinned so the bar isn't useless).
     div.addEventListener("contextmenu", (e) => {
@@ -8475,29 +8477,36 @@ function updateResourceDisplay() {
     for (const id of RESOURCE_IDS) totalOut[id] += (out[id] || 0);
     totalOut.credits += getTradeIncome(col, out);
   }
-  // Progress bar fill — shared tick clock 0→1 across all resources. When
-  // Phase 4 lands sub-1/sec rates, this bar fills 0→1 each game-second and a
-  // resource increment lands on each refill.
-  const tickPct = Math.max(0, Math.min(1, (tickAccumulator || 0) / TICK_PERIOD));
+  // Per-resource progress bars. ONE time source: real wall-clock seconds
+  // since the page loaded (`performance.now()`). Bar wraps `rate` times per
+  // real second, so "+8/s" → 8 fills per real-second. No game-time
+  // conversion, no accumulator state, no tick-coupling — the formula is
+  // literally `(realSecondsSinceLoad × rate) % 1`. Rate ≤ 0 → empty bar.
+  // During pause, updateResourceDisplay isn't called (tickEconomy bails on
+  // dt=0), so bars freeze; on unpause they snap to the current wall-clock
+  // position (≤1 cycle of jump, acceptable).
+  const t = performance.now() / 1000;
   for (const id of RESOURCE_IDS) {
     const valEl = document.getElementById(`res-${id}`);
     const rateEl = document.getElementById(`rate-${id}`);
+    const rate = totalOut[id];
     if (valEl) valEl.textContent = formatResourceValue(resources[id]);
     if (rateEl) {
-      const rate = totalOut[id];
       const rateStr = rate < 0 ? "-" + formatResourceValue(Math.abs(rate)) : "+" + formatResourceValue(rate);
       rateEl.textContent = `${rateStr}/s`;
       rateEl.style.color = rate < 0 ? "#e05050" : "";
     }
     // Update per-cell progress bar (only present for pinned resources)
     const barEl = document.getElementById(`rack-bar-${id}`);
-    if (barEl) barEl.style.width = (tickPct * 100) + "%";
+    if (barEl) {
+      const fillPct = rate > 0 ? (((t * rate) % 1) * 100) : 0;
+      barEl.style.width = fillPct + "%";
+    }
     // Update dropdown row values if the dropdown is open
     const ddValEl = document.getElementById(`dd-res-${id}`);
     if (ddValEl) ddValEl.textContent = formatResourceValue(resources[id] || 0);
     const ddRateEl = document.getElementById(`dd-rate-${id}`);
     if (ddRateEl) {
-      const rate = totalOut[id];
       const rateStr = rate < 0 ? "-" + formatResourceValue(Math.abs(rate)) : "+" + formatResourceValue(rate);
       ddRateEl.textContent = `${rateStr}/s`;
       ddRateEl.style.color = rate < 0 ? "#e05050" : "";

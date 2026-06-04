@@ -784,104 +784,8 @@ body.scaled {
   transform: translateY(-2px);
 }
 
-/* ── Combat Overlay ── */
-#combat-backdrop {
-  position: absolute; inset: 0; background: rgba(0,0,0,0.5);
-  z-index: 34; display: none;
-}
-#combat-backdrop.visible { display: block; }
-#combat-overlay {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  width: 81%; height: 81%; max-width: 1400px; max-height: 900px;
-  background: rgba(5,5,8,0.75); border: 1px solid #1e2744; border-radius: 12px;
-  z-index: 35; display: none; opacity: 0; transition: opacity 0.3s ease;
-  overflow: hidden; flex-direction: column;
-}
-#combat-overlay.visible { display: flex; opacity: 1; }
-#combat-close {
-  position: absolute; top: 10px; right: 12px;
-  background: rgba(12,14,24,0.7); border: 1px solid #1e2744; color: #4a5a7b;
-  font-size: 10px; cursor: pointer; padding: 2px 5px; border-radius: 4px; z-index: 36;
-  transition: all 0.15s;
-}
-#combat-close:hover { color: #c8d0e0; background: rgba(20,26,48,0.9); }
-#combat-header {
-  display: flex; justify-content: space-between; align-items: flex-start;
-  padding: 16px 20px; border-bottom: 1px solid #111828; flex-shrink: 0; gap: 12px;
-}
-.combat-side { width: 35%; }
-.combat-side h3 {
-  font-size: 13px; color: #b0c0e0; margin: 0 0 8px 0; font-weight: 600;
-}
-/* Per-ship tiles in combat overlay: rarity stripe + name + HP bar.
-   Click opens a magnified card view. */
-.combat-ship-tile {
-  display: flex; align-items: stretch; gap: 0;
-  margin-bottom: 4px;
-  background: #0a0c14; border: 1px solid #151a2a; border-radius: 4px;
-  overflow: hidden; cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.combat-ship-tile:hover { background: #111628; border-color: #2a3460; }
-.combat-ship-tile.dead { opacity: 0.35; filter: grayscale(0.6); }
-.combat-ship-tile.dead:hover { background: #0a0c14; }
-.combat-ship-tile-stripe {
-  width: 5px; flex-shrink: 0;
-}
-.combat-ship-tile-body {
-  flex: 1; padding: 5px 8px; display: flex; flex-direction: column;
-  gap: 3px; min-width: 0;
-}
-.combat-ship-tile-head {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 6px; font-size: 11px;
-}
-.combat-ship-tile-name {
-  color: #c8d0e0; font-weight: 500;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  min-width: 0; flex: 1;
-}
-.combat-ship-tile-hp {
-  color: #6a7a9b; font-size: 9.5px; flex-shrink: 0;
-  font-family: 'Consolas', 'Courier New', monospace;
-}
-.combat-hp-bar {
-  height: 5px; background: rgba(20,26,48,0.8); border-radius: 2px;
-  overflow: hidden; display: flex; flex: none;
-}
-.combat-hp-shields {
-  height: 100%; background: #4a7ac0; transition: width 0.3s;
-}
-.combat-hp-armor {
-  height: 100%; background: #c08040; transition: width 0.3s;
-}
-#combat-status {
-  width: 25%; text-align: center; flex-shrink: 0;
-}
-#combat-phase {
-  font-size: 14px; color: #e05050; font-weight: 600; margin-bottom: 8px;
-}
-#combat-distance-bar {
-  width: 100%; height: 6px; background: rgba(20,26,48,0.8); border-radius: 3px;
-  overflow: hidden; margin-bottom: 6px;
-}
-#combat-distance-fill {
-  height: 100%; background: #e05050; transition: width 0.3s;
-}
-#combat-round { font-size: 11px; color: #6a7a9b; }
-#combat-log {
-  flex: 1; overflow-y: auto; padding: 12px 16px;
-  font-family: 'Consolas', 'Courier New', monospace; font-size: 11px;
-  color: #8090b0;
-}
-#combat-log .log-hit { color: #e0a050; }
-#combat-log .log-miss { color: #505870; }
-#combat-log .log-kill { color: #e05050; font-weight: 600; }
-#combat-log .log-intercept { color: #50a0e0; }
-#combat-log .log-range { color: #404860; font-style: italic; }
-#combat-log .log-engage { color: #b0c0e0; font-weight: 600; }
-#combat-log .log-resolve { color: #50c080; font-weight: 600; }
-#combat-log .log-disengage { color: #c0a020; font-weight: 600; }
+/* Combat overlay CSS removed — the RTS rebuild surfaces combat on the
+   starmap directly. Notification + persistent reports panel land later. */
 
 #colony-close {
   position: absolute;
@@ -1953,23 +1857,6 @@ body.scaled {
   </div>
 </div>
 
-<!-- Combat Screen -->
-<div id="combat-backdrop"></div>
-<div id="combat-overlay">
-  <button id="combat-close">&times;</button>
-  <div id="combat-header">
-    <div id="combat-side-a" class="combat-side"></div>
-    <div id="combat-status">
-      <div id="combat-phase">Closing...</div>
-      <div id="combat-distance-bar"><div id="combat-distance-fill"></div></div>
-      <div id="combat-round">Round 0</div>
-      <div id="combat-next-volley" style="font-size:11px;color:#6a7a9b;margin-top:2px"></div>
-    </div>
-    <div id="combat-side-b" class="combat-side"></div>
-  </div>
-  <div id="combat-log"></div>
-</div>
-
 <!-- Research Panel Overlay -->
 <div id="research-backdrop" onclick="if(event.target===this)hideResearchPanel()">
   <div id="research-overlay">
@@ -2449,7 +2336,7 @@ function maybeSpawnNpcFleet(rng, cx, cy, density, centerX, centerY, faction) {
     stance: "aggressive", x: px, y: py, destX: null, destY: null,
     speed: Math.min(...ships.map(s => s.stats.speed || 1)),
     sensorRange: Math.max(...ships.map(s => s.stats.sensorRange || 0)),
-    stealth: 0, label: faction.label, inCombat: null,
+    stealth: 0, label: faction.label,
   });
 }
 
@@ -3055,7 +2942,6 @@ function findColonyShipFleet(star) {
   let bestD2 = Infinity;
   for (const ent of mapEntities) {
     if (ent.owner !== "player") continue;
-    if (ent.inCombat) continue;
     let hasColonyShip = false;
     if (ent.type === "ship") {
       hasColonyShip = ent.card && ent.card.special === "colonize";
@@ -3125,7 +3011,6 @@ function pickScoutFleetEnt(star) {
   let bestD2 = Infinity;
   for (const ent of mapEntities) {
     if (ent.owner !== "player") continue;
-    if (ent.inCombat) continue;
     if (ent.destX !== null || ent.destY !== null) continue;
     const range = (ent.sensorRange || 0) * 50;
     if (range <= 0) continue;
@@ -3148,10 +3033,6 @@ function tickScouts(dt) {
     if (ent) {
       if (!mapEntities.includes(ent)) {
         cancelScoutingStar(star, "lost");
-        continue;
-      }
-      if (ent.inCombat) {
-        cancelScoutingStar(star, "combat");
         continue;
       }
       if (ent.destX !== null || ent.destY !== null) {
@@ -3387,7 +3268,7 @@ function applyScoutAnomaly(anomaly, star, scoutFleetEnt) {
         destX: null, destY: null,
         speed: Math.min(...pirateShips.map(s => s.stats.speed || 1)),
         sensorRange: Math.max(...pirateShips.map(s => s.stats.sensorRange || 0)),
-        stealth: 0, label: "Pirates", inCombat: null,
+        stealth: 0, label: "Pirates",
       });
       anomaly.result = `${pirateShips.length} hostile ship${pirateShips.length === 1 ? "" : "s"} dropped out of stealth at the heliopause.`;
       break;
@@ -3651,7 +3532,6 @@ function createSoloShip(card, x, y, owner) {
     sensorRange: card.stats.sensorRange || 0,
     stealth: card.stats.stealth || 0,
     label: card.name,
-    inCombat: null,
   };
   mapEntities.push(ent);
   return ent;
@@ -3668,7 +3548,6 @@ function createFleet(admiral, ships, x, y, owner) {
     destX: null, destY: null,
     speed: 1, sensorRange: 0, stealth: 0,
     label: admiral ? admiral.name : "Fleet",
-    inCombat: null,
   };
   recalcFleetStats(ent);
   mapEntities.push(ent);
@@ -3789,7 +3668,7 @@ function getEntityColony(ent) {
 
 function disbandEntity(idx) {
   const ent = mapEntities[idx];
-  if (!ent || ent.inCombat) return;
+  if (!ent) return;
   const col = getEntityColony(ent);
   if (!col) return; // can only disband at a colony
   const colony = col.planet.colony;
@@ -3806,7 +3685,6 @@ function disbandEntity(idx) {
 
 function tickEntities(dt) {
   for (const ent of mapEntities) {
-    if (ent.inCombat) continue;
     if (ent.destX === null || ent.destY === null) continue;
 
     const dx = ent.destX - ent.x;
@@ -3835,15 +3713,12 @@ function tickEntities(dt) {
 
   // NPC patrol behavior — idle NPCs wander randomly
   for (const ent of mapEntities) {
-    if (ent.owner !== "npc" || ent.inCombat || ent.destX !== null) continue;
+    if (ent.owner !== "npc" || ent.destX !== null) continue;
     if (Math.random() < 0.002 * dt) {
       ent.destX = ent.x + (Math.random() - 0.5) * 300;
       ent.destY = ent.y + (Math.random() - 0.5) * 300;
     }
   }
-
-  // Detection & engagement scan
-  checkCombatEngagements();
 
   // Drop a stale pirate selection if it's slipped out of sensor coverage,
   // otherwise the select panel keeps showing data for an entity the player
@@ -3857,124 +3732,14 @@ function tickEntities(dt) {
   }
 }
 
-function shouldEngage(a, b, aDetects, bDetects) {
-  const aAggro = a.stance === "aggressive";
-  const bAggro = b.stance === "aggressive";
-  if (!aAggro && !bAggro) return false;
-  if (aAggro && bAggro) return aDetects || bDetects;
-  // One aggressive, one evasive — aggressor must detect, then speed check
-  const aggressor = aAggro ? a : b;
-  const evader = aAggro ? b : a;
-  const aggroDetects = aAggro ? aDetects : bDetects;
-  if (!aggroDetects) return false;
-  const evasionChance = Math.max(0, Math.min(1,
-    (evader.speed - aggressor.speed) / Math.max(1, evader.speed)));
-  return Math.random() > evasionChance;
-}
-
-function startCombat(entityA, entityB) {
-  const combat = createCombat(entityA, entityB);
-  entityA.inCombat = combat.id;
-  entityB.inCombat = combat.id;
-  // Combat exposes every ship card on both sides — mark them seen so the
-  // Collection overlay knows the player has encountered them.
-  for (const ent of [entityA, entityB]) {
-    if (ent.type === "ship" && ent.card) markCardSeen(ent.card);
-    if (ent.ships) for (const s of ent.ships) markCardSeen(s);
-    if (ent.admiral) markCardSeen(ent.admiral);
-  }
-  // Abandon any prior travel destination — otherwise drawEntities keeps
-  // re-reading it and overwrites the combat-facing heading every frame,
-  // so ships keep pointing at the old waypoint instead of the enemy.
-  entityA.destX = null; entityA.destY = null;
-  entityB.destX = null; entityB.destY = null;
-  // Face each other immediately so the first rendered frame is correct.
-  const dx = entityB.x - entityA.x;
-  const dy = entityB.y - entityA.y;
-  if (dx !== 0 || dy !== 0) {
-    entityA.lastHeadingAngle = Math.atan2(dy, dx);
-    entityB.lastHeadingAngle = Math.atan2(-dy, -dx);
-  }
-  activeCombats.push(combat);
-}
-
-function checkCombatEngagements() {
-  for (let i = 0; i < mapEntities.length; i++) {
-    const a = mapEntities[i];
-    if (a.inCombat) continue;
-    for (let j = i + 1; j < mapEntities.length; j++) {
-      const b = mapEntities[j];
-      if (b.inCombat) continue;
-      if (a.owner === b.owner) continue;
-
-      const dist = Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
-      const aDetectRange = a.sensorRange * 50 - (b.stealth || 0) * 100;
-      const bDetectRange = b.sensorRange * 50 - (a.stealth || 0) * 100;
-      const aDetects = aDetectRange > dist;
-      const bDetects = bDetectRange > dist;
-
-      if (!aDetects && !bDetects) continue;
-      if (shouldEngage(a, b, aDetects, bDetects)) {
-        startCombat(a, b);
-        break; // entity a is now in combat, skip to next
-      }
-    }
-  }
-}
-
 // ═══════════════════════════════════════════
-//  COMBAT SYSTEM
+//  COMBAT PRIMITIVES (kept for the upcoming RTS rewire)
 // ═══════════════════════════════════════════
-
-function makeShipCombatState(card) {
-  const maxShields = (card.stats.shields || 0) * COMBAT_HP_SCALE;
-  const maxArmor = (card.stats.armor || 0) * COMBAT_HP_SCALE;
-  return {
-    card,
-    currentShields: card._combatShields != null ? Math.min(card._combatShields, maxShields) : maxShields,
-    currentArmor: card._combatArmor != null ? Math.min(card._combatArmor, maxArmor) : maxArmor,
-    alive: true,
-  };
-}
-
-function buildShipStates(entity) {
-  if (entity.type === "ship") return [makeShipCombatState(entity.card)];
-  return entity.ships.map(c => makeShipCombatState(c));
-}
-
-function buildTurnOrder(sideA, sideB) {
-  const aShips = sideA.ships.filter(s => s.alive);
-  const bShips = sideB.ships.filter(s => s.alive);
-  const order = [];
-  const maxLen = Math.max(aShips.length, bShips.length);
-  for (let i = 0; i < maxLen; i++) {
-    if (i < aShips.length) order.push({ ship: aShips[i], side: "a", enemySide: sideB });
-    if (i < bShips.length) order.push({ ship: bShips[i], side: "b", enemySide: sideA });
-  }
-  return order;
-}
-
-function createCombat(entityA, entityB) {
-  const combat = {
-    id: nextCombatId++,
-    phase: "closing",
-    sideA: { entity: entityA, ships: buildShipStates(entityA) },
-    sideB: { entity: entityB, ships: buildShipStates(entityB) },
-    distance: Math.sqrt((entityA.x - entityB.x) ** 2 + (entityA.y - entityB.y) ** 2),
-    initialDistance: Math.sqrt((entityA.x - entityB.x) ** 2 + (entityA.y - entityB.y) ** 2),
-    shotTimer: SHOT_INTERVAL,
-    turnOrder: [],
-    turnIndex: 0,
-    roundNumber: 0,
-    log: [],
-    gameTime: 0,
-    // Screen-space hit detection (updated during render)
-    _screenMidX: 0, _screenMidY: 0, _screenRadius: 0,
-  };
-  combat.turnOrder = buildTurnOrder(combat.sideA, combat.sideB);
-  combat.log.push({ time: 0, text: `${entityA.label} engages ${entityB.label}!`, type: "engage" });
-  return combat;
-}
+// applyDamage, calcHitChance, calcPDInterceptChance, getWeaponInfo,
+// pickRandomAlive, rollCombatLoot live below. The old turn-based engine
+// (startCombat / createCombat / fireShot / tickCombats / overlay) was
+// removed; ships currently can't fight at all. The RTS replacement lands
+// next.
 
 function calcHitChance(attackerCard, defenderCard) {
   let chance = 0.70;
@@ -4022,98 +3787,6 @@ function getWeaponInfo(card) {
   if (card.stats.kineticDmg) weapons.push({ type: "kinetic", dmg: card.stats.kineticDmg, range: card.stats.kineticRange });
   if (card.stats.missileDmg) weapons.push({ type: "missile", dmg: card.stats.missileDmg, range: card.stats.missileRange });
   return weapons;
-}
-
-function fireShot(combat, turnEntry) {
-  const ship = turnEntry.ship;
-  if (!ship.alive) return;
-  const enemySide = turnEntry.enemySide;
-
-  const weapons = getWeaponInfo(ship.card);
-  if (weapons.length === 0) return;
-
-  // Every weapon whose range covers the current distance fires this volley.
-  const inRange = weapons.filter(w => combat.distance <= (RANGE_THRESHOLDS[w.range] ?? 0));
-  if (inRange.length === 0) {
-    combat.log.push({ time: combat.gameTime, text: `${ship.card.name} — out of range`, type: "range" });
-    return;
-  }
-
-  const attackerSide = turnEntry.side === "a" ? combat.sideA : combat.sideB;
-  const attackerEnt  = attackerSide.entity;
-  const defenderEnt  = enemySide.entity;
-  const firerIdx  = Math.max(0, attackerSide.ships.indexOf(ship));
-  const firerPos  = getShipWorldPos(attackerEnt, firerIdx, 0);
-
-  for (const firedWeapon of inRange) {
-    // Re-pick target per weapon so a kill mid-volley redirects remaining fire.
-    const target = pickRandomAlive(enemySide.ships);
-    if (!target) return;
-
-    const targetIdx = Math.max(0, enemySide.ships.indexOf(target));
-    const targetPos = getShipWorldPos(defenderEnt, targetIdx, 0);
-    const midPx = (firerPos.x + targetPos.x) / 2;
-    const midPy = (firerPos.y + targetPos.y) / 2;
-
-    const hitChance = calcHitChance(ship.card, target.card);
-    if (Math.random() > hitChance) {
-      spawnWeaponVisual(firerPos.x, firerPos.y, targetPos.x, targetPos.y, firedWeapon.type);
-      spawnCombatParticle(midPx, midPy, firedWeapon.type, false);
-      combat.log.push({ time: combat.gameTime, text: `${ship.card.name} fires ${firedWeapon.type} at ${target.card.name} — MISS`, type: "miss" });
-      continue;
-    }
-
-    if (firedWeapon.type === "missile") {
-      const pdChance = calcPDInterceptChance(enemySide);
-      if (Math.random() < pdChance) {
-        spawnWeaponVisual(firerPos.x, firerPos.y, targetPos.x, targetPos.y, firedWeapon.type);
-        spawnCombatParticle(midPx, midPy, firedWeapon.type, false);
-        combat.log.push({ time: combat.gameTime, text: `${ship.card.name} fires missile at ${target.card.name} — INTERCEPTED`, type: "intercept" });
-        continue;
-      }
-    }
-
-    applyDamage(target, firedWeapon.type, firedWeapon.dmg);
-    const killText = target.alive ? "" : " — DESTROYED";
-    spawnWeaponVisual(firerPos.x, firerPos.y, targetPos.x, targetPos.y, firedWeapon.type);
-    spawnCombatParticle(targetPos.x, targetPos.y, firedWeapon.type, true);
-    combat.log.push({
-      time: combat.gameTime,
-      text: `${ship.card.name} fires ${firedWeapon.type} at ${target.card.name} — HIT ${firedWeapon.dmg} dmg${killText}`,
-      type: target.alive ? "hit" : "kill",
-    });
-  }
-}
-
-function checkCombatEnd(combat) {
-  const aAlive = combat.sideA.ships.some(s => s.alive);
-  const bAlive = combat.sideB.ships.some(s => s.alive);
-  if (!aAlive || !bAlive) {
-    combat.phase = "resolved";
-    const winner = aAlive ? combat.sideA : combat.sideB;
-    const loser = aAlive ? combat.sideB : combat.sideA;
-    combat.log.push({ time: combat.gameTime,
-      text: `${winner.entity.label} victorious! ${loser.entity.label} destroyed.`, type: "resolve" });
-  }
-}
-
-function syncSurvivorState(side) {
-  const ent = side.entity;
-  if (ent.type === "fleet") {
-    const aliveCards = side.ships.filter(s => s.alive).map(s => {
-      s.card._combatShields = s.currentShields;
-      s.card._combatArmor = s.currentArmor;
-      return s.card;
-    });
-    ent.ships = aliveCards;
-    if (ent.ships.length > 0) recalcFleetStats(ent);
-  } else if (ent.type === "ship") {
-    const state = side.ships[0];
-    if (state.alive) {
-      state.card._combatShields = state.currentShields;
-      state.card._combatArmor = state.currentArmor;
-    }
-  }
 }
 
 // Per-rarity salvage payout. Used by BOTH scrapping a card (queue → trash, or
@@ -4226,139 +3899,6 @@ function rollCombatLoot(winner, loser) {
   return { resources, cards, artifact };
 }
 
-function cleanupCombat(combat, arrayIndex) {
-  const aAlive = combat.sideA.ships.some(s => s.alive);
-  const winner = aAlive ? combat.sideA : combat.sideB;
-  const loser = aAlive ? combat.sideB : combat.sideA;
-
-  // Roll salvage BEFORE removing the loser entity so loser.ships is intact.
-  const loot = rollCombatLoot(winner, loser);
-
-  // Remove destroyed entity
-  const loserIdx = mapEntities.indexOf(loser.entity);
-  if (loserIdx >= 0) {
-    mapEntities.splice(loserIdx, 1);
-    if (selectedEntityIdx === loserIdx) selectedEntityIdx = null;
-    else if (selectedEntityIdx !== null && selectedEntityIdx > loserIdx) selectedEntityIdx--;
-  }
-
-  // Update winner
-  syncSurvivorState(winner);
-  winner.entity.inCombat = null;
-
-  activeCombats.splice(arrayIndex, 1);
-
-  // Apply loot + show salvage screen. Resources go into the global pool now;
-  // any dropped cards land in the pirateLoot inventory and are marked seen.
-  // A dropped artifact (if any) immediately unlocks via grantArtifact so its
-  // effect is live the moment the salvage screen appears.
-  if (loot) {
-    for (const k of Object.keys(loot.resources)) {
-      resources[k] = (resources[k] || 0) + loot.resources[k];
-    }
-    for (const card of loot.cards) {
-      pirateLoot[card.id] = (pirateLoot[card.id] || 0) + 1;
-      markCardSeen(card);
-    }
-    if (loot.artifact) {
-      grantArtifact(loot.artifact.id);
-      markCardSeen(loot.artifact);
-    }
-    if (Object.keys(loot.resources).length > 0 || loot.cards.length > 0 || loot.artifact) {
-      showSalvageScreen(loot);
-    }
-  }
-}
-
-function tryDisengage(combat) {
-  for (const side of [combat.sideA, combat.sideB]) {
-    if (side.entity.stance !== "evasive") continue;
-    if (!side.ships.some(s => s.alive)) continue;
-    const other = side === combat.sideA ? combat.sideB : combat.sideA;
-    const speedRatio = Math.max(0, (side.entity.speed - other.entity.speed) / Math.max(1, side.entity.speed));
-    // 5% base per game-second, boosted by speed advantage
-    const chance = 0.05 * (1 + speedRatio * 2);
-    if (Math.random() < chance) {
-      combat.phase = "resolved";
-      combat.log.push({ time: combat.gameTime, text: `${side.entity.label} disengages!`, type: "disengage" });
-      // Both survive — unlock both
-      syncSurvivorState(combat.sideA);
-      syncSurvivorState(combat.sideB);
-      combat.sideA.entity.inCombat = null;
-      combat.sideB.entity.inCombat = null;
-    }
-  }
-}
-
-function tickCombats(rawDt) {
-  const dt = rawDt * COMBAT_TIME_SCALE;
-  for (let ci = activeCombats.length - 1; ci >= 0; ci--) {
-    const combat = activeCombats[ci];
-    if (combat.phase === "resolved") {
-      cleanupCombat(combat, ci);
-      continue;
-    }
-
-    combat.gameTime += dt;
-
-    // Move entities toward each other at full speed
-    const entA = combat.sideA.entity;
-    const entB = combat.sideB.entity;
-    const dx = entB.x - entA.x;
-    const dy = entB.y - entA.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    combat.distance = dist;
-
-    // Face each other throughout the engagement (ships would otherwise
-    // keep their pre-combat heading from lastHeadingAngle).
-    if (dx !== 0 || dy !== 0) {
-      entA.lastHeadingAngle = Math.atan2(dy, dx);
-      entB.lastHeadingAngle = Math.atan2(-dy, -dx);
-    }
-
-    if (dist > ENGAGED_DISTANCE) {
-      const nx = dx / dist;
-      const ny = dy / dist;
-      entA.x += nx * entA.speed * dt;
-      entA.y += ny * entA.speed * dt;
-      entB.x -= nx * entB.speed * dt;
-      entB.y -= ny * entB.speed * dt;
-    } else if (combat.phase === "closing") {
-      combat.phase = "engaged";
-      combat.log.push({ time: combat.gameTime, text: "Fleets at close range!", type: "engage" });
-    }
-
-    // Check disengagement attempts
-    if (combat.sideA.entity.stance === "evasive" || combat.sideB.entity.stance === "evasive") {
-      tryDisengage(combat);
-      if (combat.phase === "resolved") continue;
-    }
-
-    // Shot timer
-    combat.shotTimer -= dt;
-    while (combat.shotTimer <= 0 && combat.phase !== "resolved") {
-      // Fire current shot
-      if (combat.turnIndex < combat.turnOrder.length) {
-        fireShot(combat, combat.turnOrder[combat.turnIndex]);
-        combat.turnIndex++;
-      }
-
-      // Round complete?
-      if (combat.turnIndex >= combat.turnOrder.length) {
-        combat.roundNumber++;
-        combat.turnOrder = buildTurnOrder(combat.sideA, combat.sideB);
-        combat.turnIndex = 0;
-      }
-
-      // Check if combat ended this shot
-      checkCombatEnd(combat);
-      if (combat.phase === "resolved") break;
-
-      combat.shotTimer += SHOT_INTERVAL;
-    }
-  }
-}
-
 // ── Pictographic ship silhouettes ──
 // Path geometry is normalized to ~size=1.0 (extents roughly within ±12 units
 // for legendary, smaller for lower rarities). Callers scale by the existing
@@ -4433,7 +3973,6 @@ function drawShipGlyph(ctx, isFleet) {
 // visible only while a scout/colony actively sees them.
 function isEntityVisibleToPlayer(ent) {
   if (!ent || ent.owner !== "npc") return true;
-  if (ent.inCombat) return true;
   return isInPlayerSensorRange(ent.x, ent.y);
 }
 
@@ -4790,11 +4329,10 @@ function drawCombatParticles(ctx) {
 const weaponVisuals = [];
 
 function spawnWeaponVisual(fwx, fwy, twx, twy, weaponType) {
-  // Weapon visuals tick on scaledDt * VISUAL_DT_FACTOR while combat runs on
-  // scaledDt * COMBAT_TIME_SCALE. One combat-time SHOT_INTERVAL is therefore
-  // SHOT_INTERVAL * VISUAL_DT_FACTOR / COMBAT_TIME_SCALE visual-tick-seconds —
-  // the "volley window" each shot event gets to fill with visual activity.
-  const VOLLEY = SHOT_INTERVAL * VISUAL_DT_FACTOR / COMBAT_TIME_SCALE;
+  // "Volley window" — how long the visual flourish for a single shot lasts.
+  // Used to space bursts / set beam life. Was tied to COMBAT_TIME_SCALE; now
+  // just a single tunable seconds-equivalent on the visual clock.
+  const VOLLEY = SHOT_INTERVAL;
 
   if (weaponType === "energy") {
     // One continuous beam covering ~90% of the window.
@@ -4923,156 +4461,6 @@ function drawWeaponVisuals(ctx) {
     }
   }
 }
-
-function drawCombatIndicators(ctx, time) {
-  for (const combat of activeCombats) {
-    if (combat.phase === "resolved") continue;
-    const entA = combat.sideA.entity;
-    const entB = combat.sideB.entity;
-
-    // Use actual entity positions (they move toward each other in tickCombats)
-    const posA = worldToScreen(entA.x, entA.y);
-    const posB = worldToScreen(entB.x, entB.y);
-
-    // Red glowing line
-    ctx.save();
-    ctx.shadowColor = "#ff3030";
-    ctx.shadowBlur = 12 * camera.zoom;
-    ctx.strokeStyle = "rgba(255, 48, 48, 0.6)";
-    ctx.lineWidth = 2 * camera.zoom;
-    ctx.beginPath();
-    ctx.moveTo(posA.x, posA.y);
-    ctx.lineTo(posB.x, posB.y);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.restore();
-
-    // Crossed swords icon at midpoint
-    const mx = (posA.x + posB.x) / 2;
-    const my = (posA.y + posB.y) / 2;
-    const iconSize = Math.max(10, 14 * camera.zoom);
-    const pulse = 0.7 + 0.3 * Math.sin(time * 4);
-
-    ctx.fillStyle = `rgba(180, 30, 30, ${0.4 * pulse})`;
-    ctx.beginPath();
-    ctx.arc(mx, my, iconSize, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = `rgba(255, 200, 200, ${pulse})`;
-    ctx.font = `${iconSize * 1.2}px 'Segoe UI Emoji', 'Segoe UI', system-ui, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("\u2694", mx, my);
-
-    // Store screen coords for click hit testing
-    combat._screenMidX = mx;
-    combat._screenMidY = my;
-    combat._screenRadius = iconSize;
-  }
-}
-
-function getCombatAtScreen(sx, sy) {
-  for (const combat of activeCombats) {
-    if (combat.phase === "resolved") continue;
-    if (combat._screenMidX === undefined) continue;
-    const d = Math.sqrt((sx - combat._screenMidX) ** 2 + (sy - combat._screenMidY) ** 2);
-    if (d < combat._screenRadius + 5) return combat;
-  }
-  return null;
-}
-
-// ── Combat Overlay UI ──
-let viewedCombat = null;
-let lastLogLength = 0;
-
-function showCombatOverlay(combat) {
-  viewedCombat = combat;
-  lastLogLength = 0;
-  // Rebuild full log from start
-  const logEl = document.getElementById("combat-log");
-  logEl.innerHTML = "";
-  document.getElementById("combat-backdrop").classList.add("visible");
-  const overlay = document.getElementById("combat-overlay");
-  overlay.style.display = "flex";
-  requestAnimationFrame(() => overlay.classList.add("visible"));
-  refreshCombatOverlay();
-}
-
-function hideCombatOverlay() {
-  viewedCombat = null;
-  const overlay = document.getElementById("combat-overlay");
-  const backdrop = document.getElementById("combat-backdrop");
-  overlay.classList.remove("visible");
-  backdrop.classList.remove("visible");
-  setTimeout(() => { overlay.style.display = "none"; }, 300);
-}
-
-function renderCombatSide(container, side, label, sideKey) {
-  const aCount = side.ships.filter(s => s.alive).length;
-  const tCount = side.ships.length;
-  let html = `<h3>${label} (${aCount}/${tCount})</h3>`;
-  for (let i = 0; i < side.ships.length; i++) {
-    const s = side.ships[i];
-    const maxS = (s.card.stats.shields || 0) * COMBAT_HP_SCALE;
-    const maxA = (s.card.stats.armor || 0) * COMBAT_HP_SCALE;
-    const totalMax = maxS + maxA;
-    const sPct = totalMax > 0 ? (s.currentShields / totalMax * 100) : 0;
-    const aPct = totalMax > 0 ? (s.currentArmor / totalMax * 100) : 0;
-    const rarityCol = RARITY_COLORS[s.card.rarity] || "#6a7a9b";
-    const deadClass = s.alive ? "" : " dead";
-    html += `<div class="combat-ship-tile${deadClass}" onclick="showCombatCardMagnified('${sideKey}', ${i})">
-      <div class="combat-ship-tile-stripe" style="background:${rarityCol}"></div>
-      <div class="combat-ship-tile-body">
-        <div class="combat-ship-tile-head">
-          <span class="combat-ship-tile-name">${s.card.name}</span>
-          <span class="combat-ship-tile-hp">${Math.ceil(s.currentShields)}s ${Math.ceil(s.currentArmor)}a</span>
-        </div>
-        <div class="combat-hp-bar">
-          <div class="combat-hp-shields" style="width:${sPct}%"></div>
-          <div class="combat-hp-armor" style="width:${aPct}%"></div>
-        </div>
-      </div>
-    </div>`;
-  }
-  container.innerHTML = html;
-}
-
-function refreshCombatOverlay() {
-  if (!viewedCombat) return;
-  const c = viewedCombat;
-
-  renderCombatSide(document.getElementById("combat-side-a"), c.sideA, c.sideA.entity.label, "a");
-  renderCombatSide(document.getElementById("combat-side-b"), c.sideB, c.sideB.entity.label, "b");
-
-  // Status
-  const phaseNames = { closing: "Closing...", engaged: "Engaged!", resolved: "Resolved" };
-  document.getElementById("combat-phase").textContent = phaseNames[c.phase] || c.phase;
-  const distPct = c.initialDistance > 0 ? (c.distance / c.initialDistance) * 100 : 0;
-  document.getElementById("combat-distance-fill").style.width = distPct + "%";
-  document.getElementById("combat-round").textContent = `Round ${c.roundNumber}`;
-  // c.shotTimer is in combat-time-seconds. Real-seconds = combat-sec divided
-  // by the chain BASE_GAME_SPEED * gameSpeed * COMBAT_TIME_SCALE. Fall back
-  // to 1x when paused so the display stays meaningful instead of "Infinity".
-  const speedFactor = BASE_GAME_SPEED * (gameSpeed > 0 ? gameSpeed : 1) * COMBAT_TIME_SCALE;
-  const nextVolleyReal = Math.max(0, c.shotTimer) / Math.max(speedFactor, 1e-9);
-  const pausedNote = gameSpeed === 0 ? " (at 1x)" : "";
-  document.getElementById("combat-next-volley").textContent = c.phase === "resolved" ? "" : `Next volley: ${nextVolleyReal.toFixed(1)}s${pausedNote}`;
-
-  // Log — only append new entries
-  const logEl = document.getElementById("combat-log");
-  for (let i = lastLogLength; i < c.log.length; i++) {
-    const entry = c.log[i];
-    const div = document.createElement("div");
-    div.className = `log-${entry.type || "hit"}`;
-    div.textContent = `[${entry.time.toFixed(1)}s] ${entry.text}`;
-    logEl.appendChild(div);
-  }
-  lastLogLength = c.log.length;
-  logEl.scrollTop = logEl.scrollHeight;
-}
-
-document.getElementById("combat-close").addEventListener("click", hideCombatOverlay);
-document.getElementById("combat-backdrop").addEventListener("click", hideCombatOverlay);
 
 function getEntityAtScreen(sx, sy) {
   const world = screenToWorld(sx, sy);
@@ -5798,7 +5186,6 @@ function render() {
 
   // Probes/fleets drawn above stars but below fog
   drawEntities(ctx, animTime);
-  drawCombatIndicators(ctx, animTime);
   drawWeaponVisuals(ctx);
   drawCombatParticles(ctx);
 
@@ -6954,8 +6341,6 @@ function showEntityPanel(idx) {
     const etaSec = entityETARealSec(ent, dist);
     const pausedNote = gameSpeed === 0 ? " (at 1x)" : "";
     infoHtml += `<div style="color:#a0a0d0;margin-top:4px;display:flex;align-items:center;gap:5px">${ico("i-clock", "sm")}<span>ETA: ${formatETA(etaSec)}${pausedNote}</span></div>`;
-  } else if (ent.inCombat) {
-    infoHtml += `<div style="color:#e05050;margin-top:4px;display:flex;align-items:center;gap:5px">${ico("i-swords", "sm")}<span>In Combat</span></div>`;
   } else if (atColony) {
     infoHtml += `<div style="color:#4a9b5a;margin-top:4px">At colony</div>`;
   }
@@ -7052,8 +6437,7 @@ function isOverBlockingOverlay(target) {
          target.closest("#colonies-backdrop") || target.closest("#fleets-list-overlay") ||
          target.closest("#fleets-backdrop") || target.closest("#card-select-backdrop") ||
          target.closest("#research-backdrop") || target.closest("#research-choice-backdrop") ||
-         target.closest("#combat-overlay") ||
-         target.closest("#combat-backdrop") || target.closest("#collection-overlay") ||
+         target.closest("#collection-overlay") ||
          target.closest("#collection-backdrop");
 }
 
@@ -7213,13 +6597,6 @@ function handlePointerEnd(e) {
       return;
     }
 
-    // Check combat icon click first
-    const combatHit = getCombatAtScreen(sx, sy);
-    if (combatHit) {
-      showCombatOverlay(combatHit);
-      return;
-    }
-
     // Check if clicking an entity (ship/fleet)
     const entIdx = getEntityAtScreen(sx, sy);
 
@@ -7227,7 +6604,7 @@ function handlePointerEnd(e) {
       // Entity is selected — click sets destination. Gated to player-owned
       // non-combat entities; NPC fleets ignore player click commands.
       const selEnt = mapEntities[selectedEntityIdx];
-      if (selEnt && selEnt.owner === "player" && !selEnt.inCombat) {
+      if (selEnt && selEnt.owner === "player") {
         const world = screenToWorld(sx, sy);
         selEnt.destX = world.x;
         selEnt.destY = world.y;
@@ -7258,7 +6635,7 @@ window.addEventListener("pointercancel", (e) => {
 
 // Suppress context menu on the map entirely
 container.addEventListener("contextmenu", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#combat-overlay") || e.target.closest("#collection-overlay")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#collection-overlay")) return;
   e.preventDefault();
   // A right-click *drag* is the camera-pan gesture; only a clean right-click
   // (no movement past the 3px threshold) should deselect the active entity.
@@ -7297,7 +6674,7 @@ canvasEl.addEventListener("dblclick", (e) => {
 });
 
 container.addEventListener("wheel", (e) => {
-  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#research-choice-backdrop") || e.target.closest("#combat-overlay") || e.target.closest("#collection-overlay")) return;
+  if (e.target.closest("#system-overlay") || e.target.closest("#select-panel") || e.target.closest("#colony-overlay") || e.target.closest("#colonies-list-overlay") || e.target.closest("#fleets-list-overlay") || e.target.closest("#card-select-backdrop") || e.target.closest("#research-backdrop") || e.target.closest("#research-choice-backdrop") || e.target.closest("#collection-overlay")) return;
   e.preventDefault();
   const zoomFactor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
   const newZoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomFactor));
@@ -7526,8 +6903,7 @@ function toggleResourceDropdown() {
   document.getElementById("resources").appendChild(panel);
 }
 // 1x game-time = 1x real-time. Constants below are written in real-seconds.
-// Movement and combat have their own secondary multipliers (WORLD_SPEED_MULT,
-// COMBAT_TIME_SCALE) so they can be tuned independently of the global base.
+// Movement has its own secondary multiplier (WORLD_SPEED_MULT).
 const BASE_GAME_SPEED = 2.0;
 let gameSpeed = 1;             // player-facing multiplier (1x, 2x, 4x, …)
 let lastTickTime = 0;
@@ -7536,29 +6912,20 @@ let tickAccumulator = 0;
 // in templates are denoted "per tick"; with TICK_PERIOD=1 that's per-real-second.
 const TICK_PERIOD = 1;
 
-// ── Combat constants ──
-const SHOT_INTERVAL = 0.5;       // game-seconds between each shot in a volley
-const COMBAT_TIME_SCALE = 1 / 100; // combat runs 100x slower than wall-clock — preserves the pre-real-time-rebase combat tempo
+// ── Combat constants (RTS rebuild in progress; values kept for reuse) ──
+const SHOT_INTERVAL = 0.5;       // game-seconds between each shot a ship fires
 // Map-movement secondary scale: ent.x += dir * (ent.speed * scaledDt * WORLD_SPEED_MULT).
-// 0.8 is 4x the previous 0.2; ETAs read from this same constant so they update
-// automatically. Combat closing speed lives on a different path (tickCombats
-// with COMBAT_TIME_SCALE) so combat tempo is unaffected.
 const WORLD_SPEED_MULT = 0.8;
 // Particles and weapon-flash visuals tick at scaledDt * VISUAL_DT_FACTOR so
-// their on-screen tempo is unchanged across BASE_GAME_SPEED rebases. Any
-// formula that converts combat-time to "visual-tick-time" (e.g. VOLLEY in
-// spawnWeaponVisual) must include this factor.
+// their on-screen tempo is unchanged across BASE_GAME_SPEED rebases.
 const VISUAL_DT_FACTOR = 0.1;
 const COMBAT_HP_SCALE = 5;       // multiplier on shields/armor for combat durability
 const RANGE_THRESHOLDS = { long: 1000, medium: 650, short: 350 };  // world-unit distance for weapon activation
-const ENGAGED_DISTANCE = 200;    // world units — entities stop closing at this distance
 const COMBAT_TRIANGLE = {
   energy:  { vsShields: 2.0, vsArmor: 0.5 },
   kinetic: { vsShields: 0.5, vsArmor: 2.0 },
   missile: { vsShields: 1.0, vsArmor: 1.0 },
 };
-const activeCombats = [];
-let nextCombatId = 1;
 
 // ── Card draw scaling ──────────────────────────────────────────────────────
 // Cost and interval per draw both scale on two axes:
@@ -7765,7 +7132,6 @@ const TECH_EFFECTS = {
       let any = false;
       for (const ent of mapEntities) {
         if (ent.owner !== "player") continue;
-        if (ent.inCombat) continue;
         const ships = ent.type === "ship" ? [ent.card] : (ent.ships || []);
         for (const card of ships) {
           if (applyTechShipHeal(card, _maxOf(card, "shields") * pct / 100, _maxOf(card, "armor") * pct / 100)) any = true;
@@ -7786,7 +7152,6 @@ const TECH_EFFECTS = {
       for (let i = 0; i < mapEntities.length; i++) {
         const ent = mapEntities[i];
         if (ent.owner !== "npc") continue;
-        if (ent.inCombat) continue;  // v1: refuse to target in-combat ships
         const dx = ent.x - wx, dy = ent.y - wy;
         if (dx * dx + dy * dy > r2) continue;
         hit = true;
@@ -7824,7 +7189,6 @@ const TECH_EFFECTS = {
       let hit = false;
       for (const ent of mapEntities) {
         if (ent.owner !== "player") continue;
-        if (ent.inCombat) continue;
         const dx = ent.x - wx, dy = ent.y - wy;
         if (dx * dx + dy * dy > r2) continue;
         const ships = ent.type === "ship" ? [ent.card] : (ent.ships || []);
@@ -8809,8 +8173,6 @@ function showFleetsList() {
     if (traveling) {
       const dist = Math.sqrt((ent.destX - ent.x) ** 2 + (ent.destY - ent.y) ** 2);
       etaStr = ` · ${formatETA(entityETARealSec(ent, dist))}`;
-    } else if (ent.inCombat) {
-      etaStr = " · in combat";
     }
     return `<div class="colony-list-item" onclick="selectFleetFromList(${i})">
       <div class="colony-list-rarity" style="background:${rarityColor}"></div>
@@ -9717,31 +9079,9 @@ function dismissMagnifiedCard() {
 
 // Combat-overlay card magnify: inspect-only, just a Close button. Reuses
 // the queue-card-magnified styling and the shared magnifiedEl slot.
-function showCombatCardMagnified(sideKey, shipIdx) {
-  if (!viewedCombat) return;
-  const side = (sideKey === "a") ? viewedCombat.sideA : viewedCombat.sideB;
-  const ship = side && side.ships[shipIdx];
-  if (!ship) return;
-  dismissMagnifiedCard();
-  const mag = document.createElement("div");
-  mag.className = "queue-card-magnified";
-  mag.innerHTML = buildCardHtml(ship.card) +
-    `<div class="magnify-actions">
-      <button class="magnify-close-btn">Close</button>
-    </div>`;
-  mag.querySelector(".magnify-close-btn").addEventListener("click", dismissMagnifiedCard);
-  document.body.appendChild(mag);
-  magnifiedEl = mag;
-}
-
 // Dismiss magnified card on click outside
 document.getElementById("colony-overlay").addEventListener("click", (e) => {
   if (magnifiedEl && !e.target.closest(".queue-card-magnified") && !e.target.closest(".queue-card") && !e.target.closest(".building-slot.occupied") && !e.target.closest("#colony-leader")) {
-    dismissMagnifiedCard();
-  }
-});
-document.getElementById("combat-overlay").addEventListener("click", (e) => {
-  if (magnifiedEl && !e.target.closest(".queue-card-magnified") && !e.target.closest(".combat-ship-tile")) {
     dismissMagnifiedCard();
   }
 });
@@ -9825,7 +9165,6 @@ function gameLoop(timestamp) {
   const scaledDt = dt * BASE_GAME_SPEED * gameSpeed;
   tickEconomy(scaledDt);
   tickEntities(scaledDt);
-  tickCombats(scaledDt);
   tickScouts(scaledDt);
   // Combat particles and weapon-flash visuals were tuned for the pre-rebase
   // 0.1x base; keep them at that effective tempo so flashes/trails read the
@@ -9833,7 +9172,6 @@ function gameLoop(timestamp) {
   const visualDt = scaledDt * VISUAL_DT_FACTOR;
   tickParticles(visualDt);
   tickWeaponVisuals(visualDt);
-  if (viewedCombat) refreshCombatOverlay();
   // Lightweight updates when colony screen is open (no full DOM rebuild)
   if (colonyViewStar && colonyViewPlanetIdx != null) {
     const col = getActiveColony();
@@ -10266,15 +9604,12 @@ function serializeGame() {
       type: e.type, owner: e.owner, stance: e.stance,
       x: e.x, y: e.y, destX: e.destX, destY: e.destY,
       speed: e.speed, sensorRange: e.sensorRange, stealth: e.stealth,
-      label: e.label, inCombat: e.inCombat,
+      label: e.label,
       card: e.card ? serializeCardRef(e.card) : null,
       ships: e.ships ? e.ships.map(serializeCardRef).filter(Boolean) : null,
       admiral: e.admiral ? serializeCardRef(e.admiral) : null,
     })),
     selectedEntityIdx,
-
-    activeCombats: activeCombats.map(c => serializeCombat(c, entityIdx)),
-    nextCombatId,
 
     resources: { ...resources },
     gameSpeed,
@@ -10297,43 +9632,10 @@ function serializeGame() {
   };
 }
 
-function serializeCombat(c, entityIdx) {
-  return {
-    id: c.id, phase: c.phase,
-    sideA: serializeSide(c.sideA, entityIdx),
-    sideB: serializeSide(c.sideB, entityIdx),
-    distance: c.distance,
-    initialDistance: c.initialDistance,
-    shotTimer: c.shotTimer,
-    turnIndex: c.turnIndex,
-    roundNumber: c.roundNumber,
-    log: c.log || [],
-    gameTime: c.gameTime,
-  };
-}
-
-function serializeSide(side, entityIdx) {
-  const eIdx = entityIdx.get(side.entity);
-  const ent = side.entity;
-  const ships = side.ships.map(s => {
-    let shipIdx = -1;
-    if (ent.type === "ship") shipIdx = 0;
-    else if (ent.type === "fleet") shipIdx = ent.ships.indexOf(s.card);
-    return {
-      shipIdx,
-      currentShields: s.currentShields,
-      currentArmor: s.currentArmor,
-      alive: s.alive,
-    };
-  });
-  return { entityIdx: eIdx, ships };
-}
-
 function clearGameState() {
   // Close any open overlays so we don't hold stale refs
   if (typeof hideSystemOverlay === "function") hideSystemOverlay();
   if (typeof hideColonyScreen === "function") hideColonyScreen();
-  if (typeof hideCombatOverlay === "function") hideCombatOverlay();
   if (typeof hideColoniesList === "function") hideColoniesList();
   if (typeof hideResearchPanel === "function") hideResearchPanel();
   if (typeof hideSelectPanel === "function") hideSelectPanel();
@@ -10347,9 +9649,6 @@ function clearGameState() {
   selectedEntityIdx = null;
   hoveredStarId = null;
   selectedStarId = null;
-  activeCombats.length = 0;
-  nextCombatId = 1;
-  viewedCombat = null;
   colonies.length = 0;
   combatParticles.length = 0;
   for (const k of Object.keys(resources)) delete resources[k];
@@ -10408,14 +9707,13 @@ function deserializeGame(data) {
   for (const [key, bits] of (data.chunkSeenBits || [])) chunkSeenBits.set(key, bits);
 
   for (const e of data.mapEntities) {
-    // Preserve mapEntities order: activeCombats reference entities by index
-    // via entityIdx, so dropping entities here would corrupt combat. If a
-    // card ref can't resolve, we keep the raw ref as a degraded card and warn.
+    // Preserve mapEntities order. If a card ref can't resolve, we keep the
+    // raw ref as a degraded card and warn.
     const ent = {
       type: e.type, owner: e.owner, stance: e.stance,
       x: e.x, y: e.y, destX: e.destX, destY: e.destY,
       speed: e.speed, sensorRange: e.sensorRange, stealth: e.stealth,
-      label: e.label, inCombat: e.inCombat,
+      label: e.label,
     };
     if (e.card) ent.card = hydrateCardRef(e.card) || e.card;
     if (e.ships) ent.ships = e.ships.map(s => hydrateCardRef(s) || s);
@@ -10423,11 +9721,6 @@ function deserializeGame(data) {
     mapEntities.push(ent);
   }
   selectedEntityIdx = data.selectedEntityIdx ?? null;
-
-  for (const c of (data.activeCombats || [])) {
-    activeCombats.push(deserializeCombat(c));
-  }
-  nextCombatId = data.nextCombatId || 1;
 
   for (const k of Object.keys(data.resources || {})) resources[k] = data.resources[k];
   // Fill in any missing resource defs with 0 (forward-compat)
@@ -10481,45 +9774,6 @@ function deserializeGame(data) {
 
   updateSpeedControlActive();
   updateResourceDisplay();
-}
-
-function deserializeCombat(c) {
-  const sideA = deserializeSide(c.sideA);
-  const sideB = deserializeSide(c.sideB);
-  const combat = {
-    id: c.id, phase: c.phase,
-    sideA, sideB,
-    distance: c.distance,
-    initialDistance: c.initialDistance,
-    shotTimer: c.shotTimer,
-    turnOrder: [],
-    turnIndex: c.turnIndex || 0,
-    roundNumber: c.roundNumber || 0,
-    log: c.log || [],
-    gameTime: c.gameTime || 0,
-    _screenMidX: 0, _screenMidY: 0, _screenRadius: 0,
-  };
-  combat.turnOrder = buildTurnOrder(sideA, sideB);
-  if (combat.turnOrder.length === 0) combat.turnIndex = 0;
-  else if (combat.turnIndex >= combat.turnOrder.length) combat.turnIndex = 0;
-  return combat;
-}
-
-function deserializeSide(s) {
-  const entity = mapEntities[s.entityIdx];
-  if (!entity) throw new Error("Combat references missing entity.");
-  const ships = [];
-  for (const ss of s.ships) {
-    const card = entity.type === "ship" ? entity.card : entity.ships[ss.shipIdx];
-    if (!card) continue; // ship was already removed at save time — skip stale state
-    ships.push({
-      card,
-      currentShields: ss.currentShields,
-      currentArmor: ss.currentArmor,
-      alive: ss.alive,
-    });
-  }
-  return { entity, ships };
 }
 
 function updateSpeedControlActive() {

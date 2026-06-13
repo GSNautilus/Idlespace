@@ -2331,13 +2331,9 @@ function maybeSpawnNpcFleet(rng, cx, cy, density, centerX, centerY, faction) {
   }
   if (!ships.length) return;
 
-  mapEntities.push({
-    type: "fleet", owner: "npc", faction: faction.id, ships, admiral: null,
-    stance: "aggressive", x: px, y: py, destX: null, destY: null,
-    speed: Math.min(...ships.map(s => s.stats.speed || 1)),
-    sensorRange: Math.max(...ships.map(s => s.stats.sensorRange || 0)),
-    stealth: 0, label: faction.label,
-  });
+  // Spawn as individual ship units clustered at the spawn point (RTS unit
+  // model — no fleet entity). Each patrols independently.
+  deployShipGroup(ships, { owner: "npc", faction: faction.id, x: px, y: py });
 }
 
 const ACTION_TO_CATEGORY = { buildings:"building", admirals:"admiral", leaders:"leader", ships:"ship" };
@@ -3260,15 +3256,10 @@ function applyScoutAnomaly(anomaly, star, scoutFleetEnt) {
       // Small offset from the star so they don't spawn dead-center on top of it.
       const jitterAng = Math.random() * Math.PI * 2;
       const jitterR = 80 + Math.random() * 120;
-      mapEntities.push({
-        type: "fleet", owner: "npc", faction: "pirate", ships: pirateShips, admiral: null,
-        stance: "aggressive",
+      deployShipGroup(pirateShips, {
+        owner: "npc", faction: "pirate",
         x: star.x + Math.cos(jitterAng) * jitterR,
         y: star.y + Math.sin(jitterAng) * jitterR,
-        destX: null, destY: null,
-        speed: Math.min(...pirateShips.map(s => s.stats.speed || 1)),
-        sensorRange: Math.max(...pirateShips.map(s => s.stats.sensorRange || 0)),
-        stealth: 0, label: "Pirates",
       });
       anomaly.result = `${pirateShips.length} hostile ship${pirateShips.length === 1 ? "" : "s"} dropped out of stealth at the heliopause.`;
       break;
@@ -3525,6 +3516,7 @@ function createSoloShip(card, x, y, owner) {
     type: "ship",
     owner: owner || "player",
     card,
+    admiral: null,          // admiral card riding aboard this ship (aura source); usually null
     stance: "aggressive",
     x, y,
     destX: null, destY: null,
@@ -3535,6 +3527,38 @@ function createSoloShip(card, x, y, owner) {
   };
   mapEntities.push(ent);
   return ent;
+}
+
+// Deploy a set of ship cards as INDIVIDUAL ship entities clustered around
+// (cx, cy). The unit model is RTS: there is no fleet object — a "fleet" is
+// just a group of these ships the player moves together. If `admiral` is
+// given it rides aboard the highest-rarity ship (its flagship); the aura
+// effect is wired in a later slice. Returns the created entities.
+const _RARITY_RANK = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+function deployShipGroup(cards, opts) {
+  opts = opts || {};
+  const owner = opts.owner || "player";
+  const stance = opts.stance || "aggressive";
+  const cx = opts.x || 0, cy = opts.y || 0;
+  const created = [];
+  if (!cards || cards.length === 0) return created;
+  let flagIdx = 0;
+  if (opts.admiral) {
+    for (let i = 1; i < cards.length; i++) {
+      if ((_RARITY_RANK[cards[i].rarity] || 0) > (_RARITY_RANK[cards[flagIdx].rarity] || 0)) flagIdx = i;
+    }
+  }
+  for (let i = 0; i < cards.length; i++) {
+    // Cluster ships in a loose ring so they don't all stack on one pixel.
+    const ang = cards.length > 1 ? (i / cards.length) * Math.PI * 2 : 0;
+    const r = cards.length > 1 ? 28 + (i % 3) * 12 : 0;
+    const ent = createSoloShip(cards[i], cx + Math.cos(ang) * r, cy + Math.sin(ang) * r, owner);
+    ent.stance = stance;
+    if (opts.faction) ent.faction = opts.faction;
+    if (opts.admiral && i === flagIdx) ent.admiral = opts.admiral;
+    created.push(ent);
+  }
+  return created;
 }
 
 function createFleet(admiral, ships, x, y, owner) {
@@ -3550,6 +3574,7 @@ function createFleet(admiral, ships, x, y, owner) {
     label: admiral ? admiral.name : "Fleet",
   };
   recalcFleetStats(ent);
+  assignFormationSlots(ent);
   mapEntities.push(ent);
   return ent;
 }
@@ -3623,29 +3648,39 @@ function computeFormation(n) {
   return offsets;
 }
 
-function getFormation(ent) {
-  if (ent.type !== "fleet") return null;
-  const n = ent.ships ? ent.ships.length : 0;
-  if (!ent._formation || ent._formationN !== n) {
-    ent._formation = computeFormation(n);
-    ent._formationN = n;
+// Per-ship slot assignment for a fleet. Writes _slotAngle / _slotRadius to
+// each card so each ship's position is stable across squadmate deaths —
+// surviving ships keep their slot and dead ships' slots become gaps. Call
+// this once at fleet creation; lazy-called from getFormation if any ship
+// lacks slot info (e.g. legacy saves).
+function assignFormationSlots(ent) {
+  if (!ent || ent.type !== "fleet" || !ent.ships || ent.ships.length === 0) return;
+  const slots = computeFormation(ent.ships.length);
+  for (let i = 0; i < ent.ships.length; i++) {
+    const s = slots[i];
+    if (!s) continue;
+    ent.ships[i]._slotAngle = s.angle;
+    ent.ships[i]._slotRadius = s.radius;
   }
-  return ent._formation;
+}
+
+function getFormation(ent) {
+  if (ent.type !== "fleet" || !ent.ships) return [];
+  if (ent.ships.some(s => s._slotAngle == null)) assignFormationSlots(ent);
+  return ent.ships.map(s => ({ angle: s._slotAngle, radius: s._slotRadius }));
 }
 
 // World coordinates for a given ship. For solo ships, returns the entity's
-// position. For fleets, adds the ship's formation offset to the fleet
-// center. The `_time` argument is reserved for future formation sway.
+// position. For fleets, adds the ship's stored slot offset to the fleet
+// anchor. The `_time` argument is reserved for future formation sway.
 function getShipWorldPos(ent, shipIdx, _time) {
-  if (ent.type !== "fleet") {
-    return { x: ent.x, y: ent.y };
-  }
-  const formation = getFormation(ent);
-  const slot = formation[shipIdx];
-  if (!slot) return { x: ent.x, y: ent.y };
+  if (ent.type !== "fleet") return { x: ent.x, y: ent.y };
+  const ship = ent.ships && ent.ships[shipIdx];
+  if (!ship) return { x: ent.x, y: ent.y };
+  if (ship._slotAngle == null) assignFormationSlots(ent);
   return {
-    x: ent.x + Math.cos(slot.angle) * slot.radius,
-    y: ent.y + Math.sin(slot.angle) * slot.radius,
+    x: ent.x + Math.cos(ship._slotAngle) * ship._slotRadius,
+    y: ent.y + Math.sin(ship._slotAngle) * ship._slotRadius,
   };
 }
 
@@ -3742,11 +3777,15 @@ function tickEntities(dt) {
 // next.
 
 function calcHitChance(attackerCard, defenderCard) {
-  let chance = 0.70;
-  chance += Math.min(0.15, (attackerCard.stats.sensorRange || 0) * 0.01);
+  // Lower base than the old engine (0.40 vs 0.70) so individual shots feel
+  // meaningful — most volleys land a glancing fraction of their weapons, and
+  // the sensor/stealth/speed modifiers swing the odds enough to matter.
+  // Attacker sensors improve targeting; defender stealth + speed dodge.
+  let chance = 0.40;
+  chance += Math.min(0.25, (attackerCard.stats.sensorRange || 0) * 0.02);
   chance -= (defenderCard.stats.stealth || 0) * 0.05;
   chance -= (defenderCard.stats.speed || 0) * 0.005;
-  return Math.max(0.10, Math.min(0.95, chance));
+  return Math.max(0.05, Math.min(0.95, chance));
 }
 
 function calcPDInterceptChance(defendingSide) {
@@ -3897,6 +3936,236 @@ function rollCombatLoot(winner, loser) {
     artifact = rollPirateArtifactDrop();
   }
   return { resources, cards, artifact };
+}
+
+// ═══════════════════════════════════════════
+//  RTS COMBAT
+// ═══════════════════════════════════════════
+// Each tick, each alive ship picks the nearest enemy ship within its OWN
+// sensor range and longest weapon range, then fires every weapon that's in
+// pair-distance range on its own fireRate cooldown. Damage applies
+// directly to the target card's _combatShields/_combatArmor; on kill, loot
+// rolls and the dead ship is spliced out of its entity. No global combat
+// record, no phase machine, no inCombat lock — combat is emergent.
+
+function isShipAlive(card) {
+  return !!card && card._dead !== true;
+}
+
+function shipMaxShields(card) { return (card.stats.shields || 0) * COMBAT_HP_SCALE; }
+function shipMaxArmor(card)   { return (card.stats.armor   || 0) * COMBAT_HP_SCALE; }
+
+// Apply weapon-typed damage directly to a ship card. Uses COMBAT_TRIANGLE
+// (energy/kinetic/missile vs shields/armor) and shield-first damage flow.
+// Returns true if the ship died this hit.
+function applyDamageByWeapon(card, weaponType, baseDmg) {
+  if (!card || card._dead) return false;
+  const mult = COMBAT_TRIANGLE[weaponType] || { vsShields: 1.0, vsArmor: 1.0 };
+  const maxS = shipMaxShields(card);
+  const maxA = shipMaxArmor(card);
+  let curS = card._combatShields != null ? card._combatShields : maxS;
+  let curA = card._combatArmor   != null ? card._combatArmor   : maxA;
+  let dmg = baseDmg;
+  if (curS > 0) {
+    const shieldDmg = dmg * mult.vsShields;
+    const absorbed = Math.min(curS, shieldDmg);
+    curS -= absorbed;
+    dmg -= absorbed / mult.vsShields;
+  }
+  if (dmg > 0) {
+    curA -= dmg * mult.vsArmor;
+    if (curA <= 0) {
+      curA = 0;
+      card._dead = true;
+    }
+  }
+  card._combatShields = curS;
+  card._combatArmor = curA;
+  return card._dead === true;
+}
+
+// Loot rolled when ONE NPC ship dies. Per-kill (not per-combat-end). Player
+// kills only; NPC-on-NPC kills drop nothing.
+function rollPerKillLoot(killedCard, killedEntity, killerEntity) {
+  if (!killedCard || !killerEntity || killerEntity.owner !== "player") return null;
+  if (!killedEntity || killedEntity.owner !== "npc") return null;
+  const factionCfg = NPC_FACTIONS[killedEntity.faction] || NPC_FACTIONS.pirate;
+  const salvageMul = factionCfg.lootSalvageMul || 1.0;
+  const rarity = killedCard.rarity || "common";
+  const lootResources = {};
+  const range = LOOT_VALUE_RANGES[rarity] || LOOT_VALUE_RANGES.common;
+  const credEquiv = range[0] + Math.random() * (range[1] - range[0]);
+  const resType = LOOT_RESOURCE_TYPES[Math.floor(Math.random() * LOOT_RESOURCE_TYPES.length)];
+  const w = LOOT_RESOURCE_WEIGHTS[resType] || 1;
+  lootResources[resType] = Math.max(1, Math.round(credEquiv / w));
+  const salvageAmount = Math.round((SALVAGE_BY_RARITY[rarity] || 0) * salvageMul);
+  if (salvageAmount > 0) lootResources.salvage = salvageAmount;
+  if (factionCfg.lootDragonshard) {
+    const dsBase = (SALVAGE_BY_RARITY[rarity] || 0) * 0.1;
+    const sing = (killedCard.id === "drg_singularity") ? 10 : 1;
+    const ds = Math.round(dsBase * sing);
+    if (ds > 0) lootResources.dragonshard = ds;
+  }
+  const cards = [];
+  if (Math.random() < LOOT_CARD_DROP_CHANCE) cards.push(killedCard);
+  let artifact = null;
+  if (factionCfg.artifactDrop && Math.random() < LOOT_ARTIFACT_DROP_CHANCE) {
+    artifact = rollPirateArtifactDrop();
+  }
+  return { resources: lootResources, cards, artifact };
+}
+
+function applyLoot(loot) {
+  if (!loot) return;
+  for (const k of Object.keys(loot.resources)) {
+    resources[k] = (resources[k] || 0) + loot.resources[k];
+  }
+  for (const card of loot.cards) {
+    pirateLoot[card.id] = (pirateLoot[card.id] || 0) + 1;
+    markCardSeen(card);
+  }
+  if (loot.artifact) {
+    grantArtifact(loot.artifact.id);
+    markCardSeen(loot.artifact);
+  }
+}
+
+// Returns the ship card array for an entity. Solo ships: [ent.card].
+// Fleets: ent.ships. Anything else: null.
+function getEntityShips(ent) {
+  if (!ent) return null;
+  if (ent.type === "ship") return ent.card ? [ent.card] : null;
+  if (ent.type === "fleet") return ent.ships || null;
+  return null;
+}
+
+// Per-ship combat tick. For each alive ship: find nearest enemy ship within
+// its own sensor AND longest-weapon range, advance shot cooldown, fire all
+// in-range weapons when cooldown expires. Cleans dead solos / empty fleets
+// at end.
+function tickShipCombat(dt) {
+  if (dt <= 0) return;
+
+  const killEvents = []; // { entity, card, attackerEntity }
+
+  for (let ei = 0; ei < mapEntities.length; ei++) {
+    const ent = mapEntities[ei];
+    const ships = getEntityShips(ent);
+    if (!ships) continue;
+
+    for (let si = 0; si < ships.length; si++) {
+      const ship = ships[si];
+      if (!isShipAlive(ship)) continue;
+      const weapons = getWeaponInfo(ship);
+      if (weapons.length === 0) continue;
+
+      const sensorR = (ship.stats.sensorRange || 0) * 50;
+      const maxWeaponR = Math.max(...weapons.map(w => RANGE_THRESHOLDS[w.range] || 0));
+      const engageR = Math.min(sensorR, maxWeaponR);
+      if (engageR <= 0) continue;
+
+      const shipPos = getShipWorldPos(ent, si);
+
+      // Find nearest enemy ship within engageR
+      let bestD2 = engageR * engageR;
+      let target = null, targetEnt = null, targetIdx = -1;
+      const coarseR = engageR + 100; // entity-anchor pre-filter slack for fleet spread
+      for (const oth of mapEntities) {
+        if (oth === ent || oth.owner === ent.owner) continue;
+        const dx0 = oth.x - shipPos.x, dy0 = oth.y - shipPos.y;
+        if (dx0 * dx0 + dy0 * dy0 > coarseR * coarseR) continue;
+        const othShips = getEntityShips(oth);
+        if (!othShips) continue;
+        for (let oi = 0; oi < othShips.length; oi++) {
+          const oship = othShips[oi];
+          if (!isShipAlive(oship)) continue;
+          const op = getShipWorldPos(oth, oi);
+          const dx = op.x - shipPos.x, dy = op.y - shipPos.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < bestD2) { bestD2 = d2; target = oship; targetEnt = oth; targetIdx = oi; }
+        }
+      }
+
+      // Cooldown advances regardless of target — keeps cadence consistent
+      ship._shotCooldownLeft = Math.max(0, (ship._shotCooldownLeft || 0) - dt);
+      if (!target) continue;
+      if (ship._shotCooldownLeft > 0) continue;
+
+      // Fire — start next cooldown from this ship's fireRate
+      ship._shotCooldownLeft = getShipFireInterval(ship);
+      const pairDist = Math.sqrt(bestD2);
+      const targetPos = getShipWorldPos(targetEnt, targetIdx);
+
+      // Perpendicular unit vector to the firer→target line, for drawing
+      // missed shots flying past the target instead of dead-on.
+      const dirX = targetPos.x - shipPos.x, dirY = targetPos.y - shipPos.y;
+      const lineLen = Math.max(1, Math.hypot(dirX, dirY));
+      const perpX = -dirY / lineLen, perpY = dirX / lineLen;
+
+      for (const wpn of weapons) {
+        if (pairDist > (RANGE_THRESHOLDS[wpn.range] || 0)) continue;
+
+        const hitChance = calcHitChance(ship, target);
+        const missed = Math.random() > hitChance;
+        // Missiles that hit can still be shot down by point defense — treated
+        // as a near-target intercept (visually bursts close to the target).
+        let intercepted = false;
+        if (!missed && wpn.type === "missile") {
+          const pd = target.stats.pointDefense || 0;
+          if (Math.random() < Math.min(0.80, pd * 0.02)) intercepted = true;
+        }
+
+        if (missed) {
+          // Shot flies past: offset endpoint perpendicular to the line plus a
+          // little over/undershoot, so the beam/round visibly misses.
+          const side = (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 25);
+          const along = 0.85 + Math.random() * 0.3;
+          const missX = shipPos.x + dirX * along + perpX * side;
+          const missY = shipPos.y + dirY * along + perpY * side;
+          spawnWeaponVisual(shipPos.x, shipPos.y, missX, missY, wpn.type);
+          spawnCombatParticle(missX, missY, wpn.type, false);
+          continue;
+        }
+
+        if (intercepted) {
+          // Draw toward the target but burst short (point-defense kill).
+          const ix = shipPos.x + dirX * 0.7, iy = shipPos.y + dirY * 0.7;
+          spawnWeaponVisual(shipPos.x, shipPos.y, ix, iy, wpn.type);
+          spawnCombatParticle(ix, iy, wpn.type, false);
+          continue;
+        }
+
+        // Hit — beam/round lands on the target.
+        spawnWeaponVisual(shipPos.x, shipPos.y, targetPos.x, targetPos.y, wpn.type);
+        const died = applyDamageByWeapon(target, wpn.type, wpn.dmg);
+        spawnCombatParticle(targetPos.x, targetPos.y, wpn.type, true);
+        if (died) {
+          killEvents.push({ entity: targetEnt, card: target, attackerEntity: ent });
+          break; // don't waste remaining weapons on a corpse
+        }
+      }
+    }
+  }
+
+  // Drop loot + remove dead ships from their entities
+  for (const ev of killEvents) {
+    applyLoot(rollPerKillLoot(ev.card, ev.entity, ev.attackerEntity));
+    if (ev.entity.type === "fleet" && ev.entity.ships) {
+      const idx = ev.entity.ships.indexOf(ev.card);
+      if (idx >= 0) ev.entity.ships.splice(idx, 1);
+    }
+  }
+
+  // Remove empty fleets and dead solo ships
+  for (let i = mapEntities.length - 1; i >= 0; i--) {
+    const ent = mapEntities[i];
+    const dead = (ent.type === "ship" && (!ent.card || ent.card._dead))
+              || (ent.type === "fleet" && (!ent.ships || ent.ships.length === 0));
+    if (!dead) continue;
+    mapEntities.splice(i, 1);
+    if (selectedEntityIdx === i) selectedEntityIdx = null;
+    else if (selectedEntityIdx !== null && selectedEntityIdx > i) selectedEntityIdx--;
+  }
 }
 
 // ── Pictographic ship silhouettes ──
@@ -4329,47 +4598,30 @@ function drawCombatParticles(ctx) {
 const weaponVisuals = [];
 
 function spawnWeaponVisual(fwx, fwy, twx, twy, weaponType) {
-  // "Volley window" — how long the visual flourish for a single shot lasts.
-  // Used to space bursts / set beam life. Was tied to COMBAT_TIME_SCALE; now
-  // just a single tunable seconds-equivalent on the visual clock.
-  const VOLLEY = SHOT_INTERVAL;
-
+  // ONE visual per shot per weapon — the combat loop calls this once for each
+  // weapon a ship fires, so the rendered cadence matches the fire cadence 1:1
+  // (no swarm/burst multiplication). A ship with 3 weapons shows 3 streaks
+  // per shot; a single-weapon ship shows one.
   if (weaponType === "energy") {
-    // One continuous beam covering ~90% of the window.
+    // Brief beam from firer to target.
     weaponVisuals.push({
       kind: "beam", fx: fwx, fy: fwy, tx: twx, ty: twy,
-      life: VOLLEY * 0.9, maxLife: VOLLEY * 0.9,
+      life: 0.4, maxLife: 0.4,
       continuous: true,
     });
   } else if (weaponType === "kinetic") {
-    // 3 bursts of 4 projectiles each, spaced across the window.
-    const bursts = 3;
-    const perBurst = 4;
-    for (let b = 0; b < bursts; b++) {
-      const burstDelay = b * (VOLLEY / bursts) + Math.random() * 0.4;
-      for (let i = 0; i < perBurst; i++) {
-        const spread = (Math.random() - 0.5) * 18;
-        const travel = 0.55 + Math.random() * 0.15;
-        weaponVisuals.push({
-          kind: "kinetic", fx: fwx, fy: fwy, tx: twx, ty: twy,
-          spread,
-          delay: burstDelay,
-          life: travel, maxLife: travel,
-        });
-      }
-    }
+    // Single round flying firer → target.
+    weaponVisuals.push({
+      kind: "kinetic", fx: fwx, fy: fwy, tx: twx, ty: twy,
+      spread: 0,
+      life: 0.35, maxLife: 0.35,
+    });
   } else if (weaponType === "missile") {
-    // 2-3 missiles launching at random moments within the window.
-    const count = 2 + Math.floor(Math.random() * 2);
-    const travel = 1.05;
-    for (let i = 0; i < count; i++) {
-      const delay = Math.random() * (VOLLEY - travel);
-      weaponVisuals.push({
-        kind: "missile", fx: fwx, fy: fwy, tx: twx, ty: twy,
-        delay,
-        life: travel, maxLife: travel,
-      });
-    }
+    // Single missile with its glowing trail.
+    weaponVisuals.push({
+      kind: "missile", fx: fwx, fy: fwy, tx: twx, ty: twy,
+      life: 0.55, maxLife: 0.55,
+    });
   }
 }
 
@@ -6912,14 +7164,27 @@ let tickAccumulator = 0;
 // in templates are denoted "per tick"; with TICK_PERIOD=1 that's per-real-second.
 const TICK_PERIOD = 1;
 
-// ── Combat constants (RTS rebuild in progress; values kept for reuse) ──
-const SHOT_INTERVAL = 0.5;       // game-seconds between each shot a ship fires
+// ── Combat constants ──
+// A ship fires every BASE_FIRE_INTERVAL / fireRate game-seconds, where
+// `fireRate` is a per-card stat (default 1 = baseline cadence; 2 = twice as
+// fast; 0.5 = half as fast). No card carries `fireRate` yet — getShipFireInterval
+// falls back to 1 — but the plumbing is here so adding it to card data + the
+// card builder later just works. Higher fireRate = more shots, which reads
+// naturally on a card.
+const BASE_FIRE_INTERVAL = 1.5;  // game-seconds per shot at fireRate 1
+function getShipFireInterval(card) {
+  const rate = (card && card.stats && typeof card.stats.fireRate === "number")
+    ? card.stats.fireRate : 1;
+  return BASE_FIRE_INTERVAL / Math.max(0.05, rate);
+}
 // Map-movement secondary scale: ent.x += dir * (ent.speed * scaledDt * WORLD_SPEED_MULT).
 const WORLD_SPEED_MULT = 0.8;
 // Particles and weapon-flash visuals tick at scaledDt * VISUAL_DT_FACTOR so
 // their on-screen tempo is unchanged across BASE_GAME_SPEED rebases.
 const VISUAL_DT_FACTOR = 0.1;
-const COMBAT_HP_SCALE = 5;       // multiplier on shields/armor for combat durability
+// Shields/armor durability multiplier. High so fights last on the order of
+// minutes (the ultra-slow idle/RTS feel) rather than resolving in one second.
+const COMBAT_HP_SCALE = 30;
 const RANGE_THRESHOLDS = { long: 1000, medium: 650, short: 350 };  // world-unit distance for weapon activation
 const COMBAT_TRIANGLE = {
   energy:  { vsShields: 2.0, vsArmor: 0.5 },
@@ -8885,9 +9150,12 @@ function refreshFleetTab(col) {
     if (!canAfford(totalCost)) { showCostTooltip(newDeployBtn, totalCost); return; }
     deductCost(totalCost);
     const star = colonyViewStar;
-    const deployAngle = Math.random() * Math.PI * 2;
-    createFleet(deployAdmiral, [...deployShips], star.x + Math.cos(deployAngle) * 40, star.y + Math.sin(deployAngle) * 40);
-    mapEntities[mapEntities.length - 1].stance = deployStance;
+    // Deploy as individual ship units clustered at the colony (admiral rides
+    // aboard the flagship). No fleet entity — RTS unit model.
+    deployShipGroup([...deployShips], {
+      owner: "player", stance: deployStance, admiral: deployAdmiral,
+      x: star.x, y: star.y,
+    });
     deployAdmiral = null;
     deployShips = [];
     refreshColonyScreen();
@@ -9165,6 +9433,7 @@ function gameLoop(timestamp) {
   const scaledDt = dt * BASE_GAME_SPEED * gameSpeed;
   tickEconomy(scaledDt);
   tickEntities(scaledDt);
+  tickShipCombat(scaledDt);
   tickScouts(scaledDt);
   // Combat particles and weapon-flash visuals were tuned for the pre-rebase
   // 0.1x base; keep them at that effective tempo so flashes/trails read the
@@ -9461,7 +9730,15 @@ let lastSaveStatus = "";
 // Legacy full-card shapes (pre-Phase-4) also hydrate cleanly: full cards
 // already carry an `id` from the template spread, and the same instance
 // fields live at the top level.
-const CARD_INSTANCE_FIELDS = ["stats", "statRanges", "bonuses", "bonusRanges", "planetSlots", "name"];
+// Per-instance fields that round-trip through save/load. The combat state
+// fields (_combatShields, _combatArmor, _dead, _slotAngle, _slotRadius,
+// _shotCooldownLeft) preserve mid-flight ship damage and formation positions
+// across saves.
+const CARD_INSTANCE_FIELDS = [
+  "stats", "statRanges", "bonuses", "bonusRanges", "planetSlots", "name",
+  "_combatShields", "_combatArmor", "_dead",
+  "_slotAngle", "_slotRadius", "_shotCooldownLeft",
+];
 
 function serializeCardRef(card) {
   if (!card) return null;
@@ -9601,12 +9878,11 @@ function serializeGame() {
     shuffledStarNames: [..._shuffledStarNames],
 
     mapEntities: mapEntities.map(e => ({
-      type: e.type, owner: e.owner, stance: e.stance,
+      type: e.type, owner: e.owner, stance: e.stance, faction: e.faction || null,
       x: e.x, y: e.y, destX: e.destX, destY: e.destY,
       speed: e.speed, sensorRange: e.sensorRange, stealth: e.stealth,
       label: e.label,
       card: e.card ? serializeCardRef(e.card) : null,
-      ships: e.ships ? e.ships.map(serializeCardRef).filter(Boolean) : null,
       admiral: e.admiral ? serializeCardRef(e.admiral) : null,
     })),
     selectedEntityIdx,
@@ -9707,17 +9983,28 @@ function deserializeGame(data) {
   for (const [key, bits] of (data.chunkSeenBits || [])) chunkSeenBits.set(key, bits);
 
   for (const e of data.mapEntities) {
-    // Preserve mapEntities order. If a card ref can't resolve, we keep the
-    // raw ref as a degraded card and warn.
+    // Legacy migration (v0.2.0 RTS unit model): old saves stored multi-ship
+    // "fleet" entities. Expand each into individual ship units clustered at
+    // the fleet's position, with the admiral riding aboard the flagship.
+    if (e.type === "fleet" && Array.isArray(e.ships)) {
+      const cards = e.ships.map(s => hydrateCardRef(s) || s).filter(Boolean);
+      const admiral = e.admiral ? (hydrateCardRef(e.admiral) || e.admiral) : null;
+      deployShipGroup(cards, {
+        owner: e.owner, stance: e.stance, faction: e.faction, admiral,
+        x: e.x, y: e.y,
+      });
+      continue;
+    }
+    // Individual ship entity (current model).
     const ent = {
       type: e.type, owner: e.owner, stance: e.stance,
       x: e.x, y: e.y, destX: e.destX, destY: e.destY,
       speed: e.speed, sensorRange: e.sensorRange, stealth: e.stealth,
       label: e.label,
     };
+    if (e.faction) ent.faction = e.faction;
     if (e.card) ent.card = hydrateCardRef(e.card) || e.card;
-    if (e.ships) ent.ships = e.ships.map(s => hydrateCardRef(s) || s);
-    if (e.admiral) ent.admiral = hydrateCardRef(e.admiral) || e.admiral;
+    ent.admiral = e.admiral ? (hydrateCardRef(e.admiral) || e.admiral) : null;
     mapEntities.push(ent);
   }
   selectedEntityIdx = data.selectedEntityIdx ?? null;
@@ -10020,7 +10307,10 @@ const starterFleets = [
 ];
 starterFleets.forEach((f, i) => {
   const angle = (i / starterFleets.length) * Math.PI * 2 - Math.PI / 2;
-  createFleet(f.admiral, f.ships, homeStar.x + Math.cos(angle) * 40, homeStar.y + Math.sin(angle) * 40);
+  deployShipGroup(f.ships, {
+    owner: "player", admiral: f.admiral,
+    x: homeStar.x + Math.cos(angle) * 80, y: homeStar.y + Math.sin(angle) * 80,
+  });
   markCardSeen(f.admiral);
   for (const s of f.ships) markCardSeen(s);
 });

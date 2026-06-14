@@ -3191,8 +3191,7 @@ function applyScoutAnomaly(anomaly, star, scoutFleetEnt) {
         const idx = mapEntities.indexOf(scoutFleetEnt);
         if (idx >= 0) {
           mapEntities.splice(idx, 1);
-          if (selectedEntityIdx === idx) selectedEntityIdx = null;
-          else if (selectedEntityIdx !== null && selectedEntityIdx > idx) selectedEntityIdx--;
+          onEntityRemoved(scoutFleetEnt);
         }
       }
       anomaly.result = destroyed
@@ -3404,8 +3403,7 @@ function consumeColonyShip(ent) {
   if (idx < 0) return false;
   if (!ent.card || ent.card.special !== "colonize") return false;
   mapEntities.splice(idx, 1);
-  if (selectedEntityIdx === idx) selectedEntityIdx = null;
-  else if (selectedEntityIdx !== null && selectedEntityIdx > idx) selectedEntityIdx--;
+  onEntityRemoved(ent);
   return true;
 }
 
@@ -3469,8 +3467,35 @@ function entityETARealSec(ent, dist) {
   if (unitsPerRealSec <= 0) return 0;
   return dist / unitsPerRealSec;
 }
-const mapEntities = [];  // array of ships/fleets on the starmap
-let selectedEntityIdx = null;  // index into mapEntities, or null
+const mapEntities = [];  // array of ship entities on the starmap
+// Selection is a Set of entity references (not indices) so removals never
+// require index bookkeeping — combat death / disband just .delete(ent).
+const selectedEntities = new Set();
+let panelEntity = null;  // the single entity whose detail panel is open (or null)
+
+function clearSelection() {
+  selectedEntities.clear();
+  panelEntity = null;
+}
+function selectOnly(ent) {
+  selectedEntities.clear();
+  if (ent) selectedEntities.add(ent);
+}
+// Player-owned, still-on-map members of the current selection (the units
+// that take movement orders).
+function selectedPlayerUnits() {
+  const out = [];
+  for (const e of selectedEntities) {
+    if (e.owner === "player" && mapEntities.includes(e)) out.push(e);
+  }
+  return out;
+}
+// Call right after an entity is spliced out of mapEntities so the selection
+// and detail panel don't hold a dangling reference.
+function onEntityRemoved(ent) {
+  selectedEntities.delete(ent);
+  if (panelEntity === ent) { panelEntity = null; hideSelectPanel(); }
+}
 
 function createSoloShip(card, x, y, owner) {
   const ent = {
@@ -3556,8 +3581,7 @@ function disbandEntity(idx) {
   if (ent.card) colony.queue.push(ent.card);
   if (ent.admiral) colony.queue.push(ent.admiral);  // admiral riding aboard returns too
   mapEntities.splice(idx, 1);
-  if (selectedEntityIdx === idx) selectedEntityIdx = null;
-  else if (selectedEntityIdx > idx) selectedEntityIdx--;
+  onEntityRemoved(ent);
 }
 
 function tickEntities(dt) {
@@ -3567,7 +3591,11 @@ function tickEntities(dt) {
     const dx = ent.destX - ent.x;
     const dy = ent.destY - ent.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const move = ent.speed * dt * WORLD_SPEED_MULT;
+    // Group moves cap each ship at the group's slowest speed (set via
+    // issueGroupMove) so the formation stays together; solo moves use the
+    // ship's own speed.
+    const moveSpeed = (ent._moveSpeed != null) ? ent._moveSpeed : ent.speed;
+    const move = moveSpeed * dt * WORLD_SPEED_MULT;
 
     if (move >= dist) {
       // Arrived
@@ -3575,6 +3603,7 @@ function tickEntities(dt) {
       ent.y = ent.destY;
       ent.destX = null;
       ent.destY = null;
+      ent._moveSpeed = null;  // clear group-move speed cap on arrival
     } else {
       ent.x += (dx / dist) * move;
       ent.y += (dy / dist) * move;
@@ -3597,15 +3626,11 @@ function tickEntities(dt) {
     }
   }
 
-  // Drop a stale pirate selection if it's slipped out of sensor coverage,
-  // otherwise the select panel keeps showing data for an entity the player
-  // can no longer see on the map.
-  if (selectedEntityIdx !== null) {
-    const sel = mapEntities[selectedEntityIdx];
-    if (sel && !isEntityVisibleToPlayer(sel)) {
-      selectedEntityIdx = null;
-      hideSelectPanel();
-    }
+  // Drop any selected entity that's slipped out of sensor coverage (e.g. a
+  // pirate ship the player had selected), so the panel/selection don't keep
+  // referencing units the player can no longer see.
+  for (const sel of [...selectedEntities]) {
+    if (!isEntityVisibleToPlayer(sel)) onEntityRemoved(sel);
   }
 }
 
@@ -3917,8 +3942,7 @@ function tickShipCombat(dt) {
     const ent = mapEntities[i];
     if (!ent.card || !ent.card._dead) continue;
     mapEntities.splice(i, 1);
-    if (selectedEntityIdx === i) selectedEntityIdx = null;
-    else if (selectedEntityIdx !== null && selectedEntityIdx > i) selectedEntityIdx--;
+    onEntityRemoved(ent);
   }
 }
 
@@ -4003,7 +4027,7 @@ function drawEntities(ctx, time) {
     const ent = mapEntities[i];
     if (!isEntityVisibleToPlayer(ent)) continue;
     const pos = worldToScreen(ent.x, ent.y);
-    const isSelected = selectedEntityIdx === i;
+    const isSelected = selectedEntities.has(ent);
 
     // Draw travel line to destination
     if (ent.destX !== null && ent.destY !== null) {
@@ -5052,6 +5076,21 @@ function render() {
   // Tech-targeting reticle on top of everything (fog included) so the player
   // can always see exactly where they're aiming.
   drawTechTargetingReticle(ctx);
+
+  // Box-select rectangle (left-drag) — drawn last so it sits over everything.
+  if (boxSelect) {
+    const x = Math.min(boxSelect.x0, boxSelect.x1);
+    const y = Math.min(boxSelect.y0, boxSelect.y1);
+    const w = Math.abs(boxSelect.x1 - boxSelect.x0);
+    const h = Math.abs(boxSelect.y1 - boxSelect.y0);
+    ctx.save();
+    ctx.fillStyle = "rgba(120,180,240,0.12)";
+    ctx.strokeStyle = "rgba(150,200,250,0.8)";
+    ctx.lineWidth = 1;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
+  }
 }
 
 function drawTechTargetingReticle(ctx) {
@@ -6138,9 +6177,9 @@ function showSelectPanel(star) {
   }
 }
 
-function showEntityPanel(idx) {
-  const ent = mapEntities[idx];
+function showEntityPanel(ent) {
   if (!ent) return;
+  panelEntity = ent;
   selectedStarId = null;
   const panel = document.getElementById("select-panel");
   const slot = document.getElementById("select-card-slot");
@@ -6149,9 +6188,8 @@ function showEntityPanel(idx) {
   const shipsEl = document.getElementById("select-panel-ships");
   panel.classList.add("visible");
 
-  // Show the primary card. Set data-card-id on the slot so the panel-wide
-  // click delegation can open the magnified-zoom popup; clear it for the
-  // bare-fleet text case so that empty area doesn't read as clickable.
+  // Show the ship card. data-card-id lets the panel-wide click delegation
+  // open the magnified-zoom popup.
   slot.removeAttribute("data-card-id");
   if (ent.card) {
     markCardSeen(ent.card);
@@ -6160,13 +6198,13 @@ function showEntityPanel(idx) {
     if (ent.card.id) slot.setAttribute("data-card-id", ent.card.id);
   }
 
-  // Stance toggle + disband
+  // Stance toggle + disband (act on the current panel entity).
   const stanceColor = ent.stance === "aggressive" ? "#e05050" : "#50a0e0";
   const stanceText = ent.stance === "aggressive" ? "Aggressive" : "Evasive";
   const atColony = getEntityColony(ent);
-  let actionsHtml = `<button class="card-action-btn" onclick="toggleEntityStance(${idx})" style="color:${stanceColor}">${stanceText}</button>`;
+  let actionsHtml = `<button class="card-action-btn" onclick="togglePanelEntityStance()" style="color:${stanceColor}">${stanceText}</button>`;
   if (atColony) {
-    actionsHtml += `<button class="card-action-btn" onclick="disbandEntityFromPanel(${idx})">Disband</button>`;
+    actionsHtml += `<button class="card-action-btn" onclick="disbandPanelEntity()">Disband</button>`;
   }
   actions.innerHTML = actionsHtml;
 
@@ -6203,16 +6241,62 @@ function showEntityPanel(idx) {
   }
 }
 
-function toggleEntityStance(idx) {
-  const ent = mapEntities[idx];
+// Stance toggle from the single-entity panel.
+function togglePanelEntityStance() {
+  const ent = panelEntity;
   if (!ent) return;
   ent.stance = ent.stance === "aggressive" ? "evasive" : "aggressive";
-  showEntityPanel(idx);
+  showEntityPanel(ent);
 }
 
-function disbandEntityFromPanel(idx) {
-  disbandEntity(idx);
+function disbandPanelEntity() {
+  const ent = panelEntity;
+  if (!ent) return;
+  const idx = mapEntities.indexOf(ent);
+  if (idx >= 0) disbandEntity(idx);
   hideSelectPanel();
+}
+
+// Multi-select summary panel: ship count + bulk stance/disband controls.
+function showGroupPanel() {
+  const units = [...selectedEntities].filter(e => mapEntities.includes(e));
+  const playerUnits = units.filter(e => e.owner === "player");
+  panelEntity = null;
+  selectedStarId = null;
+  const panel = document.getElementById("select-panel");
+  const slot = document.getElementById("select-card-slot");
+  const actions = document.getElementById("select-actions");
+  const info = document.getElementById("select-panel-info");
+  const shipsEl = document.getElementById("select-panel-ships");
+  panel.classList.add("visible");
+  slot.removeAttribute("data-card-id");
+  slot.innerHTML = `<div style="padding:24px 12px;text-align:center;color:#8090b0">
+    <div style="font-size:28px;font-weight:600;color:#c8d0e0">${units.length}</div>
+    <div style="font-size:12px;margin-top:2px">ships selected</div>
+  </div>`;
+  let actionsHtml = "";
+  if (playerUnits.length > 0) {
+    actionsHtml += `<button class="card-action-btn" onclick="setSelectionStance('aggressive')" style="color:#e05050">All Aggressive</button>`;
+    actionsHtml += `<button class="card-action-btn" onclick="setSelectionStance('evasive')" style="color:#50a0e0">All Evasive</button>`;
+  }
+  actions.innerHTML = actionsHtml;
+  // Mini rarity breakdown.
+  const byRarity = {};
+  for (const e of units) {
+    const r = (e.card && e.card.rarity) || "common";
+    byRarity[r] = (byRarity[r] || 0) + 1;
+  }
+  info.innerHTML = Object.entries(byRarity)
+    .map(([r, n]) => `<span style="color:${RARITY_COLORS[r] || "#8090b0"}">${n} ${r}</span>`)
+    .join(" · ");
+  if (shipsEl) shipsEl.innerHTML = "";
+}
+
+function setSelectionStance(stance) {
+  for (const e of selectedEntities) {
+    if (e.owner === "player") e.stance = stance;
+  }
+  showGroupPanel();
 }
 
 function hideSelectPanel() {
@@ -6239,10 +6323,14 @@ function openSystemFromPanel() {
 // ═══════════════════════════════════════════
 //  INTERACTION
 // ═══════════════════════════════════════════
-let isDragging = false;
+let isDragging = false;     // a PAN drag is in progress (right-drag, or one-finger touch)
 let dragStart = { x: 0, y: 0 };
 let dragCameraStart = { x: 0, y: 0 };
 let dragMoved = false;
+// Box-select state (left-drag). boxSelect holds canvas-space corners while
+// the player is dragging a selection rectangle; null when not box-selecting.
+let boxSelectStart = null;  // {x, y} canvas coords where the left-drag began
+let boxSelect = null;       // {x0, y0, x1, y1} current rectangle, or null
 
 function getStarAtScreen(sx, sy) {
   const world = screenToWorld(sx, sy);
@@ -6286,13 +6374,26 @@ container.addEventListener("pointerdown", (e) => {
   activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
   if (activePointers.size === 1) {
-    // First pointer: start panning
-    isDragging = true;
     dragMoved = false;
     dragStart = { x: e.clientX, y: e.clientY };
-    dragCameraStart = { x: camera.x, y: camera.y };
-    container.classList.add("dragging");
     pinchState = null;
+    boxSelectStart = null;
+    boxSelect = null;
+    // Left mouse button → box-select drag. Right/middle button, or any touch
+    // (one-finger), → camera pan. (Touch reports button 0, so gate on type.)
+    const isPanButton = e.pointerType === "touch" || e.button === 2 || e.button === 1;
+    if (isPanButton) {
+      isDragging = true;
+      dragCameraStart = { x: camera.x, y: camera.y };
+      container.classList.add("dragging");
+    } else {
+      // Left button — candidate box-select. Doesn't become a real box until
+      // the pointer moves past the drag threshold (so a plain click still
+      // reads as a click in handlePointerEnd).
+      isDragging = false;
+      const m = pointerToCanvas(canvasEl, e.clientX, e.clientY);
+      boxSelectStart = { x: m.x, y: m.y };
+    }
   } else if (activePointers.size === 2) {
     // Second pointer: switch from pan to pinch-zoom
     isDragging = false;
@@ -6354,6 +6455,21 @@ window.addEventListener("pointermove", (e) => {
     return;
   }
 
+  // Left-drag box-select: once the pointer moves past the threshold from the
+  // start, we're drawing a selection rectangle (canvas coords).
+  if (boxSelectStart) {
+    const m = pointerToCanvas(canvasEl, e.clientX, e.clientY);
+    if (!boxSelect && (Math.abs(m.x - boxSelectStart.x) > 3 || Math.abs(m.y - boxSelectStart.y) > 3)) {
+      boxSelect = { x0: boxSelectStart.x, y0: boxSelectStart.y, x1: m.x, y1: m.y };
+      dragMoved = true;
+    }
+    if (boxSelect) {
+      boxSelect.x1 = m.x;
+      boxSelect.y1 = m.y;
+      return;
+    }
+  }
+
   // Hover detection below — only meaningful for mouse/pen (touch has no hover)
   if (e.pointerType === "touch") return;
 
@@ -6377,8 +6493,8 @@ window.addEventListener("pointermove", (e) => {
     tooltip.style.top = (sy - 8) + "px";
     tooltip.style.display = "block";
     canvasEl.style.cursor = "pointer";
-  } else if (selectedEntityIdx !== null) {
-    // Entity selected — cursor indicates "set destination"
+  } else if (selectedPlayerUnits().length > 0) {
+    // Player units selected — cursor indicates "set destination"
     hoveredStarId = star ? star.id : null;
     if (star) {
       tooltip.textContent = star.visibility === "explored" ? star.card.name : "Unknown Star";
@@ -6419,50 +6535,98 @@ function handlePointerEnd(e) {
 
   if (activePointers.size > 0) return; // still another finger down, wait
 
-  if (!isDragging) return;
+  // A left-drag box-select just finished → pick the units inside the box.
+  if (boxSelect) {
+    finalizeBoxSelect();
+    boxSelect = null;
+    boxSelectStart = null;
+    return;
+  }
+  boxSelectStart = null;
+
+  const wasPanning = isDragging;
   isDragging = false;
   container.classList.remove("dragging");
 
-  // Click logic — primary button only (touch/pen are always button 0)
-  if (!dragMoved && e.button === 0) {
-    const m = pointerToCanvas(canvasEl, e.clientX, e.clientY);
-    const sx = m.x;
-    const sy = m.y;
+  // If the pointer moved past threshold it was a pan/drag, not a click.
+  if (dragMoved) return;
+  // Only left button / touch taps act as map clicks. (Right-click deselect is
+  // handled by the contextmenu listener.)
+  if (e.button !== 0) return;
 
-    // Tech targeting takes precedence over every other click handler so the
-    // player can't accidentally select a star/entity while a card is mid-cast.
-    if (techTargetingMode) {
+  const m = pointerToCanvas(canvasEl, e.clientX, e.clientY);
+  const sx = m.x, sy = m.y;
+
+  // Tech targeting takes precedence so a mid-cast click can't select instead.
+  if (techTargetingMode) {
+    const world = screenToWorld(sx, sy);
+    resolveTechTarget(world.x, world.y);
+    return;
+  }
+
+  const entIdx = getEntityAtScreen(sx, sy);
+  if (entIdx !== null) {
+    // Click a unit → select just that one.
+    const ent = mapEntities[entIdx];
+    selectOnly(ent);
+    showEntityPanel(ent);
+  } else {
+    // Empty space. If player units are selected → move order. Else → star
+    // selection / deselect.
+    const movers = selectedPlayerUnits();
+    if (movers.length > 0) {
       const world = screenToWorld(sx, sy);
-      resolveTechTarget(world.x, world.y);
-      return;
-    }
-
-    // Check if clicking an entity (ship/fleet)
-    const entIdx = getEntityAtScreen(sx, sy);
-
-    if (selectedEntityIdx !== null && entIdx !== selectedEntityIdx) {
-      // Entity is selected — click sets destination. Gated to player-owned
-      // non-combat entities; NPC fleets ignore player click commands.
-      const selEnt = mapEntities[selectedEntityIdx];
-      if (selEnt && selEnt.owner === "player") {
-        const world = screenToWorld(sx, sy);
-        selEnt.destX = world.x;
-        selEnt.destY = world.y;
-      }
-    } else if (entIdx !== null) {
-      // Clicking an entity — select it and show info
-      selectedEntityIdx = entIdx;
-      showEntityPanel(entIdx);
+      issueGroupMove(movers, world.x, world.y);
     } else {
-      // No entity involved — normal star selection
-      selectedEntityIdx = null;
+      clearSelection();
       const star = getStarAtScreen(sx, sy);
-      if (star) {
-        showSelectPanel(star);
-      } else {
-        hideSelectPanel();
-      }
+      if (star) showSelectPanel(star);
+      else hideSelectPanel();
     }
+  }
+}
+
+// Select all player ships whose on-screen position falls inside the drag box.
+function finalizeBoxSelect() {
+  const x0 = Math.min(boxSelect.x0, boxSelect.x1), x1 = Math.max(boxSelect.x0, boxSelect.x1);
+  const y0 = Math.min(boxSelect.y0, boxSelect.y1), y1 = Math.max(boxSelect.y0, boxSelect.y1);
+  selectedEntities.clear();
+  for (const ent of mapEntities) {
+    if (ent.owner !== "player") continue;
+    const p = worldToScreen(ent.x, ent.y);
+    if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1) selectedEntities.add(ent);
+  }
+  refreshSelectionPanel();
+}
+
+// Show the right panel for the current selection: single → detail card,
+// many → group summary, none → hidden.
+function refreshSelectionPanel() {
+  if (selectedEntities.size === 1) {
+    showEntityPanel([...selectedEntities][0]);
+  } else if (selectedEntities.size > 1) {
+    showGroupPanel();
+  } else {
+    hideSelectPanel();
+  }
+}
+
+// Group move: translate the whole selection so its centroid lands on the
+// target, and move every ship at the group's slowest speed so the formation
+// stays together and arrives as a unit. Each ship travels the same
+// displacement vector (target − centroid), hence the same distance.
+function issueGroupMove(movers, tx, ty) {
+  if (!movers.length) return;
+  let cx = 0, cy = 0;
+  for (const e of movers) { cx += e.x; cy += e.y; }
+  cx /= movers.length; cy /= movers.length;
+  let groupSpeed = Infinity;
+  for (const e of movers) groupSpeed = Math.min(groupSpeed, e.speed || 1);
+  if (!isFinite(groupSpeed)) groupSpeed = 1;
+  for (const e of movers) {
+    e.destX = tx + (e.x - cx);
+    e.destY = ty + (e.y - cy);
+    e._moveSpeed = groupSpeed;
   }
 }
 
@@ -6486,8 +6650,8 @@ container.addEventListener("contextmenu", (e) => {
     cancelTechTargeting();
     return;
   }
-  if (selectedEntityIdx !== null) {
-    selectedEntityIdx = null;
+  if (selectedEntities.size > 0) {
+    clearSelection();
     hideSelectPanel();
   }
 });
@@ -7008,9 +7172,9 @@ const TECH_EFFECTS = {
       // Reverse-iterate so splices don't shift indices we still need.
       for (let i = toRemove.length - 1; i >= 0; i--) {
         const idx = toRemove[i];
+        const ent = mapEntities[idx];
         mapEntities.splice(idx, 1);
-        if (selectedEntityIdx === idx) selectedEntityIdx = null;
-        else if (selectedEntityIdx !== null && selectedEntityIdx > idx) selectedEntityIdx--;
+        onEntityRemoved(ent);
       }
       return hit;
     },
@@ -8015,12 +8179,11 @@ function selectFleetFromList(idx) {
   const ent = _fleetsListCache[idx];
   if (!ent) return;
   hideFleetsList();
-  const entIdx = mapEntities.indexOf(ent);
-  if (entIdx < 0) return;
-  selectedEntityIdx = entIdx;
+  if (mapEntities.indexOf(ent) < 0) return;
+  selectOnly(ent);
   camera.x = ent.x;
   camera.y = ent.y;
-  showEntityPanel(entIdx);
+  showEntityPanel(ent);
 }
 
 document.getElementById("fleets-list-close").addEventListener("click", hideFleetsList);
@@ -9444,8 +9607,6 @@ function serializeGame() {
       card: e.card ? serializeCardRef(e.card) : null,
       admiral: e.admiral ? serializeCardRef(e.admiral) : null,
     })),
-    selectedEntityIdx,
-
     resources: { ...resources },
     gameSpeed,
 
@@ -9481,7 +9642,7 @@ function clearGameState() {
   nextStarId = 1;
   _nextStarNameIdx = 0;
   mapEntities.length = 0;
-  selectedEntityIdx = null;
+  clearSelection();
   hoveredStarId = null;
   selectedStarId = null;
   colonies.length = 0;
@@ -9566,7 +9727,7 @@ function deserializeGame(data) {
     ent.admiral = e.admiral ? (hydrateCardRef(e.admiral) || e.admiral) : null;
     mapEntities.push(ent);
   }
-  selectedEntityIdx = data.selectedEntityIdx ?? null;
+  clearSelection();  // selection isn't persisted
 
   for (const k of Object.keys(data.resources || {})) resources[k] = data.resources[k];
   // Fill in any missing resource defs with 0 (forward-compat)

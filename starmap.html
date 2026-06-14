@@ -3560,6 +3560,46 @@ function getMaxFleetShips(admiral) {
   return base + getArtifactBonuses().fleetSize;
 }
 
+// ── Admiral command aura (Combat 2.0 / RTS model) ──
+// An admiral rides aboard a ship (ent.admiral). It projects a command aura: a
+// radius around that ship within which friendly ships get a combat bonus equal
+// to the admiral's commandBonus%. There is no fleet-size cap anymore — the
+// aura radius is the only thing that scales with grouping (ships outside it
+// just don't benefit). Radius repurposes the admiral's old maxFleetSize stat
+// as "command reach", so higher-tier admirals project further.
+const ADMIRAL_AURA_BASE = 200;       // world units, before reach scaling
+const ADMIRAL_AURA_PER_REACH = 12;   // extra world units per maxFleetSize point
+function getAdmiralAuraRadius(admiral) {
+  if (!admiral) return 0;
+  const reach = admiral.stats.maxFleetSize || 4;
+  return ADMIRAL_AURA_BASE + reach * ADMIRAL_AURA_PER_REACH;
+}
+
+// Gather active admiral auras as flat sources: { x, y, owner, r2, bonus }.
+// Built once per combat tick so per-shot lookups are cheap.
+function collectAdmiralAuras() {
+  const out = [];
+  for (const ent of mapEntities) {
+    if (!ent.admiral) continue;
+    const bonus = ent.admiral.stats.commandBonus || 0;
+    if (bonus <= 0) continue;
+    const r = getAdmiralAuraRadius(ent.admiral);
+    out.push({ x: ent.x, y: ent.y, owner: ent.owner, r2: r * r, bonus });
+  }
+  return out;
+}
+
+// Best (max) command bonus % covering a point for a given owner.
+function auraBonusAt(auras, owner, x, y) {
+  let best = 0;
+  for (const a of auras) {
+    if (a.owner !== owner) continue;
+    const dx = a.x - x, dy = a.y - y;
+    if (dx * dx + dy * dy <= a.r2 && a.bonus > best) best = a.bonus;
+  }
+  return best;
+}
+
 // Check if entity is at a colony star (within snap distance)
 function getEntityColony(ent) {
   const snapDist = 30;
@@ -3832,6 +3872,7 @@ function tickShipCombat(dt) {
   if (dt <= 0) return;
 
   const killEvents = []; // { entity, card, attackerEntity }
+  const auras = collectAdmiralAuras(); // admiral command auras, this tick
 
   for (let ei = 0; ei < mapEntities.length; ei++) {
     const ent = mapEntities[ei];
@@ -3881,6 +3922,11 @@ function tickShipCombat(dt) {
       const pairDist = Math.sqrt(bestD2);
       const targetPos = getShipWorldPos(targetEnt, targetIdx);
 
+      // Admiral command aura: friendly ships within an admiral's reach deal
+      // commandBonus% extra damage. Computed from the firer's position.
+      const auraBonus = auraBonusAt(auras, ent.owner, shipPos.x, shipPos.y);
+      const dmgMul = 1 + auraBonus / 100;
+
       // Perpendicular unit vector to the firer→target line, for drawing
       // missed shots flying past the target instead of dead-on.
       const dirX = targetPos.x - shipPos.x, dirY = targetPos.y - shipPos.y;
@@ -3920,9 +3966,9 @@ function tickShipCombat(dt) {
           continue;
         }
 
-        // Hit — beam/round lands on the target.
+        // Hit — beam/round lands on the target (admiral aura scales damage).
         spawnWeaponVisual(shipPos.x, shipPos.y, targetPos.x, targetPos.y, wpn.type);
-        const died = applyDamageByWeapon(target, wpn.type, wpn.dmg);
+        const died = applyDamageByWeapon(target, wpn.type, wpn.dmg * dmgMul);
         spawnCombatParticle(targetPos.x, targetPos.y, wpn.type, true);
         if (died) {
           killEvents.push({ entity: targetEnt, card: target, attackerEntity: ent });
@@ -4060,6 +4106,26 @@ function drawEntities(ctx, time) {
     ctx.save();
     ctx.translate(pos.x, pos.y);
 
+    // Admiral command aura — faint gold ring at the admiral's reach so the
+    // player can see who's covered. Drawn under the icon.
+    if (ent.admiral) {
+      const auraR = getAdmiralAuraRadius(ent.admiral) * camera.zoom;
+      if (auraR > size) {
+        const pulse = 0.10 + 0.04 * Math.sin(time * 1.6);
+        ctx.save();
+        ctx.fillStyle = `rgba(200,168,40,${pulse.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(0, 0, auraR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(210,176,48,0.35)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, auraR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
     // Selection highlight
     if (isSelected) {
       // Sensor-range halo — soft outer ring at the entity's actual detect
@@ -4143,6 +4209,16 @@ function drawEntities(ctx, time) {
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
       ctx.fillText(stanceChar, size + 2 * camera.zoom, 0);
+    }
+
+    // Flagship marker — gold ring around an admiral-carrying ship so the
+    // player can spot it on the map.
+    if (ent.admiral) {
+      ctx.strokeStyle = "#d2b030";
+      ctx.lineWidth = Math.max(1, 1.5 * camera.zoom);
+      ctx.beginPath();
+      ctx.arc(0, 0, size + 2.5 * camera.zoom, 0, Math.PI * 2);
+      ctx.stroke();
     }
 
     ctx.restore();
@@ -6211,7 +6287,10 @@ function showEntityPanel(ent) {
   // Info summary
   let infoHtml = "";
   const row = (iconId, text) => `<div style="display:flex;align-items:center;gap:5px">${ico(iconId, "sm")}<span>${text}</span></div>`;
-  if (ent.admiral) infoHtml += row("i-admiral", `Admiral: ${ent.admiral.name}`);
+  if (ent.admiral) {
+    const cb = ent.admiral.stats.commandBonus || 0;
+    infoHtml += row("i-admiral", `Admiral: ${ent.admiral.name} (+${cb}% dmg aura)`);
+  }
   infoHtml += `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">`
     + `${ico("i-speed", "sm")}<span>Speed: ${ent.speed}</span>`
     + `<span style="width:8px"></span>`

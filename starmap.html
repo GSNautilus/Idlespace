@@ -210,6 +210,18 @@ body.scaled {
   align-items: center;
   gap: 10px;
 }
+#select-panel-ships .roster-section-head {
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #6a7a9b;
+  border-bottom: 1px solid #141c2e;
+  padding-bottom: 4px;
+  margin-top: 6px;
+}
 #select-panel-ships .fleet-ship-card {
   width: 165px;
   height: 240px;
@@ -6368,7 +6380,36 @@ function showGroupPanel() {
   info.innerHTML = Object.entries(byRarity)
     .map(([r, n]) => `<span style="color:${RARITY_COLORS[r] || "#8090b0"}">${n} ${r}</span>`)
     .join(" · ");
-  if (shipsEl) shipsEl.innerHTML = "";
+  // Full card roster: every selected ship, plus each admiral riding along
+  // (a multi-group box-select can include several admirals, one per flagship).
+  // Clicking any card magnifies it — handled by the panel-wide
+  // .fleet-ship-card[data-card-id] click delegation, same as the single panel.
+  if (shipsEl) {
+    shipsEl.innerHTML = "";
+    const makeCardEl = (card) => {
+      markCardSeen(card);
+      const wrap = document.createElement("div");
+      wrap.className = "fleet-ship-card";
+      if (card.id) wrap.setAttribute("data-card-id", card.id);
+      wrap.innerHTML = buildCardHtml(card);
+      return wrap;
+    };
+    const addHeader = (text) => {
+      const h = document.createElement("div");
+      h.className = "roster-section-head";
+      h.textContent = text;
+      shipsEl.appendChild(h);
+    };
+    const admirals = units.filter(e => e.admiral).map(e => e.admiral);
+    if (admirals.length) {
+      addHeader(`${admirals.length} Admiral${admirals.length > 1 ? "s" : ""}`);
+      for (const a of admirals) shipsEl.appendChild(makeCardEl(a));
+    }
+    const ships = units.filter(e => e.card)
+      .sort((a, b) => (_RARITY_RANK[b.card.rarity] || 0) - (_RARITY_RANK[a.card.rarity] || 0));
+    addHeader(`${ships.length} Ship${ships.length !== 1 ? "s" : ""}`);
+    for (const e of ships) shipsEl.appendChild(makeCardEl(e.card));
+  }
 }
 
 function setSelectionStance(stance) {

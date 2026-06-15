@@ -1279,7 +1279,7 @@ body.scaled {
   flex: 1;
 }
 #fleet-deploy-buttons { display: flex; gap: 4px; }
-#deploy-btn, #deploy-solo-btn {
+#deploy-btn {
   padding: 5px 10px;
   border-radius: 4px;
   font-size: 11px;
@@ -1290,11 +1290,11 @@ body.scaled {
   background: linear-gradient(135deg, #1a2540, #243060);
   color: #8090b0;
 }
-#deploy-btn:not(:disabled):hover, #deploy-solo-btn:not(:disabled):hover {
+#deploy-btn:not(:disabled):hover {
   background: linear-gradient(135deg, #243060, #2e4080);
   color: #c0d0f0;
 }
-#deploy-btn:disabled, #deploy-solo-btn:disabled {
+#deploy-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -1847,8 +1847,7 @@ body.scaled {
             </div>
             <div id="fleet-info"></div>
             <div id="fleet-deploy-buttons">
-              <button id="deploy-btn" disabled>Deploy Fleet</button>
-              <button id="deploy-solo-btn" disabled>Deploy Solo</button>
+              <button id="deploy-btn" disabled>Deploy</button>
             </div>
           </div>
         </div>
@@ -8857,7 +8856,7 @@ function refreshColonyScreen() {
 }
 
 function refreshFleetTab(col) {
-  const maxShips = getMaxFleetShips(deployAdmiral);
+  // No fleet-size cap in the RTS unit model — stage as many ships as you like.
   const slotsEl = document.getElementById("fleet-ship-slots");
   slotsEl.innerHTML = "";
 
@@ -8870,8 +8869,6 @@ function refreshFleetTab(col) {
       e.stopPropagation();
       col.queue.push(deployAdmiral);
       deployAdmiral = null;
-      const max = getMaxFleetShips(null);
-      while (deployShips.length > max) col.queue.push(deployShips.pop());
       refreshColonyScreen();
     });
   } else {
@@ -8891,15 +8888,13 @@ function refreshFleetTab(col) {
     if (deployAdmiral) col.queue.push(deployAdmiral);
     deployAdmiral = draggedCard.card;
     if (draggedCard.source === "queue") col.queue.splice(draggedCard.index, 1);
-    const max = getMaxFleetShips(deployAdmiral);
-    while (deployShips.length > max) col.queue.push(deployShips.pop());
     draggedCard = null;
     refreshColonyScreen();
   });
   slotsEl.appendChild(admSlot);
 
-  // ── Ship slots ──
-  for (let i = 0; i < maxShips; i++) {
+  // ── Ship slots (every staged ship + one trailing empty slot to add more) ──
+  for (let i = 0; i < deployShips.length + 1; i++) {
     const card = deployShips[i] || null;
     const slot = document.createElement("div");
     if (card) {
@@ -8933,7 +8928,6 @@ function refreshFleetTab(col) {
       e.preventDefault();
       slot.classList.remove("drag-over");
       if (!draggedCard || draggedCard.card.category !== "ship") return;
-      if (deployShips.length >= maxShips) return;
       deployShips.push(draggedCard.card);
       if (draggedCard.source === "queue") col.queue.splice(draggedCard.index, 1);
       else if (draggedCard.source === "fleet-ship") deployShips.splice(draggedCard.index, 1);
@@ -8979,8 +8973,8 @@ function refreshFleetTab(col) {
   const deployBtn = document.getElementById("deploy-btn");
   const newDeployBtn = deployBtn.cloneNode(true);
   deployBtn.parentNode.replaceChild(newDeployBtn, deployBtn);
-  const canFleet = deployShips.length >= 2 || (deployShips.length >= 1 && deployAdmiral);
-  newDeployBtn.disabled = !canFleet;
+  const canDeploy = deployShips.length >= 1;
+  newDeployBtn.disabled = !canDeploy;
   newDeployBtn.addEventListener("click", () => {
     if (deployShips.length === 0) return;
     const allDeploy = [...deployShips];
@@ -8999,24 +8993,6 @@ function refreshFleetTab(col) {
       x: star.x, y: star.y,
     });
     deployAdmiral = null;
-    deployShips = [];
-    refreshColonyScreen();
-  });
-
-  // Deploy solo button
-  const soloBtn = document.getElementById("deploy-solo-btn");
-  const newSoloBtn = soloBtn.cloneNode(true);
-  soloBtn.parentNode.replaceChild(newSoloBtn, soloBtn);
-  newSoloBtn.disabled = !(deployShips.length === 1 && !deployAdmiral);
-  newSoloBtn.addEventListener("click", () => {
-    if (deployShips.length !== 1 || deployAdmiral) return;
-    const shipCard = deployShips[0];
-    if (shipCard.cost && !canAfford(shipCard.cost)) { showCostTooltip(newSoloBtn, shipCard.cost); return; }
-    if (shipCard.cost) deductCost(shipCard.cost);
-    const star = colonyViewStar;
-    const soloAngle = Math.random() * Math.PI * 2;
-    createSoloShip(shipCard, star.x + Math.cos(soloAngle) * 40, star.y + Math.sin(soloAngle) * 40);
-    mapEntities[mapEntities.length - 1].stance = deployStance;
     deployShips = [];
     refreshColonyScreen();
   });

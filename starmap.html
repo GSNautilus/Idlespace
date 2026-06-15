@@ -601,6 +601,24 @@ body.scaled {
   text-align: center;
   padding: 24px;
 }
+#fleets-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+.fleet-del-btn {
+  background: none;
+  border: none;
+  color: #5a6a8b;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.fleet-del-btn:hover { color: #e06060; background: rgba(80,20,20,0.35); }
 
 /* ── Colony Screen Overlay ── */
 #colony-backdrop {
@@ -1769,6 +1787,7 @@ body.scaled {
   <div id="fleets-list-overlay">
     <button id="fleets-list-close"><svg class="ico"><use href="#i-close"/></svg></button>
     <h2><svg class="ico lg"><use href="#i-fleet"/></svg> Fleets</h2>
+    <div id="fleets-tabs"></div>
     <div id="fleets-list-items"></div>
   </div>
   <!-- Collection -->
@@ -3484,6 +3503,15 @@ const mapEntities = [];  // array of ship entities on the starmap
 const selectedEntities = new Set();
 let panelEntity = null;  // the single entity whose detail panel is open (or null)
 
+// Stable per-ship id (assigned at creation) + saved fleets. A "saved fleet"
+// is just a named, recallable selection of player ships — no special
+// properties; recall re-selects the (living) members by id. Persisting these
+// across reload is wired in a follow-up slice.
+let nextEntityId = 1;
+let savedFleets = [];          // [{ fid, name, shipIds:[entId,…] }]
+let nextFleetFid = 1;
+let savedFleetNameCounter = 0; // monotonic source for default "Fleet N" names
+
 function clearSelection() {
   selectedEntities.clear();
   panelEntity = null;
@@ -3506,11 +3534,20 @@ function selectedPlayerUnits() {
 function onEntityRemoved(ent) {
   selectedEntities.delete(ent);
   if (panelEntity === ent) { panelEntity = null; hideSelectPanel(); }
+  // Drop the dead ship from any saved fleet, and discard fleets left empty.
+  if (ent.id != null && savedFleets.length) {
+    for (const f of savedFleets) {
+      const i = f.shipIds.indexOf(ent.id);
+      if (i >= 0) f.shipIds.splice(i, 1);
+    }
+    savedFleets = savedFleets.filter(f => f.shipIds.length > 0);
+  }
 }
 
 function createSoloShip(card, x, y, owner) {
   const ent = {
     type: "ship",
+    id: nextEntityId++,
     owner: owner || "player",
     card,
     admiral: null,          // admiral card riding aboard this ship (aura source); usually null
@@ -6374,6 +6411,7 @@ function showGroupPanel() {
     if (playerUnits.some(e => e.destX !== null && e.destY !== null)) {
       actionsHtml += `<button class="card-action-btn" onclick="stopSelectionMovement()">Stop</button>`;
     }
+    actionsHtml += `<button class="card-action-btn" onclick="saveSelectionAsFleet()">Save as Fleet</button>`;
   }
   actions.innerHTML = actionsHtml;
   // Mini rarity breakdown.
@@ -8270,28 +8308,48 @@ document.getElementById("colonies-list-close").addEventListener("click", hideCol
 document.getElementById("colonies-backdrop").addEventListener("click", hideColoniesList);
 
 // ── Fleets List ──
-// Mirrors the Colonies list pattern. Includes every player-owned entity
-// (both multi-ship fleets and solo ships). Clicking an entry centers the
-// camera on the entity and selects it. Cached array is rebuilt on every
-// show so it reflects current fleet composition.
-let _fleetsListCache = [];
+// Two sub-tabs: "Fleets" = saved ship groups (named, recallable selections),
+// "Ships" = every individual player ship (the original flat list). A saved
+// fleet has no special properties — recalling it re-selects its living
+// members and centers the camera on them.
+let _activeFleetsTab = "fleets";   // "fleets" | "ships"
+let _fleetsListCache = [];          // ships shown in the Ships tab (index → entity)
 
-function showFleetsList() {
-  const backdrop = document.getElementById("fleets-backdrop");
-  const overlay = document.getElementById("fleets-list-overlay");
+function showFleetsList(tab) {
+  if (tab) _activeFleetsTab = tab;
+  document.getElementById("fleets-backdrop").classList.add("visible");
+  document.getElementById("fleets-list-overlay").classList.add("visible");
+  renderFleetsList();
+}
+
+function setFleetsTab(tab) {
+  _activeFleetsTab = tab;
+  renderFleetsList();
+}
+
+function renderFleetsList() {
+  const tabsEl = document.getElementById("fleets-tabs");
   const items = document.getElementById("fleets-list-items");
+  const playerShips = mapEntities.filter(e => e.owner === "player");
 
-  backdrop.classList.add("visible");
-  overlay.classList.add("visible");
+  const tabBtn = (id, label, count) =>
+    `<button class="col-tab${_activeFleetsTab === id ? " active" : ""}" onclick="setFleetsTab('${id}')">`
+    + `<span>${label}</span><span class="col-tab-count">${count}</span></button>`;
+  tabsEl.innerHTML = tabBtn("fleets", "Fleets", savedFleets.length)
+                   + tabBtn("ships", "Ships", playerShips.length);
 
-  _fleetsListCache = mapEntities.filter(e => e.owner === "player");
+  if (_activeFleetsTab === "ships") renderFleetsShipsTab(items, playerShips);
+  else renderFleetsGroupsTab(items);
+}
 
-  if (_fleetsListCache.length === 0) {
-    items.innerHTML = `<div class="colonies-empty">No fleets or ships deployed. Build and deploy ships from a colony.</div>`;
+// Ships tab — flat list of every individual player ship (original behavior).
+function renderFleetsShipsTab(items, playerShips) {
+  _fleetsListCache = playerShips;
+  if (playerShips.length === 0) {
+    items.innerHTML = `<div class="colonies-empty">No ships deployed. Build and deploy ships from a colony.</div>`;
     return;
   }
-
-  items.innerHTML = _fleetsListCache.map((ent, i) => {
+  items.innerHTML = playerShips.map((ent, i) => {
     const rarityColor = RARITY_COLORS[ent.card && ent.card.rarity] || "#4a7ac0";
     let subtype = (ent.card && ent.card.type) || "Ship";
     if (ent.admiral) subtype += ` · ★${ent.admiral.name}`;
@@ -8309,9 +8367,65 @@ function showFleetsList() {
   }).join("");
 }
 
+// Fleets tab — saved groups. Click a row to recall; ✕ to delete.
+function renderFleetsGroupsTab(items) {
+  if (savedFleets.length === 0) {
+    items.innerHTML = `<div class="colonies-empty">No saved fleets yet. Box-select ships on the map, then “Save as Fleet”.</div>`;
+    return;
+  }
+  items.innerHTML = savedFleets.map(f => {
+    const n = livingFleetShips(f).length;
+    const countStr = `${n} ship${n === 1 ? "" : "s"}`;
+    return `<div class="colony-list-item" onclick="recallSavedFleet(${f.fid})">
+      <div class="colony-list-rarity" style="background:#4a7ac0"></div>
+      <div class="colony-list-name">${f.name}</div>
+      <div class="colony-list-type">${countStr}</div>
+      <button class="fleet-del-btn" title="Delete fleet" onclick="deleteSavedFleet(${f.fid}, event)">✕</button>
+    </div>`;
+  }).join("");
+}
+
+// Player ships still on the map that belong to a saved fleet.
+function livingFleetShips(f) {
+  const ids = new Set(f.shipIds);
+  return mapEntities.filter(e => e.owner === "player" && ids.has(e.id));
+}
+
 function hideFleetsList() {
   document.getElementById("fleets-backdrop").classList.remove("visible");
   document.getElementById("fleets-list-overlay").classList.remove("visible");
+}
+
+// Save the current selection as a new named fleet, then show it.
+function saveSelectionAsFleet() {
+  const ids = [];
+  for (const e of selectedEntities) {
+    if (e.owner === "player" && e.id != null && mapEntities.includes(e)) ids.push(e.id);
+  }
+  if (ids.length === 0) return;
+  savedFleets.push({ fid: nextFleetFid++, name: `Fleet ${++savedFleetNameCounter}`, shipIds: ids });
+  showFleetsList("fleets");
+}
+
+// Recall a saved fleet: select its living members and center the camera on them.
+function recallSavedFleet(fid) {
+  const f = savedFleets.find(x => x.fid === fid);
+  if (!f) return;
+  const living = livingFleetShips(f);
+  if (living.length === 0) return;
+  selectedEntities.clear();
+  let cx = 0, cy = 0;
+  for (const e of living) { selectedEntities.add(e); cx += e.x; cy += e.y; }
+  camera.x = cx / living.length;
+  camera.y = cy / living.length;
+  hideFleetsList();
+  refreshSelectionPanel();
+}
+
+function deleteSavedFleet(fid, ev) {
+  if (ev) ev.stopPropagation();
+  savedFleets = savedFleets.filter(f => f.fid !== fid);
+  renderFleetsList();
 }
 
 function selectFleetFromList(idx) {
@@ -9759,6 +9873,10 @@ function clearGameState() {
   _nextStarNameIdx = 0;
   mapEntities.length = 0;
   clearSelection();
+  nextEntityId = 1;
+  savedFleets = [];
+  nextFleetFid = 1;
+  savedFleetNameCounter = 0;
   hoveredStarId = null;
   selectedStarId = null;
   colonies.length = 0;
@@ -9834,6 +9952,7 @@ function deserializeGame(data) {
     // Individual ship entity (current model).
     const ent = {
       type: e.type, owner: e.owner, stance: e.stance,
+      id: nextEntityId++,
       x: e.x, y: e.y, destX: e.destX, destY: e.destY,
       speed: e.speed, sensorRange: e.sensorRange, stealth: e.stealth,
       label: e.label,

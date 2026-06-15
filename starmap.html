@@ -9831,6 +9831,7 @@ function serializeGame() {
     shuffledStarNames: [..._shuffledStarNames],
 
     mapEntities: mapEntities.map(e => ({
+      id: e.id,
       type: e.type, owner: e.owner, stance: e.stance, faction: e.faction || null,
       x: e.x, y: e.y, destX: e.destX, destY: e.destY,
       speed: e.speed, sensorRange: e.sensorRange, stealth: e.stealth,
@@ -9838,6 +9839,11 @@ function serializeGame() {
       card: e.card ? serializeCardRef(e.card) : null,
       admiral: e.admiral ? serializeCardRef(e.admiral) : null,
     })),
+    // Saved fleets (named selections) + the id counters they reference.
+    savedFleets: savedFleets.map(f => ({ fid: f.fid, name: f.name, shipIds: [...f.shipIds] })),
+    nextEntityId,
+    nextFleetFid,
+    savedFleetNameCounter,
     resources: { ...resources },
     gameSpeed,
 
@@ -9950,10 +9956,14 @@ function deserializeGame(data) {
       });
       continue;
     }
-    // Individual ship entity (current model).
+    // Individual ship entity (current model). Preserve its saved stable id so
+    // saved fleets can re-find their members; assign a fresh one for legacy
+    // saves, keeping nextEntityId ahead of every loaded id.
+    const entId = (e.id != null) ? e.id : nextEntityId++;
+    if (e.id != null && e.id >= nextEntityId) nextEntityId = e.id + 1;
     const ent = {
       type: e.type, owner: e.owner, stance: e.stance,
-      id: nextEntityId++,
+      id: entId,
       x: e.x, y: e.y, destX: e.destX, destY: e.destY,
       speed: e.speed, sensorRange: e.sensorRange, stealth: e.stealth,
       label: e.label,
@@ -9964,6 +9974,20 @@ function deserializeGame(data) {
     mapEntities.push(ent);
   }
   clearSelection();  // selection isn't persisted
+
+  // Saved fleets (named selections). Keep only member ids that actually
+  // loaded, drop any fleet left empty, and restore the id/name counters.
+  const _liveShipIds = new Set(mapEntities.filter(e => e.owner === "player").map(e => e.id));
+  savedFleets = (Array.isArray(data.savedFleets) ? data.savedFleets : [])
+    .map(f => ({
+      fid: f.fid,
+      name: f.name,
+      shipIds: (Array.isArray(f.shipIds) ? f.shipIds : []).filter(id => _liveShipIds.has(id)),
+    }))
+    .filter(f => f.shipIds.length > 0);
+  nextFleetFid = data.nextFleetFid || (savedFleets.reduce((m, f) => Math.max(m, f.fid || 0), 0) + 1);
+  savedFleetNameCounter = data.savedFleetNameCounter || 0;
+  if (data.nextEntityId && data.nextEntityId > nextEntityId) nextEntityId = data.nextEntityId;
 
   for (const k of Object.keys(data.resources || {})) resources[k] = data.resources[k];
   // Fill in any missing resource defs with 0 (forward-compat)

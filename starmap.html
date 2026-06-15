@@ -6290,6 +6290,9 @@ function showEntityPanel(ent) {
   const stanceText = ent.stance === "aggressive" ? "Aggressive" : "Evasive";
   const atColony = getEntityColony(ent);
   let actionsHtml = `<button class="card-action-btn" onclick="togglePanelEntityStance()" style="color:${stanceColor}">${stanceText}</button>`;
+  if (ent.destX !== null && ent.destY !== null) {
+    actionsHtml += `<button class="card-action-btn" onclick="stopSelectionMovement()">Stop</button>`;
+  }
   if (atColony) {
     actionsHtml += `<button class="card-action-btn" onclick="disbandPanelEntity()">Disband</button>`;
   }
@@ -6368,6 +6371,9 @@ function showGroupPanel() {
   if (playerUnits.length > 0) {
     actionsHtml += `<button class="card-action-btn" onclick="setSelectionStance('aggressive')" style="color:#e05050">All Aggressive</button>`;
     actionsHtml += `<button class="card-action-btn" onclick="setSelectionStance('evasive')" style="color:#50a0e0">All Evasive</button>`;
+    if (playerUnits.some(e => e.destX !== null && e.destY !== null)) {
+      actionsHtml += `<button class="card-action-btn" onclick="stopSelectionMovement()">Stop</button>`;
+    }
   }
   actions.innerHTML = actionsHtml;
   // Mini rarity breakdown.
@@ -6416,6 +6422,19 @@ function setSelectionStance(stance) {
     if (e.owner === "player") e.stance = stance;
   }
   showGroupPanel();
+}
+
+// Halt movement for every selected player ship — clears its destination and
+// any group-move speed cap, mirroring how tickEntities clears them on arrival.
+function stopSelectionMovement() {
+  for (const e of selectedEntities) {
+    if (e.owner !== "player") continue;
+    e.destX = null;
+    e.destY = null;
+    e._moveSpeed = null;
+  }
+  if (panelEntity) showEntityPanel(panelEntity);
+  else showGroupPanel();
 }
 
 function hideSelectPanel() {
@@ -6696,6 +6715,7 @@ function handlePointerEnd(e) {
     if (movers.length > 0) {
       const world = screenToWorld(sx, sy);
       issueGroupMove(movers, world.x, world.y);
+      refreshSelectionPanel();  // surface the Stop button + live ETA right away
     } else {
       clearSelection();
       const star = getStarAtScreen(sx, sy);

@@ -4154,9 +4154,10 @@ function drawEntities(ctx, time) {
     ctx.save();
     ctx.translate(pos.x, pos.y);
 
-    // Admiral command aura — faint gold ring at the admiral's reach so the
-    // player can see who's covered. Drawn under the icon.
-    if (ent.admiral) {
+    // Admiral command aura — faint gold ring at the admiral's reach. Shown
+    // only while this admiral's ship is selected (like the sensor halo below)
+    // so it doesn't permanently clutter the map. Drawn under the icon.
+    if (ent.admiral && isSelected) {
       const auraR = getAdmiralAuraRadius(ent.admiral) * camera.zoom;
       if (auraR > size) {
         const pulse = 0.10 + 0.04 * Math.sin(time * 1.6);

@@ -1286,7 +1286,7 @@ body.scaled {
   cursor: pointer;
   transition: all 0.15s;
 }
-#fleet-stance-toggle.evasive {
+#fleet-stance-toggle.holdcourse {
   background: rgba(80, 160, 224, 0.15);
   border-color: rgba(80, 160, 224, 0.4);
   color: #50a0e0;
@@ -1862,7 +1862,7 @@ body.scaled {
           <div id="fleet-ship-slots"></div>
           <div id="fleet-controls">
             <div id="fleet-stance-toggle" title="Toggle stance">
-              <span id="fleet-stance-label">Aggressive</span>
+              <span id="fleet-stance-label">Maintain Range</span>
             </div>
             <div id="fleet-info"></div>
             <div id="fleet-deploy-buttons">
@@ -3544,6 +3544,15 @@ function onEntityRemoved(ent) {
   }
 }
 
+// Stance vocabulary (v0.2.0 combat): "maintainRange" = kite to the longest
+// weapon's range and fight; "holdCourse" = follow movement orders, never break
+// off for combat. normalizeStance maps the old aggressive/evasive save values.
+function normalizeStance(s) {
+  if (s === "maintainRange" || s === "holdCourse") return s;
+  if (s === "evasive") return "holdCourse";
+  return "maintainRange"; // "aggressive", undefined, or anything unknown
+}
+
 function createSoloShip(card, x, y, owner) {
   const ent = {
     type: "ship",
@@ -3551,7 +3560,7 @@ function createSoloShip(card, x, y, owner) {
     owner: owner || "player",
     card,
     admiral: null,          // admiral card riding aboard this ship (aura source); usually null
-    stance: "aggressive",
+    stance: "maintainRange",
     x, y,
     destX: null, destY: null,
     speed: card.stats.speed || 1,
@@ -3572,7 +3581,7 @@ const _RARITY_RANK = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
 function deployShipGroup(cards, opts) {
   opts = opts || {};
   const owner = opts.owner || "player";
-  const stance = opts.stance || "aggressive";
+  const stance = opts.stance || "maintainRange";
   const cx = opts.x || 0, cy = opts.y || 0;
   const created = [];
   if (!cards || cards.length === 0) return created;
@@ -3916,6 +3925,85 @@ function getEntityShips(ent) {
 // its own sensor AND longest-weapon range, advance shot cooldown, fire all
 // in-range weapons when cooldown expires. Cleans dead solos / empty fleets
 // at end.
+// ── Stance-driven combat movement (all combatants) ──
+// "Maintain Range" ships fight at their longest weapon's range: when an enemy
+// enters sensor range, combat WINS over any move order — the ship drops its
+// route and positions to keep the nearest enemy at ~max weapon range (closing
+// if beyond it, backing off if it has gotten too near). A short-range ship
+// therefore brawls up close; a long-range ship holds far and kites. "Hold
+// Course" ships never break off — they follow movement orders straight through
+// combat (firing opportunistically via tickShipCombat) — so they're skipped
+// here. Applies to BOTH sides: NPCs default to Maintain Range, so they advance
+// to engage once a player ship enters their sensor range.
+//
+// Being fired upon "reveals" the attacker: for COMBAT_THREAT_MEMORY seconds a
+// ship knows where whoever last shot it is (even beyond sensor range), so it
+// can shoot back out to its own weapon range and move to close the gap.
+const COMBAT_THREAT_MEMORY = 5; // seconds (animTime) a ship remembers its attacker
+function tickCombatMovement(dt) {
+  if (dt <= 0) return;
+  for (const ent of mapEntities) {
+    if (ent.stance === "holdCourse") continue;       // follows orders, never kites
+    const ship = ent.card;
+    if (!ship || !isShipAlive(ship)) continue;
+    const sensorR = (ship.stats.sensorRange || 0) * 50;
+    const weapons = getWeaponInfo(ship);
+    if (weapons.length === 0) continue;              // unarmed — nothing to maintain range for
+    const maxWeaponR = Math.max(...weapons.map(w => RANGE_THRESHOLDS[w.range] || 0));
+    if (maxWeaponR <= 0) continue;
+
+    // Choose a target and the distance to hold it at:
+    //  • nearest enemy inside our sensor disc → held at min(sensor, weapon),
+    //    since backing off past sensor would lose contact;
+    //  • the ship currently firing on us (revealed even out of sensor) → held
+    //    at our weapon range, and chased if it's still beyond that.
+    let tx = 0, ty = 0, tD2 = Infinity, holdR = 0, found = false;
+    if (sensorR > 0) {
+      const sr2 = sensorR * sensorR;
+      for (const oth of mapEntities) {
+        if (oth.owner === ent.owner) continue;        // skip self and friendlies
+        if (!oth.card || !isShipAlive(oth.card)) continue;
+        const dx = oth.x - ent.x, dy = oth.y - ent.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= sr2 && d2 < tD2) { tD2 = d2; tx = oth.x; ty = oth.y; holdR = Math.min(sensorR, maxWeaponR); found = true; }
+      }
+    }
+    const atk = ent._threatBy;
+    if (atk && atk !== ent && atk.owner !== ent.owner && mapEntities.includes(atk)
+        && atk.card && isShipAlive(atk.card) && (animTime - (ent._threatAt || 0)) < COMBAT_THREAT_MEMORY) {
+      const dx = atk.x - ent.x, dy = atk.y - ent.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < tD2) { tD2 = d2; tx = atk.x; ty = atk.y; holdR = maxWeaponR; found = true; }
+    }
+    if (!found) continue;
+
+    // Combat overrides the move order: drop the route and hold at holdR. The
+    // dead-zone scales with range so it's stable at any sensor-disc size.
+    ent.destX = null; ent.destY = null; ent._moveSpeed = null;
+    const dist = Math.sqrt(tD2) || 1;
+    const ux = (tx - ent.x) / dist, uy = (ty - ent.y) / dist;
+    const desired = holdR * 0.88;
+    const deadZone = holdR * 0.1;
+    const step = (ent.speed || 1) * dt * WORLD_SPEED_MULT;
+    let moved = false;
+    if (dist > desired + deadZone) {
+      const move = Math.min(step, dist - desired);
+      ent.x += ux * move; ent.y += uy * move;          // close in
+      ent.lastHeadingAngle = Math.atan2(uy, ux);
+      moved = true;
+    } else if (dist < desired - deadZone) {
+      const move = Math.min(step, desired - dist);
+      ent.x -= ux * move; ent.y -= uy * move;          // back off to range
+      ent.lastHeadingAngle = Math.atan2(-uy, -ux);
+      moved = true;
+    }
+    if (moved && ent.owner === "player") {
+      detectStarsInRange(ent.x, ent.y, sensorR);
+      markSeenInRange(ent.x, ent.y, sensorR);
+    }
+  }
+}
+
 function tickShipCombat(dt) {
   if (dt <= 0) return;
 
@@ -3960,6 +4048,23 @@ function tickShipCombat(dt) {
         }
       }
 
+      // A ship currently firing on us is "revealed" beyond sensor range — we
+      // can shoot back out to our own weapon range. Used when it's nearer than
+      // (or stands in for) anything found inside the normal engage range.
+      const atk = ent._threatBy;
+      if (atk && atk !== ent && atk.owner !== ent.owner && mapEntities.includes(atk)
+          && (animTime - (ent._threatAt || 0)) < COMBAT_THREAT_MEMORY) {
+        const aShips = getEntityShips(atk);
+        if (aShips && aShips[0] && isShipAlive(aShips[0])) {
+          const ap = getShipWorldPos(atk, 0);
+          const dx = ap.x - shipPos.x, dy = ap.y - shipPos.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 <= maxWeaponR * maxWeaponR && (target === null || d2 < bestD2)) {
+            bestD2 = d2; target = aShips[0]; targetEnt = atk; targetIdx = 0;
+          }
+        }
+      }
+
       // Cooldown advances regardless of target — keeps cadence consistent
       ship._shotCooldownLeft = Math.max(0, (ship._shotCooldownLeft || 0) - dt);
       if (!target) continue;
@@ -3967,6 +4072,12 @@ function tickShipCombat(dt) {
 
       // Fire — start next cooldown from this ship's fireRate
       ship._shotCooldownLeft = getShipFireInterval(ship);
+      // Opening fire reveals us to the target: it learns our position (so it can
+      // move to engage back) and, if it's a player ship, becomes visible to the
+      // player even beyond their sensor range.
+      targetEnt._threatBy = ent;
+      targetEnt._threatAt = animTime;
+      if (targetEnt.owner === "player") ent._seenUntil = animTime + COMBAT_THREAT_MEMORY;
       const pairDist = Math.sqrt(bestD2);
       const targetPos = getShipWorldPos(targetEnt, targetIdx);
 
@@ -4113,7 +4224,10 @@ function drawShipGlyph(ctx, isFleet) {
 // visible only while a scout/colony actively sees them.
 function isEntityVisibleToPlayer(ent) {
   if (!ent || ent.owner !== "npc") return true;
-  return isInPlayerSensorRange(ent.x, ent.y);
+  if (isInPlayerSensorRange(ent.x, ent.y)) return true;
+  // An NPC currently firing on one of our ships is revealed even beyond sensor
+  // range, so the player can see what's shooting them.
+  return !!(ent._seenUntil && animTime < ent._seenUntil);
 }
 
 function drawEntities(ctx, time) {
@@ -4251,8 +4365,8 @@ function drawEntities(ctx, time) {
 
     // Stance indicator badge
     if (camera.zoom > 0.5) {
-      const stanceChar = ent.stance === "aggressive" ? "A" : "E";
-      const stanceColor = ent.stance === "aggressive" ? "#e05050" : "#50a0e0";
+      const stanceChar = ent.stance === "holdCourse" ? "H" : "M";
+      const stanceColor = ent.stance === "holdCourse" ? "#50a0e0" : "#e0913a";
       ctx.font = `bold ${Math.max(6, 7 * camera.zoom)}px 'Segoe UI', system-ui, sans-serif`;
       ctx.fillStyle = stanceColor;
       ctx.textAlign = "left";
@@ -6324,8 +6438,8 @@ function showEntityPanel(ent) {
   }
 
   // Stance toggle + disband (act on the current panel entity).
-  const stanceColor = ent.stance === "aggressive" ? "#e05050" : "#50a0e0";
-  const stanceText = ent.stance === "aggressive" ? "Aggressive" : "Evasive";
+  const stanceColor = ent.stance === "holdCourse" ? "#50a0e0" : "#e0913a";
+  const stanceText = ent.stance === "holdCourse" ? "Hold Course" : "Maintain Range";
   const atColony = getEntityColony(ent);
   let actionsHtml = `<button class="card-action-btn" onclick="togglePanelEntityStance()" style="color:${stanceColor}">${stanceText}</button>`;
   if (ent.destX !== null && ent.destY !== null) {
@@ -6376,7 +6490,7 @@ function showEntityPanel(ent) {
 function togglePanelEntityStance() {
   const ent = panelEntity;
   if (!ent) return;
-  ent.stance = ent.stance === "aggressive" ? "evasive" : "aggressive";
+  ent.stance = ent.stance === "holdCourse" ? "maintainRange" : "holdCourse";
   showEntityPanel(ent);
 }
 
@@ -6407,8 +6521,8 @@ function showGroupPanel() {
   </div>`;
   let actionsHtml = "";
   if (playerUnits.length > 0) {
-    actionsHtml += `<button class="card-action-btn" onclick="setSelectionStance('aggressive')" style="color:#e05050">All Aggressive</button>`;
-    actionsHtml += `<button class="card-action-btn" onclick="setSelectionStance('evasive')" style="color:#50a0e0">All Evasive</button>`;
+    actionsHtml += `<button class="card-action-btn" onclick="setSelectionStance('maintainRange')" style="color:#e0913a">All Maintain Range</button>`;
+    actionsHtml += `<button class="card-action-btn" onclick="setSelectionStance('holdCourse')" style="color:#50a0e0">All Hold Course</button>`;
     if (playerUnits.some(e => e.destX !== null && e.destY !== null)) {
       actionsHtml += `<button class="card-action-btn" onclick="stopSelectionMovement()">Stop</button>`;
     }
@@ -6663,7 +6777,7 @@ window.addEventListener("pointermove", (e) => {
   if (entIdx !== null) {
     hoveredStarId = null;
     const hEnt = mapEntities[entIdx];
-    const stanceLabel = hEnt.stance === "aggressive" ? "Aggressive" : "Evasive";
+    const stanceLabel = hEnt.stance === "holdCourse" ? "Hold Course" : "Maintain Range";
     const admLabel = hEnt.admiral ? ` ★${hEnt.admiral.name}` : "";
     tooltip.textContent = `${hEnt.label}${admLabel} — ${stanceLabel}`;
     tooltip.style.left = (sx + 12) + "px";
@@ -8634,7 +8748,7 @@ let activeColonyTab = "buildings"; // "buildings" | "fleet"
 let draggedCard = null; // { source:"queue"|"building"|"leader"|"fleet-ship"|"fleet-admiral", index, card }
 
 // ── Fleet assembly state ──
-let deployStance = "aggressive";
+let deployStance = "maintainRange";
 let deployAdmiral = null;   // admiral card or null
 let deployShips = [];       // array of ship cards staged for deployment
 
@@ -8674,7 +8788,7 @@ function showColonyScreen(star, planetIdx) {
   colonyViewPlanetIdx = planetIdx;
   // Reset deploy state for this colony
   returnDeployCardsToQueue();
-  deployStance = "aggressive";
+  deployStance = "maintainRange";
   activeColonyTab = "buildings";
   document.querySelectorAll(".colony-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === "buildings"));
   document.getElementById("tab-buildings").style.display = "";
@@ -9077,11 +9191,11 @@ function refreshFleetTab(col) {
   const stanceToggle = document.getElementById("fleet-stance-toggle");
   const newToggle = stanceToggle.cloneNode(true);
   stanceToggle.parentNode.replaceChild(newToggle, stanceToggle);
-  newToggle.querySelector("#fleet-stance-label").textContent = deployStance === "aggressive" ? "Aggressive" : "Evasive";
-  newToggle.className = deployStance === "evasive" ? "evasive" : "";
+  newToggle.querySelector("#fleet-stance-label").textContent = deployStance === "holdCourse" ? "Hold Course" : "Maintain Range";
+  newToggle.className = deployStance === "holdCourse" ? "holdcourse" : "";
   newToggle.id = "fleet-stance-toggle";
   newToggle.addEventListener("click", () => {
-    deployStance = deployStance === "aggressive" ? "evasive" : "aggressive";
+    deployStance = deployStance === "holdCourse" ? "maintainRange" : "holdCourse";
     refreshFleetTab(col);
   });
 
@@ -9386,6 +9500,7 @@ function gameLoop(timestamp) {
   const scaledDt = dt * BASE_GAME_SPEED * gameSpeed;
   tickEconomy(scaledDt);
   tickEntities(scaledDt);
+  tickCombatMovement(scaledDt);
   tickShipCombat(scaledDt);
   tickScouts(scaledDt);
   // Combat particles and weapon-flash visuals were tuned for the pre-rebase
@@ -9951,7 +10066,7 @@ function deserializeGame(data) {
       const cards = e.ships.map(s => hydrateCardRef(s) || s).filter(Boolean);
       const admiral = e.admiral ? (hydrateCardRef(e.admiral) || e.admiral) : null;
       deployShipGroup(cards, {
-        owner: e.owner, stance: e.stance, faction: e.faction, admiral,
+        owner: e.owner, stance: normalizeStance(e.stance), faction: e.faction, admiral,
         x: e.x, y: e.y,
       });
       continue;
@@ -9962,7 +10077,7 @@ function deserializeGame(data) {
     const entId = (e.id != null) ? e.id : nextEntityId++;
     if (e.id != null && e.id >= nextEntityId) nextEntityId = e.id + 1;
     const ent = {
-      type: e.type, owner: e.owner, stance: e.stance,
+      type: e.type, owner: e.owner, stance: normalizeStance(e.stance),
       id: entId,
       x: e.x, y: e.y, destX: e.destX, destY: e.destY,
       speed: e.speed, sensorRange: e.sensorRange, stealth: e.stealth,

@@ -1,8 +1,8 @@
 # IdleSpace — Game Design & Implementation Reference
 
-**Version pinned:** `v0.1.2` (v0.2.0 Phase 1 in progress — foundation only)
-**Last verified against code:** 2026-05-26
-**Primary source:** [`starmap.html`](starmap.html) (~10,800 lines)
+**Version pinned:** `v0.1.3` (v0.2.0 fleet & combat rework largely landed; economy sim, idle tuning, decks & new cards still to come)
+**Last verified against code:** 2026-06-15
+**Primary source:** [`starmap.html`](starmap.html) (~10,470 lines)
 **Card data:** [`data/game-cards.json`](data/game-cards.json) (120 cards, schema v1)
 
 This is the single living reference for "how does IdleSpace work today, and where does each system live in the code." It is the only design / implementation doc in the repo.
@@ -20,7 +20,7 @@ IdleSpace is an **idle space 4X collectible card game**. Every meaningful in-gam
 1. **Cards are everything.** Stars, planets, buildings, leaders, ships, admirals all render through the same metallic "Rustfang" template. The card abstraction unifies the visual + mechanical language.
 2. **Idle-first.** Stat scaling, costs, and timers are designed so the game plays itself while you're away. Higher-rarity cards are exponentially better, and costs / draw intervals escalate to make scale matter.
 3. **Discovery as reward.** Exploration, planet generation, research, pirate loot — each is a roll with rarity-coloured outcomes.
-4. **Persistent real-time pacing (long-term goal).** Combat is internally slowed by `COMBAT_TIME_SCALE = 1/100`; current `BASE_GAME_SPEED = 2` is dev tuning. Vision: combat takes days, travel takes hours, cards drop ~1–2/colony/day. All systems must be time-scalable.
+4. **Persistent real-time pacing (long-term goal).** Current `BASE_GAME_SPEED = 2` is dev tuning. Vision: combat takes days, travel takes hours, cards drop ~1–2/colony/day. All systems must be time-scalable.
 5. **Data-driven.** Resources, rarity weights, cost formulas, and card templates are constants/JSON, not hard-coded into call sites. Consumers iterate `RESOURCE_DEFS` / `RARITY_WEIGHTS` so resources and rarities can grow without rewriting renderers.
 
 ---
@@ -552,11 +552,11 @@ Single-pool, 1-of-3 modal at completion. The per-category-button UI is gone.
 | `flatResourcePerColony` | `{ id, amount }` | `getColonyOutput` after planet bonuses | `+amount` to that resource per colony per tick |
 | `flatResourcePerTick` | `{ id, amount }` | `tickEconomy` after the colony loop | `+amount` empire-wide per tick |
 | `bonusFleetSize` | `{ amount }` | `getMaxFleetShips` wrap | `+amount` to base fleet cap (with or without admiral) |
-| `sensorRangePercent` | `{ amount }` (percent) | `recalcFleetStats` post-admiral; `getEffectiveBaseSensorRange()` wraps the 4 `BASE_SENSOR_RANGE` callsites | Multiplies all sensors by `(1 + amount/100)` |
+| `sensorRangePercent` | `{ amount }` (percent) | each player ship's `ent.sensorRange` (`grantArtifact` + at spawn); `getEffectiveBaseSensorRange()` wraps the `BASE_SENSOR_RANGE` callsites | Multiplies all sensors by `(1 + amount/100)` |
 | `researchSpeedPercent` | `{ amount }` (percent) | research-spend block in `tickEconomy` | Multiplies `RESEARCH_SPEND_RATE` |
 | `colonyShipDiscount` | `{ percent }` | `getColonizationCost` | Multiplies cost by `max(0.1, 1 - percent/100)` |
 
-`grantArtifact(id)` is the entry point. It dedupes, bumps the cache version, and re-runs `recalcFleetStats` / sensor reset on existing player fleets/ships so a sensor-bonus artifact visibly grows the disc immediately.
+`grantArtifact(id)` is the entry point. It dedupes, bumps the cache version, and recomputes `ent.sensorRange` on existing player ships so a sensor-bonus artifact visibly grows the disc immediately.
 
 ### 10c. Tech effect registry
 
@@ -566,8 +566,8 @@ Single-pool, 1-of-3 modal at completion. The per-category-button UI is gone.
 |---|---|---|---|
 | `gainResources` | `{ deltas: { credits: 5000, ... } }` | instant | `resources[id] += v` for each delta |
 | `instantHealAllPlayerShips` | `{ percent }` | instant | Restores `percent`% of max shields/armor on every non-in-combat player ship |
-| `areaDamage` | `{ radius, damage }` | targeted | Iterates `mapEntities` where `owner === "npc" && !inCombat` within radius; spreads damage across fleet ships via `applyTechShipDamage` (drains `_combatShields` → `_combatArmor`); removes dead ships and entities |
-| `areaHeal` | `{ radius, amount }` | targeted | Iterates `mapEntities` where `owner === "player" && !inCombat`; restores armor then shields |
+| `areaDamage` | `{ radius, damage }` | targeted | Iterates `mapEntities` where `owner === "npc"` within radius; applies damage to each ship (drains `_combatShields` → `_combatArmor`); removes dead ships and entities |
+| `areaHeal` | `{ radius, amount }` | targeted | Iterates `mapEntities` where `owner === "player"`; restores armor then shields |
 | `instantRevealRadius` | `{ radius }` | targeted | `detectStarsInRange(wx, wy, radius)` + `markSeenInRange` |
 
 **Targeting mode** ([starmap.html `playTechCard`](starmap.html)):
@@ -611,97 +611,79 @@ if (planet.card.bonuses)
 
 ## 12. Fleet & Entity System
 
-### `mapEntities[]`
+### `mapEntities[]` — individual ship units (RTS model, v0.2.0)
 
-Two entity types, both `owner ∈ {"player","npc"}`, `stance ∈ {"aggressive","evasive"}`, `inCombat: null | combatId`, plus position and (optional) destination.
-
-| Type | Shape |
-|---|---|
-| Solo ship | `{ type:"ship", card, owner, stance, x, y, destX, destY, … }` — uses its own card stats. |
-| Fleet | `{ type:"fleet", ships:[card,…], admiral:card?, owner, stance, label, x, y, derived stats, inCombat }` — admiral optional. |
-
-### Derived fleet stats (`recalcFleetStats`)
-
-- `speed = min(ships.speed)` — one slow tug holds the fleet back.
-- `sensorRange = max(ships.sensorRange)` — best sensor wins.
-- `stealth = min(ships.stealth)` — one clunky ship blows cover.
-- Damage = sum across ships.
-- Admiral `commandBonus` multiplies all ship stats by `(1 + commandBonus/100)` ([starmap.html:2981–2982](starmap.html)); admiral-specific stat bonuses apply per-stat on top.
-
-### Fleet size cap ([starmap.html:3062](starmap.html))
+There is **no "fleet" entity** anymore. `mapEntities[]` holds only individual `type:"ship"` units; a "fleet" is just a group of ships the player moves together (RTS units + selection). Shape:
 
 ```js
-admiral ? (admiral.stats.maxFleetSize || 4) : 3;
+{ type:"ship", id, owner:"player"|"npc", card, admiral:card|null, faction?,
+  stance:"maintainRange"|"holdCourse", x, y, destX, destY, speed, sensorRange,
+  stealth, label, _moveSpeed? }
 ```
 
-Without an admiral, fleets cap at 3 ships. With one, cap is the admiral's rolled `maxFleetSize` (typical ranges by rarity: common 4–7, uncommon 6–12, rare 11–24, epic 20–36, legendary 30–50).
+- `id` — stable per-ship id (`nextEntityId++`), assigned at creation and on load; saved fleets reference it.
+- `card` carries per-instance combat state (`_combatShields`, `_combatArmor`, `_dead`, `_shotCooldownLeft`) round-tripped via `CARD_INSTANCE_FIELDS`.
+- `admiral` rides aboard one ship (its flagship) and projects a command aura.
+- `deployShipGroup(cards, opts)` is the single spawn helper — deploy, NPC spawner, pirate ambush, and starter fleets all route through it → `createSoloShip`.
 
-### Deployment & travel
+### Selection & movement
 
-Colony screen has a Fleet tab with a deploy area: drag ship cards into deploy slots (`deployShips[]`), optionally drag an admiral, then "Deploy Fleet" or "Deploy Solo" ([starmap.html:7285–7763](starmap.html)). Entities are placed at the colony star with a small offset (40 units) so they don't all stack on the home pixel.
+- `selectedEntities` is a `Set` of entity refs; `panelEntity` is the single entity whose detail panel is open.
+- **Box-select** (left-drag) picks player ships inside the rectangle (`finalizeBoxSelect`). Left-click selects one unit / issues a move on empty space; **right-drag pans**; right-click / contextmenu deselects.
+- **Group move** (`issueGroupMove`): translate the whole selection so its centroid lands on the target, every ship moving at the group's slowest speed (`_moveSpeed`) so the formation arrives together. `tickEntities` uses `_moveSpeed ?? speed` and clears it on arrival. `WORLD_SPEED_MULT = 0.8`; ETAs via `formatETA`.
+- **Stop** (`stopSelectionMovement`): clears `destX/destY/_moveSpeed` for the selection. The Stop button shows in the panel only while something is moving.
 
-Travel math ([starmap.html:3094–3120](starmap.html)):
+### Saved fleets
 
-```
-ent.x += dir.x × ent.speed × dt × WORLD_SPEED_MULT
-ent.y += dir.y × ent.speed × dt × WORLD_SPEED_MULT
-```
+A "saved fleet" is a **named, persistent saved selection** of player ships — no special properties. `savedFleets = [{ fid, name, shipIds:[id…] }]`.
 
-with `WORLD_SPEED_MULT = 0.8`. ETAs come from `formatETA(gameSec)` at [starmap.html:2911](starmap.html), displayed in the entity info panel and as a label under traveling entities on the starmap.
+- "Save as Fleet" (multi-select panel) stores the current selection.
+- The top-bar **Fleets** modal has two sub-tabs: **Fleets** (saved groups — click to recall = re-select living members + center camera; ✕ deletes) and **Ships** (flat list of every individual player ship).
+- Dead ships are pruned from their fleets; an emptied fleet is dropped.
+- Persisted in save (ship ids + `savedFleets` + counters; `SAVE_VERSION` stays 3, additive). `normalizeStance` + id round-trip handle load; legacy `type:"fleet"` saves migrate to individual ships.
 
-Selected-entity info panel: ship/fleet stats, stance toggle, disband button (only at a colony — returns cards to queue), movement orders via click destination. Right-click drag pan (v0.0.9.25) does not deselect.
+### Admiral command aura
+
+The admiral rides aboard a ship (`ent.admiral`) and projects a radius `getAdmiralAuraRadius = ADMIRAL_AURA_BASE(200) + maxFleetSize × ADMIRAL_AURA_PER_REACH(12)` world units (repurposing the admiral's old `maxFleetSize` stat as "command reach"). Friendly ships firing **inside** the aura deal `+commandBonus%` damage (`collectAdmiralAuras` / `auraBonusAt`). A gold ring + faint aura disc render on the admiral's ship **only while it's selected**. Permadeath: the admiral dies with its ship; disband at a colony returns it to the queue.
+
+> `getMaxFleetShips` (the old fleet-size cap) is retained but currently unused — reserved for a future empire-wide fleet-logistics stat. There is **no hard fleet-size cap** in the current model; the admiral aura is the only thing that scales with grouping.
 
 ---
 
 ## 13. Combat
 
-Combat is volley-based and runs in-line with the rest of the game loop but is slowed by `COMBAT_TIME_SCALE = 1 / 100` ([starmap.html:6378](starmap.html)) — combat ticks 100× slower than wall-clock, preserving the pre-real-time tempo while everything else scales with `BASE_GAME_SPEED`.
+Combat is **RTS, on the starmap** — no overlay, no turn/phase machine, no red-line/⚔ indicators. Each ship fires on its own cooldown and maneuvers per its stance, all in the normal game loop at `scaledDt`. The old volley engine and `COMBAT_TIME_SCALE` were removed in the v0.2.0 rework.
 
-### Constants ([starmap.html:6377–6391](starmap.html))
+### Constants
 
 | Constant | Value | Meaning |
 |---|---|---|
-| `SHOT_INTERVAL` | 0.5 game-s | Time between shots in a volley. |
-| `COMBAT_TIME_SCALE` | 1/100 | Combat tick slowdown. |
-| `COMBAT_HP_SCALE` | 5 | Multiplier on ship shields/armor for combat durability. |
+| `BASE_FIRE_INTERVAL` | 1.5 game-s | Base seconds/shot; per-ship = `BASE_FIRE_INTERVAL / fireRate` (`getShipFireInterval`, default fireRate 1). |
+| `COMBAT_HP_SCALE` | 30 | Multiplier on `card.stats.shields/armor` for combat durability. |
 | `RANGE_THRESHOLDS` | `{long:1000, medium:650, short:350}` | World-unit distance at which each weapon range can fire. |
-| `ENGAGED_DISTANCE` | 200 | Entities stop closing at this distance. |
-| `VISUAL_DT_FACTOR` | 0.1 | Particles tick at `scaledDt × 0.1` so weapon flashes look the same across `BASE_GAME_SPEED` rebases. |
-| `COMBAT_TRIANGLE` | (see [starmap.html:6395](starmap.html)) | Per-weapon multipliers vs shields/armor: energy 2/0.5, kinetic 0.5/2, missile 1/1. |
+| `COMBAT_TRIANGLE` | energy 2/0.5, kinetic 0.5/2, missile 1/1 | Per-weapon multipliers vs shields/armor. |
+| `COMBAT_THREAT_MEMORY` | 5 (animTime s) | How long a ship stays aware of / revealed-by an attacker. |
 
-### Engagement
+### Stances (`stance`) — `tickCombatMovement(dt)`
 
-`checkCombatEngagements()` scans non-combat, opposite-owner entities within sensor range (with stealth penalty). Engagement rules per stance (CORE_PLAN D4):
+Two stances drive combat movement, applied to **both** player and NPC ships:
 
-| Attacker | Defender | Outcome |
-|---|---|---|
-| Aggressive | Aggressive | Both turn toward each other; combat begins. |
-| Aggressive | Evasive | Speed-based evasion roll; if failed, combat begins. |
-| Evasive | Aggressive | Same — symmetric. |
-| Evasive | Evasive | Pass each other; no engagement. |
+- **Maintain Range** (`maintainRange`, default) — when an enemy is in range, hold it at the **longest weapon's range**, bounded by sensor range (`min(sensor, weapon)` — you can't hold what you can't detect). Short-weapon ships brawl close; long-weapon ships kite. **Combat overrides move orders** — the ship drops its route to fight.
+- **Hold Course** (`holdCourse`) — follows movement orders straight through combat, firing opportunistically; never breaks off.
 
-Evasion: `clamp((mySpeed - theirSpeed) / mySpeed, 0, 1)`.
+`normalizeStance` migrates old saves (`aggressive → maintainRange`, `evasive → holdCourse`). Stance toggles live in the single + group selection panels; map badge shows **M** / **H**.
 
-### Combat loop ([starmap.html:3244–3570](starmap.html))
+### Firing — `tickShipCombat(dt)`
 
-- Phase: `closing` → `engaged` (when `combat.distance ≤ ENGAGED_DISTANCE`).
-- Each tick: entities close at full speed; recompute `combat.distance`; if engaged, on every `SHOT_INTERVAL` each alive ship on each side fires all weapons whose `RANGE_THRESHOLDS[range] ≥ distance`.
-- **Hit roll**: `0.70 + sensor × 0.01 − stealth × 0.05 − speed × 0.005`, clamped 0.10–0.95.
-- **PD interception (missiles)**: `min(0.80, totalPD × 0.02)` rolled per missile.
-- **Damage**: weapon's vs-shields multiplier reduces shields first; on shield depletion, vs-armor multiplier hits armor; ship dies when armor reaches 0. Shields and armor are `card.stats.* × COMBAT_HP_SCALE`.
+Each alive, armed ship targets the nearest enemy within `engageR = min(sensorRange×50, maxWeaponR)`; fires every in-range weapon when `_shotCooldownLeft` hits 0. `calcHitChance` = base 0.40 + sensor − stealth − speed (clamped 0.05–0.95); misses render flying past. Missiles can be point-defense intercepted (`min(0.80, PD × 0.02)`). `applyDamageByWeapon` applies `COMBAT_TRIANGLE` multipliers (shields → armor) and sets `_dead`. Admiral aura scales firer damage. On kill: per-kill loot (`rollPerKillLoot` + `applyLoot`); dead entities removed at end of tick, then `onEntityRemoved`.
 
-### Disengagement
+### Reveal / return fire
 
-Switch to evasive stance mid-combat → speed-based breakaway roll each tick. Both sides survive on success.
+Being **fired upon reveals the attacker** for `COMBAT_THREAT_MEMORY` seconds (`ent._threatBy` / `_threatAt`). A revealed attacker is targetable out to the victim's **own weapon range** (not just sensor range) and is chased by a Maintain Range victim — so a ship can't sit oblivious while something out-ranges it. An NPC firing on a player ship is drawn even beyond the player's sensor range (`isEntityVisibleToPlayer` checks `_seenUntil`).
 
-### Visuals
+### Resolution & sensor honesty
 
-- Starmap: red glowing line between combating entities, pulsing ⚔ icon at midpoint (clickable to open overlay), weapon-coloured particle bursts (`--wpn-energy/kinetic/missile`; 8 particles on hit, 3 on miss).
-- Combat overlay (~81% area, 0.75 opacity): both sides' ship rosters with rarity-coloured shield/armor HP bars, phase indicator, distance bar, round counter, next-volley countdown, scrolling colour-coded combat log (engage / range / miss / hit / kill / intercept / disengage). Log persists across open/close for the duration of the combat.
-
-### Resolution
-
-Loser removed from map. Winner's surviving ships persist damage on `card._combatShields` / `_combatArmor`; entity unlocked and resumes movement; dead ships filtered from the fleet, stats recalculated.
+Loser's ship is removed from the map; survivors keep damage on `card._combatShields` / `_combatArmor`. Nothing engages unless within the relevant sensor range (or revealed by being shot). Weapon visuals: one streak per shot per weapon + weapon-coloured particle bursts, in-world on the starmap. A subtle off-screen combat notification + a persistent combat-reports panel are **not yet built** (next combat slice), along with per-ship target priority / focus-fire.
 
 ---
 
@@ -731,7 +713,7 @@ The shared spawner is `maybeSpawnNpcFleet(rng, cx, cy, density, centerX, centerY
 - Fleet size: **fixed at 1**. Always solo; no escorts, no swarms.
 - Card pool: 8 templates, all `legendary`. `cardFilter` tier-gates the two outliers — `drg_white` only spawns at `tier ≥ 0.5` (~28k units from home), `drg_singularity` only at `tier ≥ 0.85` (~60k units).
 - Stat scaling vs. `Dreadlord Prime` (`shields 70 / armor 90`, total dmg 108): six colored Star Dragons at 2×, White Star at 10×, Singularity at 100×. Damage budget redistributes by color theme (red = kinetic-heavy, blue = energy-heavy, etc.) without changing total threat.
-- `sensorRange: 2` (→ 100 world units of detection). `ENGAGED_DISTANCE = 200`, so dragons only aggro the player at point-blank distance. They sit and patrol until you're nearly on top of them.
+- `sensorRange: 2` (→ 100 world units of detection), so dragons only engage at point-blank distance (their tiny sensor disc). They sit and patrol until you're nearly on top of them.
 - Behaviour: always aggressive, same idle-patrol as pirates.
 - Rendered in gold `#d4a020` to distinguish from crimson pirates.
 - Loot: dragon cards land in the shared `pirateLoot` bucket and surface in the Collection's "Entities" tab, which groups every NPC faction under per-faction section headers. Dragons opt out of the artifact-drop roll for now — `artifactDrop: false`.
@@ -744,7 +726,6 @@ The shared spawner is `maybeSpawnNpcFleet(rng, cx, cy, density, centerX, centerY
 - `TICK_PERIOD = 1` game-second per resource tick.
 - `WORLD_SPEED_MULT = 0.8` — entity movement secondary multiplier.
 - `VISUAL_DT_FACTOR = 0.1` — particle/visual rebase.
-- `COMBAT_TIME_SCALE = 1/100` — combat-only.
 - Player-facing speed buttons render at [starmap.html:1672–1675](starmap.html):
 
 | Button | `data-speed` |
@@ -754,7 +735,7 @@ The shared spawner is `maybeSpawnNpcFleet(rng, cx, cy, density, centerX, centerY
 | 50× | 50 |
 | ⏩ (150×) | 150 |
 
-- `scaledDt = dt × BASE_GAME_SPEED × gameSpeed` is the single master clock, computed once per frame in the game loop ([starmap.html:8051+](starmap.html)) and passed to `tickEconomy(dt)` and `tickEntities(dt)`. Combat applies its own `× COMBAT_TIME_SCALE` on top.
+- `scaledDt = dt × BASE_GAME_SPEED × gameSpeed` is the single master clock, computed once per frame in the game loop and passed to `tickEconomy(dt)`, `tickEntities(dt)`, `tickCombatMovement(dt)`, and `tickShipCombat(dt)`. No subsystem applies its own time scale on top.
 - Paused-state ETAs use `gameSpeed > 0 ? gameSpeed : 1` as a fallback so the UI doesn't show infinity ([starmap.html:2925, 4267, 4269](starmap.html)).
 - **Pacing vision** (long-term): combat = days, travel = hours, card drops ~1–2/colony/day. Current values are dev tuning. Don't design systems that only work at fast speed — `BASE_GAME_SPEED` should be a single tunable knob.
 
@@ -769,7 +750,7 @@ The shared spawner is `maybeSpawnNpcFleet(rng, cx, cy, density, centerX, centerY
   - All resources (5 base + salvage + 4 exotics as of v0.2.0).
   - All colonies (population, buildings, leaders, deck, queue, activeAction, genTimer, pendingDraw, **`planetSize`** — v0.2.0).
   - All planets (orbit fields, colony, **`size`** — v0.2.0).
-  - All map entities (ships, fleets, positions, destinations, stance, owner, inCombat, damage).
+  - All map entities (individual ships with stable ids, positions, destinations, stance, owner, per-ship combat damage) + saved fleets.
   - `researchCounts`, `researchedCards`, `seenCards`, `pirateLoot`, `activeResearch`, **`pendingResearch`** (Phase 3), **`ownedArtifacts`** + **`techInventory`** (Phase 1).
   - **`autoContinueResearch`**, **`pinnedResources`**, **`resourceProgressMode`** (v0.2.0).
   - `gameSpeed` (auto-paused on load — user resumes explicitly).
@@ -855,7 +836,8 @@ Tagged releases plus notable untagged commits, newest first.
 
 | Version | Headline |
 |---|---|
-| **v0.2.0 Phase 1** (HEAD, in progress) | **Foundation** for v0.2.0. Adds Salvage + 4 exotic resources (antimatter, darkmatter, bioplasm, dragonshard) with the rack iterating `RESOURCE_DEFS`. Salvage drops from scrapping cards, killing NPC fleets (dragons 10×), and the new `salvageCache` scout anomaly; dragons additionally drop dragonshard with the Singularity Dragon at 10× more. New colonies get `BASELINE_COLONY_FOOD = 2` per tick so pop-1 colonies aren't born starving. `acceptResearchChoice` auto-queues the next research when `autoContinueResearch` is on (default). Planets get a `size` field decoupled from rarity (3–10) shown on the planet card + colony header — the steep overcrowding cost ramp is wired in Phase 4. Top-bar rack gets per-cell progress bars (shared tick clock) and a chevron-driven dropdown for pin/unpin. `SAVE_VERSION = 3` with silent v1/v2 migration. |
+| **v0.1.3** (HEAD) | **Fleet & combat RTS rework.** Fleets become individual ship units — box-select, cohesive group-move, stop-movement, and named **saved fleets** (top-bar Fleets modal: Fleets / Ships sub-tabs) persisted across save/load via stable ship ids. The admiral becomes a **command aura** (`+commandBonus%` inside its radius; gold ring shown only when its ship is selected); no hard fleet-size cap. Deploy staging uncapped → single **Deploy** button. The old turn-based engine (overlay, phases, `COMBAT_TIME_SCALE`) is replaced by **on-map RTS combat**: two stances (**Maintain Range** kites to longest-weapon range bounded by sensor / **Hold Course** follows orders), ships maneuver on both sides, and **being fired upon reveals the attacker** — return fire out to your own weapon range and chase out-of-sensor attackers (`COMBAT_THREAT_MEMORY`). `COMBAT_HP_SCALE` 5→30 and base hit 0.70→0.40 so fights last and accuracy matters. |
+| **v0.2.0 Phase 1** | **Foundation** for v0.2.0. Adds Salvage + 4 exotic resources (antimatter, darkmatter, bioplasm, dragonshard) with the rack iterating `RESOURCE_DEFS`. Salvage drops from scrapping cards, killing NPC fleets (dragons 10×), and the new `salvageCache` scout anomaly; dragons additionally drop dragonshard with the Singularity Dragon at 10× more. New colonies get `BASELINE_COLONY_FOOD = 2` per tick so pop-1 colonies aren't born starving. `acceptResearchChoice` auto-queues the next research when `autoContinueResearch` is on (default). Planets get a `size` field decoupled from rarity (3–10) shown on the planet card + colony header — the steep overcrowding cost ramp is wired in Phase 4. Top-bar rack gets per-cell progress bars (shared tick clock) and a chevron-driven dropdown for pin/unpin. `SAVE_VERSION = 3` with silent v1/v2 migration. |
 | v0.1.2 | **Scouting & anomalies** — `Explore` becomes a timed scout. Duration scales with distance from origin (60 s at home → 24 game-hours past `SCOUT_DISTANCE_RANGE = 40000`). The bound scout fleet must remain stationary and out of combat or the scout cancels. On completion, 15% chance of an anomaly: scout-fleet damage, random tech effect, pirate ambush, resource cache, tech gift, artifact relic, or (rare) research breakthrough. Adds in-flight scout state to per-star save/load; older saves load cleanly. |
 | v0.1.1 | **Artifact & Tech card systems** — two new card categories. Artifacts are permanent passive unlocks with 6 effect kinds (resource/colony, resource/tick, fleet cap, sensor%, research speed%, colonization discount). Tech cards are consumable activatables with 5 effect kinds (gain resources, area damage / heal, instant reveal, heal all ships). **Research reworked** into a single-pool, 1-of-3 choice modal (~⅔ tech / ⅓ non-tech per slot); cost climbs only on non-tech unlocks. Pirate combat has a per-combat artifact-drop roll, surfaced in the salvage screen. `SAVE_VERSION = 2` with silent v1 → v2 migration. |
 | **v0.1.0** | Milestone release: consolidates the entire v0.0.9.x balance + QoL line into the 0.1.0 minor bump. Introduces this canonical IDLESPACE.md reference doc as the single source of truth for the project. |
@@ -888,7 +870,7 @@ Tagged releases plus notable untagged commits, newest first.
 - **Fleet management Phase 6** (CORE_PLAN) — fleet panel with list / status / stats / stance, repair / resupply at friendly colonies.
 - **Admiral special abilities** — shelved (CORE_PLAN D6). Admirals differentiate through commandBonus + per-stat bonuses + fleet-size only.
 - **Deployable pirate-ship loot** — pirate cards drop as trophies for the Collection but can't be placed in colonies or fleets (noted in code as future phase).
-- **Targeted tech in active combat** — `areaDamage` / `areaHeal` / `instantRevealRadius` skip entities with `inCombat` set. A combat-aware version would need to sync into the combat's `sideX.ships` snapshot too.
+- **Combat target priority & notifications** — ships only target nearest-in-range; manual focus-fire / target-priority modes and a non-intrusive off-screen combat alert + persistent combat-reports panel are the next combat slice.
 - **Larger artifact catalog** — artifacts still ship one sample per effect kind (6 templates). Tech catalog was expanded to 60 cards covering single-resource grants, multi-resource bundles, exchanges (`cost` + `gainResources`), area damage / heal, and reveal — all reusing the 5 original effect kinds.
 - **Per-type CSS motifs** — `ui/artifact-card.css` and `ui/tech-card.css` currently style only the effect chip and glyph color. A rune / circuit motif on the middle content is a future polish.
 - **Sidecar PNG image pipeline** — CARDS_PIPELINE_PLAN Phase 3; images still embed as `data:` URLs in some override paths.
@@ -980,12 +962,12 @@ Faction config lives in the `NPC_FACTIONS` registry; spawn / loot / render code 
 
 | Name | Value | Line |
 |---|---|---|
-| `SHOT_INTERVAL` | `0.5` | 6377 |
-| `COMBAT_TIME_SCALE` | `1/100` | 6378 |
-| `COMBAT_HP_SCALE` | `5` | 6389 |
-| `RANGE_THRESHOLDS` | `{ long:1000, medium:650, short:350 }` | 6390 |
-| `ENGAGED_DISTANCE` | `200` | 6391 |
-| `COMBAT_TRIANGLE` | `energy 2/0.5, kinetic 0.5/2, missile 1/1` | 6395 |
+| `BASE_FIRE_INTERVAL` | `1.5` game-s (÷ fireRate) | 7218 |
+| `COMBAT_HP_SCALE` | `30` | 7231 |
+| `RANGE_THRESHOLDS` | `{ long:1000, medium:650, short:350 }` | 7232 |
+| `COMBAT_TRIANGLE` | `energy 2/0.5, kinetic 0.5/2, missile 1/1` | 7233 |
+| `COMBAT_THREAT_MEMORY` | `5` (animTime s) | 3942 |
+| `getShipFireInterval` | `BASE_FIRE_INTERVAL / fireRate` | 7219 |
 
 ### Card draw
 
@@ -1071,9 +1053,9 @@ Faction config lives in the `NPC_FACTIONS` registry; spawn / loot / render code 
 | `findColonyShipFleet(star)` | 2815 | Colony-ship gate for the Colonize button. |
 | `consumeColonyShip(entity)` | 2845-ish | Removes a colony ship card on use. |
 | `formatETA(gameSec)` | 2911 | Human-readable game-time delta. |
-| `tickEntities(dt)` | 3094 | Movement + sensor reveal + engagement check. |
-| `tickCombats(rawDt)` | 3504 | Combat-scaled loop — closing / engaged / volleys. |
-| `recalcFleetStats(ent)` | ~2980 | Derived fleet stats incl. command bonus. |
+| `tickEntities(dt)` | 3094 | Movement (manual orders / group moves) + sensor reveal. |
+| `tickShipCombat(dt)` | 3996 | Per-ship targeting + firing + kills/loot (RTS combat). |
+| `tickCombatMovement(dt)` | 3943 | Stance maneuvering (Maintain Range / Hold Course), both sides. |
 | `buyPopulation()` | 6446 | Manual pop growth from credits + food. |
 | `rollResearchResult(category)` | 6524 | Research card-pack draw. |
 | `getDrawScaling(col, category)` | 6603 | Two-axis draw cost + interval. |
@@ -1083,7 +1065,7 @@ Faction config lives in the `NPC_FACTIONS` registry; spawn / loot / render code 
 | `getColonizationCost(n)` | 7043 | Colonize cost ramp, with `colonyShipDiscount` artifact applied (capped 90%). |
 | `colonizePlanet(star, planetIdx)` | ~7057 | Colony Ship gate + cost + colony attach. |
 | `getArtifactBonuses()` | ~6608 | Aggregates the 6 artifact effect kinds. Memoized by `_artifactVersion`. |
-| `grantArtifact(id)` | ~6645 | Dedup-adds to `ownedArtifacts`, bumps cache, refreshes fleet sensors. |
+| `grantArtifact(id)` | 7386 | Dedup-adds to `ownedArtifacts`, bumps cache, recomputes player-ship sensors. |
 | `getEffectiveBaseSensorRange()` | ~6662 | `BASE_SENSOR_RANGE × (1 + sensorMul/100)`. Used by 4 callsites. |
 | `playTechCard(id)` | ~6810 | Branches on instant vs targeted; enters targeting mode or fires immediately. |
 | `rollResearchChoices()` | ~6975 | Rolls 3 dedup'd candidates with the per-slot 66% tech distribution. |

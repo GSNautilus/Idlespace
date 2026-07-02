@@ -1701,7 +1701,7 @@ body.scaled {
       </span>
       <div class="tb-logo-stack">
         <span class="tb-logo-text">Idle<span class="tb-logo-accent">Space</span></span>
-        <span class="tb-logo-version">v0.1.3</span>
+        <span class="tb-logo-version">v0.1.4</span>
       </div>
     </div>
     <div class="tb-nav">
@@ -9492,21 +9492,50 @@ document.querySelectorAll("#speed-controls button").forEach(btn => {
 // ═══════════════════════════════════════════
 //  GAME LOOP
 // ═══════════════════════════════════════════
+// ── Real-time simulation clock ──
+// The WHOLE simulation (economy, ship movement, combat, scouts) advances by REAL
+// wall-clock elapsed time so it never stops — ships keep moving, resources keep
+// producing, fights keep resolving — even when the tab is minimized and
+// requestAnimationFrame is paused. pumpSim() is driven by BOTH the rAF loop
+// (smooth ~60 Hz when visible) AND a 1s setInterval (when hidden and rAF is
+// throttled). A fixed sub-step keeps movement/combat accurate at any gap size,
+// and a shared backlog means whichever driver fires consumes the elapsed time
+// exactly once and never loses it — a long gap just drains over several pumps.
+let lastSimRealTime = 0;
+let simBacklog = 0; // unprocessed real-time seconds of simulation
+function pumpSim() {
+  const t = performance.now() / 1000;
+  if (lastSimRealTime === 0) { lastSimRealTime = t; return; }
+  simBacklog += t - lastSimRealTime;
+  lastSimRealTime = t;
+  animTime = t; // keep the combat-reveal / animation clock current even with rAF paused
+  if (gameSpeed <= 0) { simBacklog = 0; return; } // paused: discard, never bank time
+  const STEP = 1 / 60;     // fixed real-time sub-step (60 Hz) — smooth + accurate at any gap
+  const MAX_STEPS = 600;   // <=10 s of sim per pump; the rest stays in simBacklog (nothing lost)
+  let n = 0;
+  while (simBacklog >= STEP && n < MAX_STEPS) {
+    const scaledDt = STEP * BASE_GAME_SPEED * gameSpeed;
+    tickEconomy(scaledDt);
+    tickEntities(scaledDt);
+    tickCombatMovement(scaledDt);
+    tickShipCombat(scaledDt);
+    tickScouts(scaledDt);
+    simBacklog -= STEP;
+    n++;
+  }
+}
+
 function gameLoop(timestamp) {
   const now = timestamp / 1000;
   const dt = lastTickTime > 0 ? Math.min(now - lastTickTime, 0.1) : 0;
   lastTickTime = now;
   animTime = now;
-  const scaledDt = dt * BASE_GAME_SPEED * gameSpeed;
-  tickEconomy(scaledDt);
-  tickEntities(scaledDt);
-  tickCombatMovement(scaledDt);
-  tickShipCombat(scaledDt);
-  tickScouts(scaledDt);
-  // Combat particles and weapon-flash visuals were tuned for the pre-rebase
-  // 0.1x base; keep them at that effective tempo so flashes/trails read the
-  // same regardless of the BASE_GAME_SPEED switch to 1.0.
-  const visualDt = scaledDt * VISUAL_DT_FACTOR;
+  // Advance the whole simulation by real elapsed time. Also runs from a 1s
+  // background timer (below) so it never stops while the tab is minimized.
+  pumpSim();
+  // Particle / weapon-flash visuals are frame-based — only meaningful while
+  // visible — so they ride the clamped rAF frame delta.
+  const visualDt = dt * BASE_GAME_SPEED * gameSpeed * VISUAL_DT_FACTOR;
   tickParticles(visualDt);
   tickWeaponVisuals(visualDt);
   // Lightweight updates when colony screen is open (no full DOM rebuild)
@@ -10436,6 +10465,10 @@ document.getElementById("save-menu-backdrop").addEventListener("click", (e) => {
 
 // Periodic autosave + save on page close
 setInterval(doAutosave, AUTOSAVE_INTERVAL_MS);
+// Keep the whole sim advancing when the tab is minimized and rAF is paused —
+// background timers are clamped to ~1s but never fully stop, so the simulation
+// (movement, combat, economy, scouts) keeps running on real elapsed time.
+setInterval(pumpSim, 1000);
 window.addEventListener("beforeunload", doAutosave);
 
 // Offer to resume autosave on startup
